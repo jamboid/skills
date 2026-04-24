@@ -1,6 +1,7 @@
 ---
 name: document-patterns
 description: Explores a codebase to find recurring architectural design patterns, proposes up to 6 candidates, and writes structured markdown docs for the ones the user selects into docs/ at the project root. Use when the user wants to document design patterns, create architecture docs, explain how the codebase is structured, or invokes /document-patterns.
+disable-model-invocation: true
 ---
 
 # document-patterns
