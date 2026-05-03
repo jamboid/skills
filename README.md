@@ -21,5 +21,5 @@ These skills help you write consistent, well-structured frontend code.
 - **document-patterns** — Write documentation detailing the common software design patterns found in a codebase.
 
   ```
-  npx skills@latest add jamboid/skills/document-pattern
+  npx skills@latest add jamboid/skills/document-patterns
   ```
