@@ -1,17 +1,17 @@
 ---
 name: document-patterns
-description: Explores a codebase to find recurring architectural design patterns, proposes up to 6 candidates, and writes structured markdown docs for the ones the user selects into docs/ at the project root. Use when the user wants to document design patterns, create architecture docs, explain how the codebase is structured, or invokes /document-patterns.
+description: Explores a codebase to find recurring architectural design patterns, proposes up to 6 candidates, and writes structured markdown docs for the ones the user selects into docs/patterns/ at the project root. Use when the user wants to document design patterns, create architecture docs, explain how the codebase is structured, or invokes /document-patterns.
 disable-model-invocation: true
 ---
 
 # document-patterns
 
-Explores the codebase, surfaces up to 6 design pattern candidates, lets the user pick, then writes a structured markdown doc for each into `docs/`.
+Explores the codebase, surfaces up to 6 design pattern candidates, lets the user pick, then writes a structured markdown doc for each into `docs/patterns/`.
 
 ## Workflow
 
 ### 1. Check existing docs
-Read `docs/README.md` if it exists. Exclude any patterns already listed there from your candidates — don't repropose documented work.
+Read `docs/patterns/README.md` if it exists. Exclude any patterns already listed there from your candidates — don't repropose documented work.
 
 ### 2. Explore the codebase (two passes)
 **Pass 1 — fast:** Scan directory structure and file names to map the codebase's layers (routes, services, domain, stores, components, middleware, etc.).
@@ -30,7 +30,7 @@ For each, write one paragraph: pattern name, one-sentence description of what it
 Do not write any docs until the user has chosen which patterns they want.
 
 ### 5. Write all selected docs at once
-One file per pattern: `docs/kebab-case-pattern-name.md`
+One file per pattern: `docs/patterns/kebab-case-pattern-name.md`
 
 **Fixed five-section structure — always in this order:**
 1. **Problem statement** — what goes wrong without this pattern; no code in this section
@@ -39,7 +39,7 @@ One file per pattern: `docs/kebab-case-pattern-name.md`
 4. **Disadvantages**
 5. **Key files** — bulleted list of file paths, one-line description each
 
-### 6. Create or update docs/README.md
+### 6. Create or update docs/patterns/README.md
 One line per doc: a link and a one-sentence hook. Append new entries — never overwrite existing ones.
 
 ## Defaults
