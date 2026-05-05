@@ -23,3 +23,9 @@ These skills help you write consistent, well-structured frontend code.
   ```
   npx skills@latest add jamboid/skills/document-patterns
   ```
+
+- **perf-audit** — Draft performance-focused site audit reports from your notes. Scaffolds a dated audit directory and produces a structured report from a filled-in notes template.
+
+  ```
+  npx skills@latest add jamboid/skills/perf-audit
+  ```
