@@ -29,3 +29,9 @@ These skills help you write consistent, well-structured frontend code.
   ```
   npx skills@latest add jamboid/skills/perf-audit
   ```
+
+- **accessibility-audit** — Audit a codebase or folder of template files against WCAG 2.1 and produce a Markdown report plus an interactive HTML report with a localStorage-backed per-issue fix checklist.
+
+  ```
+  npx skills@latest add jamboid/skills/accessibility-audit
+  ```
