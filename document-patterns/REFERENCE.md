@@ -82,8 +82,11 @@ Inner markdown rendered inside an accent-bordered box. Good for a one-line
 takeaway.
 
 ### `:::compare`
-Side-by-side wrong/right. Each side is an `@bad` / `@good` marker (the rest of
-the line is its label) followed by a fenced code block:
+Wrong/right comparison rendered as a **tabbed** component: one tab per side
+(labelled from the marker, with a red/green dot) plus a **Both** tab that stacks
+the two code cards full-width — it opens on **Both** by default. Each side is an
+`@bad` / `@good` marker (the rest of the line is its label) followed by a fenced
+code block:
 
 ```
 :::compare

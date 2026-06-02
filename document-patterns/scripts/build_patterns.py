@@ -243,16 +243,28 @@ def split_markers(buf, markers):
 
 
 def render_compare(buf):
-    cells = []
-    for seg in split_markers(buf, ["@bad", "@good"]):
+    segs = split_markers(buf, ["@bad", "@good"])
+    gid = next_pre_id()
+    btns, panels = [], []
+    for k, seg in enumerate(segs):
         cls = "bad" if seg["marker"] == "@bad" else "good"
+        pid = "%s-%d" % (gid, k)
         lang, flabel, code = extract_fence(seg["lines"])
-        cells.append(
-            '<div>\n'
-            '<div class="compare-label %s"><span class="dot"></span>%s</div>\n'
-            '%s\n</div>' % (cls, inline(seg["label"]), code_block(code, lang, flabel))
-        )
-    return '<div class="compare-grid">\n' + "\n".join(cells) + "\n</div>"
+        btns.append('<button class="cmp-tab" data-cmp="%s"><span class="dot %s"></span>%s</button>'
+                    % (pid, cls, inline(seg["label"])))
+        panels.append('<div id="%s" class="compare-view">\n%s\n</div>'
+                      % (pid, code_block(code, lang, flabel)))
+    # "Both" tab: re-render every segment stacked (fresh pre ids → unique copy targets)
+    both_id = "%s-both" % gid
+    both_blocks = []
+    for seg in segs:
+        lang, flabel, code = extract_fence(seg["lines"])
+        both_blocks.append(code_block(code, lang, flabel))
+    btns.append('<button class="cmp-tab active" data-cmp="%s">Both</button>' % both_id)
+    panels.append('<div id="%s" class="compare-view active">\n%s\n</div>'
+                  % (both_id, "\n".join(both_blocks)))
+    return ('<div class="compare">\n<div class="compare-tabs">' + "".join(btns) + "</div>\n"
+            + "\n".join(panels) + "\n</div>")
 
 
 def render_tabs(buf):
