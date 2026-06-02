@@ -1,6 +1,6 @@
 ---
 name: document-patterns
-description: Explores a codebase to find recurring architectural design patterns, proposes up to 6 candidates, and writes structured markdown docs for the ones the user selects into docs/patterns/ at the project root. Use when the user wants to document design patterns, create architecture docs, explain how the codebase is structured, or invokes /document-patterns.
+description: Explores a codebase to find recurring architectural design patterns, proposes up to 6 candidates, writes structured markdown docs for the ones the user selects into docs/patterns/ at the project root, and can render them into styled, navigable HTML. Use when the user wants to document design patterns, create architecture docs, explain how the codebase is structured, or invokes /document-patterns.
 disable-model-invocation: true
 ---
 
@@ -42,6 +42,27 @@ One file per pattern: `docs/patterns/kebab-case-pattern-name.md`
 ### 6. Create or update docs/patterns/README.md
 One line per doc: a link and a one-sentence hook. Append new entries — never overwrite existing ones.
 
+### 7. Generate HTML (opt-in)
+**Off by default.** Markdown is the deliverable; stop after step 6 unless the
+user opted in. Generate HTML only when the invocation includes `html` (e.g.
+`/document-patterns html`) or the user otherwise asks for the HTML artifacts.
+
+Render the markdown into styled, navigable HTML pages:
+```
+python3 scripts/build_patterns.py docs/patterns/ --project "<Project name>"
+```
+This writes `docs/patterns/HTML/<slug>.html` per doc plus `index.html` from the
+README. Markdown is the source of truth — plain docs render directly. To get the
+richer pages (hero lede/chips, index cards, callouts, wrong/right comparisons,
+tabbed code, diagrams), add optional **frontmatter** and `:::` **directives** to
+the markdown as documented in [REFERENCE.md](REFERENCE.md). HTML is regenerated
+on every run, never hand-edited; re-run after editing any `.md`.
+
+The script owns everything mechanical — token CSS, copy/tab/scroll-spy JS, the
+TOC, syntax highlighting, and all component markup — so pages stay consistent.
+You only author the substance: section breakdown, lede, counter-examples, which
+directives to use, and any bespoke `<svg>` (via `:::diagram` / `:::raw`).
+
 ## Defaults
 
 | Setting  | Default                                                                                                   |
@@ -54,4 +75,8 @@ Override with optional args:
 /document-patterns audience="senior engineers"
 /document-patterns length="brief"
 /document-patterns audience="junior frontend devs" length="detailed"
+/document-patterns html                       # also generate HTML artifacts (step 7)
 ```
+
+`html` is the only flag that triggers HTML generation — without it the skill
+stops at the markdown docs (step 6).
