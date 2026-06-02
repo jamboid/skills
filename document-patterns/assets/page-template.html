@@ -13,9 +13,10 @@
     --good: #1f7a3a; --good-soft: #e7f5ec;
     --bad: #b1432a; --bad-soft: #fbece5;
     --warn: #b27800; --warn-soft: #fff5e1;
-    --code-bg: #16181d; --code-fg: #e5e5e0;
-    --code-comment: #7e8aa1; --code-string: #c5d99d;
-    --code-keyword: #c697e6; --code-fn: #8ec7ff; --code-num: #f5a97f;
+    --code-bg: #272822; --code-fg: #f8f8f2;
+    --code-comment: #75715e; --code-string: #e6db74;
+    --code-keyword: #f92672; --code-fn: #a6e22e; --code-num: #ae81ff;
+    --code-type: #66d9ef; --code-op: #f92672;
     --radius: 10px; --radius-lg: 14px;
     --shadow-sm: 0 1px 2px rgba(20,20,18,.04);
     --shadow-md: 0 4px 14px rgba(20,20,18,.06);
@@ -96,6 +97,8 @@
   .tk-str { color: var(--code-string); }
   .tk-cmt { color: var(--code-comment); font-style: italic; }
   .tk-num { color: var(--code-num); }
+  .tk-type { color: var(--code-type); font-style: italic; }
+  .tk-op  { color: var(--code-op); }
 
   .tabs { display: flex; gap: 2px; padding: 8px 12px 0; background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.06); }
   .tab-btn { padding: 5px 12px; font-size: 12px; font-family: var(--mono); border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; background: none; color: #7e8aa1; cursor: pointer; transition: color .15s, background .15s; }

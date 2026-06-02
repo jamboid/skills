@@ -138,29 +138,50 @@ KEYWORDS = {
     "do", "await", "async", "of", "in", "new", "class", "extends", "import",
     "from", "export", "default", "yield", "throw", "try", "catch", "finally",
     "switch", "case", "break", "continue", "this", "super", "static", "get",
-    "set", "null", "undefined", "true", "false", "typeof", "instanceof", "void",
+    "set", "typeof", "instanceof", "void",
     "delete", "interface", "type", "enum", "implements", "public", "private",
     "protected", "readonly", "as", "namespace",
 }
-BUILTINS = {
+# Monokai colours these like numbers (purple), not like keywords.
+CONSTANTS = {"true", "false", "null", "undefined", "NaN", "Infinity"}
+# Types / classes / constructors → cyan italic.
+TYPES = {
     "Object", "String", "Number", "Array", "Boolean", "Date", "Promise", "JSON",
-    "Math", "Map", "Set", "Symbol", "Error", "RegExp", "console",
-    "defineProps", "defineEmits", "ref", "reactive", "computed", "watch",
-    "onMounted", "onUnmounted", "defineComponent",
+    "Math", "Map", "Set", "Symbol", "Error", "RegExp", "WeakMap", "WeakSet",
+}
+# Callable builtins → green (same as function names).
+FUNCS = {
+    "console", "defineProps", "defineEmits", "ref", "reactive", "computed",
+    "watch", "watchEffect", "onMounted", "onUnmounted", "defineComponent",
 }
 
-_TOKEN_RE = re.compile(
-    r"(?P<cmt>//[^\n]*|/\*.*?\*/|<!--.*?-->|(?<![\w$])#[^\n]*)"
-    r"|(?P<str>\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)"
-    r"|(?P<num>\b\d+(?:\.\d+)?\b)"
-    r"|(?P<word>[A-Za-z_$][\w$]*)",
-    re.S,
-)
+def _build_token_re(hash_comments):
+    cmt = r"//[^\n]*|/\*.*?\*/|<!--.*?-->"
+    if hash_comments:  # only for langs where # starts a line comment
+        cmt += r"|(?<![\w$])#[^\n]*"
+    return re.compile(
+        r"(?P<cmt>" + cmt + r")"
+        r"|(?P<str>\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)"
+        r"|(?P<num>\b\d+(?:\.\d+)?\b)"
+        r"|(?P<op>[-+*/%=&|<>!?^~]+)"
+        r"|(?P<word>[A-Za-z_$][\w$]*)",
+        re.S,
+    )
+
+
+_TOKEN_RE = _build_token_re(False)            # JS/TS/Vue and most langs
+_TOKEN_RE_HASH = _build_token_re(True)         # # is a line comment here
+HASH_LANGS = {"sh", "bash", "zsh", "shell", "yaml", "yml", "toml",
+              "py", "python", "rb", "ruby", "ini", "conf"}
+
+_PASCAL = re.compile(r"^[A-Z][a-z]|^[A-Z]$")   # PascalCase or lone cap (generic)
+_SCREAMING = re.compile(r"^[A-Z][A-Z0-9_]+$")  # SCREAMING_SNAKE constant
 
 
 def highlight(code, lang=""):
+    rx = _TOKEN_RE_HASH if lang.lower() in HASH_LANGS else _TOKEN_RE
     out, last = [], 0
-    for m in _TOKEN_RE.finditer(code):
+    for m in rx.finditer(code):
         if m.start() > last:
             out.append(esc(code[last:m.start()]))
         kind = m.lastgroup
@@ -171,11 +192,19 @@ def highlight(code, lang=""):
             cls = "tk-str"
         elif kind == "num":
             cls = "tk-num"
+        elif kind == "op":
+            cls = "tk-op"
         else:  # word
             tail = code[m.end():]
             if tok in KEYWORDS:
                 cls = "tk-kw"
-            elif tok in BUILTINS or tail.lstrip().startswith("("):
+            elif tok in CONSTANTS:
+                cls = "tk-num"
+            elif tok in TYPES or _PASCAL.match(tok):
+                cls = "tk-type"
+            elif _SCREAMING.match(tok):
+                cls = "tk-num"
+            elif tok in FUNCS or tail.lstrip().startswith("("):
                 cls = "tk-fn"
             else:
                 cls = None
