@@ -13,6 +13,8 @@ Explores the codebase, surfaces up to 6 design pattern candidates, lets the user
 ### 1. Check existing docs
 Read `docs/patterns/README.md` if it exists. Exclude any patterns already listed there from your candidates — don't repropose documented work.
 
+Read existing docs **only to dedupe topics**, never as a format template. Older docs may have been written by a previous version of this skill (no frontmatter, different layout). Do not imitate their structure — always write new docs to the current structure in step 5, even when it differs from what's already there.
+
 ### 2. Explore the codebase (two passes)
 **Pass 1 — fast:** Scan directory structure and file names to map the codebase's layers (routes, services, domain, stores, components, middleware, etc.).
 
@@ -31,6 +33,8 @@ Do not write any docs until the user has chosen which patterns they want.
 
 ### 5. Write all selected docs at once
 One file per pattern: `docs/patterns/kebab-case-pattern-name.md`
+
+This structure is authoritative. Apply it to every new doc regardless of how existing docs in the folder are formatted.
 
 **Fixed five-section structure — always in this order:**
 1. **Problem statement** — what goes wrong without this pattern; no code in this section
