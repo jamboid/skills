@@ -82,9 +82,9 @@ Inner markdown rendered inside an accent-bordered box. Good for a one-line
 takeaway.
 
 ### `:::compare`
-Wrong/right comparison rendered as a **tabbed** component: one tab per side
-(labelled from the marker, with a red/green dot) plus a **Both** tab that stacks
-the two code cards full-width — it opens on **Both** by default. Each side is an
+Wrong/right comparison rendered as two **stacked** code cards (bad first, then
+good, regardless of source order). Each card has a colour-coded status banner —
+red ✗ "Avoid" / green ✓ "Prefer" — and a tinted border. Each side is an
 `@bad` / `@good` marker (the rest of the line is its label) followed by a fenced
 code block:
 
