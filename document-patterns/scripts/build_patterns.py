@@ -332,6 +332,20 @@ def is_block_start(line):
             or bool(re.match(r"^\s*\d+\.\s+", line)))
 
 
+def collect_list_items(lines, i, n, marker):
+    """Gather consecutive list items starting at i, folding soft-wrapped
+    continuation lines into the current item. Returns (items, next_index)."""
+    items, j = [], i
+    while j < n and re.match(marker, lines[j]):
+        item = re.sub(marker, "", lines[j]).strip()
+        j += 1
+        while j < n and lines[j].strip() and not is_block_start(lines[j]):
+            item += " " + lines[j].strip()
+            j += 1
+        items.append(item)
+    return items, j
+
+
 def render_table(lines):
     rows = [[c.strip() for c in re.sub(r"^\s*\|?|\|?\s*$", "", ln).split("|")] for ln in lines]
     head, body = rows[0], rows[2:]
@@ -390,18 +404,12 @@ def render_blocks(lines):
             i = j
             continue
         if re.match(r"^\s*[-*]\s+", line):
-            j, items = i, []
-            while j < n and re.match(r"^\s*[-*]\s+", lines[j]):
-                items.append(re.sub(r"^\s*[-*]\s+", "", lines[j]).strip())
-                j += 1
+            items, j = collect_list_items(lines, i, n, r"^\s*[-*]\s+")
             out.append("<ul>" + "".join("<li>" + inline(it) + "</li>" for it in items) + "</ul>")
             i = j
             continue
         if re.match(r"^\s*\d+\.\s+", line):
-            j, items = i, []
-            while j < n and re.match(r"^\s*\d+\.\s+", lines[j]):
-                items.append(re.sub(r"^\s*\d+\.\s+", "", lines[j]).strip())
-                j += 1
+            items, j = collect_list_items(lines, i, n, r"^\s*\d+\.\s+")
             out.append("<ol>" + "".join("<li>" + inline(it) + "</li>" for it in items) + "</ol>")
             i = j
             continue
@@ -421,10 +429,10 @@ DIS = {"disadvantages", "cons", "drawbacks", "trade-offs", "tradeoffs"}
 
 
 def list_items(lines):
-    items = []
-    for ln in lines:
-        if re.match(r"^\s*[-*]\s+", ln):
-            items.append(re.sub(r"^\s*[-*]\s+", "", ln).strip())
+    n, i = len(lines), 0
+    while i < n and not re.match(r"^\s*[-*]\s+", lines[i]):
+        i += 1
+    items, _ = collect_list_items(lines, i, n, r"^\s*[-*]\s+")
     return items
 
 
