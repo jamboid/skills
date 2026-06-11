@@ -1,17 +1,29 @@
----
-title: Template Test Gallery
-eyebrow: Test Fixture
-heading: Pattern HTML template gallery
-lede: Fixture docs that exercise every component the build script renders. Regenerate after editing the templates in `document-patterns/assets/`, then eyeball the output.
-section_heading: Fixtures
----
+# Skill Test Fixtures
 
-These markdown files are not real pattern docs — they exist to test and preview
-the HTML template styles. Run `./build.sh` from this directory to regenerate the
-gallery into `out/` and open it.
+Synthetic fixtures that exercise the HTML/Markdown output of skills whose build
+scripts render templates. They are **not** real docs or audits — they exist to
+preview and regression-check the template styles after editing.
 
-- [Kitchen-Sink Pattern](kitchen-sink.md) — every component on one page, incl. the compare-grid overflow regression guard.
-- [Client Layer Placeholder](client-layer.md) — `client` category card.
-- [Shared Utils Placeholder](shared-utils.md) — `shared` category card.
-- [Combo Flow Placeholder](combo-flow.md) — `combo` category card.
-- [State Machine Placeholder](state-machine.md) — `state` category card, default-icon fallback.
+Each skill has its own folder; output is generated into that folder's `out/`
+(gitignored). Rebuild with the dispatcher from the repo root:
+
+```
+./test/build.sh                       # rebuild every skill, open each result
+./test/build.sh document-patterns     # rebuild one skill only
+./test/build.sh accessibility-audit
+./test/build.sh --no-open [skill]     # rebuild without opening
+```
+
+## Skills
+
+- [`document-patterns/`](document-patterns/README.md) — pattern-doc HTML
+  template gallery; fixtures cover every `:::` component and the compare-grid
+  overflow regression guard.
+- [`accessibility-audit/`](accessibility-audit/README.md) — kitchen-sink
+  `findings.json` exercising every report component across all severity tiers.
+
+## Adding a skill
+
+1. Create `test/<skill>/` with its input fixture(s) and a short `README.md`.
+2. Add a `build_<skill>()` function and a `case` arm to `build.sh` that runs the
+   skill's build script with `--out-dir "$here/<skill>/out"`.
