@@ -10,14 +10,18 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
 ```jsonc
 {
   "meta": {
-    "title":     "Acme — Site Audit",   // report H1
+    "title":     "Acme — Site Audit",   // doc <title> fallback; not the H1
     "slug":      "acme",                 // output filenames; lowercase-kebab
-    "url":       "https://acme.com",
+    "url":       "https://acme.com",     // drives the H1 site name + URL button
     "date":      "2026-06-18",           // ISO; defaults to today if absent
     "auditedBy": "Jamie Boyd",
     "audience":  "internal SD/AD",
-    "scope":     "site audit, performance-focused"
+    "scope":     "site audit, performance-focused"  // markdown meta line only
   },
+  // The H1 is "Performance Review: <site>", where <site> is the url host (sans
+  // www), falling back to title with a trailing " — Site Audit" stripped. The
+  // header shows the url as a button plus Date / By / Audience chips; the
+  // sidebar shows the site name (no duplicated title/date).
 
   "summary": "Executive summary prose. 3–5 sentences, plain language. Supports `code` and **bold**. Blank line separates paragraphs.",
 
@@ -61,10 +65,12 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
     ]
   },
   // When a device has >1 audit the script prepends a computed "Overall" tab
-  // (per-metric mean across that device's audits; averaged perfScore). A device
-  // with a single audit shows no Overall tab. The legacy `metrics.devices[]`
-  // shape (one block per source) is still accepted — each becomes a one-audit
-  // group — but `groups` is preferred.
+  // (per-metric mean across that device's audits). Its score component shows
+  // only when ≥2 audits carry a perfScore (a genuine average); a lone score
+  // would just repeat its own tab, so the Overall tab omits it. A device with a
+  // single audit shows no Overall tab. The legacy `metrics.devices[]` shape (one
+  // block per source) is still accepted — each becomes a one-audit group — but
+  // `groups` is preferred.
 
   "architecture": "1–2 paragraphs on CMS / framework / build approach and the code shape it produces. Omit the key (or null) if the notes had nothing.",
 

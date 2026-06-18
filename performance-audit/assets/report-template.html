@@ -70,21 +70,21 @@ body {
   border-bottom: 1px solid #d4d2cc;
   flex-shrink: 0;
 }
-.sidebar-title {
+.sidebar-kicker {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--c-sidebar-text);
-  margin-bottom: 4px;
+  color: var(--c-text-muted);
+  margin-bottom: 3px;
 }
-.sidebar-subtitle {
-  font-size: 14px;
-  font-weight: 600;
+.sidebar-brand {
+  font-size: 15px;
+  font-weight: 700;
   color: var(--c-text);
-  line-height: 1.3;
+  line-height: 1.25;
+  word-break: break-word;
 }
-.sidebar-date { font-size: 11px; color: var(--c-sidebar-text); margin-top: 4px; }
 .sidebar-nav { padding: 12px 0 24px; flex: 1; }
 
 .nav-top-link {
@@ -126,33 +126,50 @@ body {
 
 /* ── Page header ── */
 .page-header { margin-bottom: 32px; }
-.page-eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--c-text-muted);
-  margin-bottom: 8px;
+.page-title {
+  font-size: 32px; font-weight: 700; line-height: 1.2; margin-bottom: 16px;
+  word-break: break-word;
 }
-.page-title { font-size: 32px; font-weight: 700; line-height: 1.2; margin-bottom: 12px; }
 .page-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  font-size: 14px;
+  align-items: center;
+  gap: 10px;
+}
+.url-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  text-decoration: none;
+  transition: border-color .12s, background .12s;
+}
+.url-btn:hover { background: var(--c-sidebar-bg); border-color: #c9c7c0; }
+.url-btn .ic { width: 15px; height: 15px; flex-shrink: 0; color: var(--c-text-muted); }
+.url-btn svg:last-child { width: 12px; height: 12px; color: var(--c-text-muted); }
+.meta-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 11px;
+  font-size: 13px;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+}
+.meta-chip .mc-k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--c-text-muted);
 }
-.page-meta span { display: flex; align-items: center; gap: 5px; }
-.page-meta code {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  background: var(--c-border);
-  padding: 1px 5px;
-  border-radius: 3px;
-  color: var(--c-text);
-}
-.page-meta a { color: var(--c-accent); text-decoration: none; }
-.page-meta a:hover { text-decoration: underline; }
+.meta-chip .mc-v { font-weight: 600; color: var(--c-text); }
 
 /* ── Section headings ── */
 .content-section { margin-bottom: 56px; scroll-margin-top: 24px; }
@@ -223,7 +240,7 @@ body {
 .cap-srclinks svg { width: 12px; height: 12px; }
 
 /* score hero */
-.score-wrap { display: flex; justify-content: center; margin: 18px 0 8px; }
+.score-wrap { display: flex; justify-content: flex-start; margin: 18px 0 8px; }
 .score-hero { display: inline-flex; align-items: center; gap: 13px; padding: 9px 20px 9px 15px; border-radius: 10px; border: 1px solid; }
 .score-hero.good { background: var(--c-good-light); border-color: var(--c-good-border); }
 .score-hero.needs-improvement { background: var(--c-ni-light); border-color: var(--c-ni-border); }
@@ -491,9 +508,8 @@ em { font-style: italic; }
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="sidebar-title">Site Audit</div>
-    <div class="sidebar-subtitle">{{TITLE}}</div>
-    <div class="sidebar-date">{{DATE}}</div>
+    <div class="sidebar-kicker">Performance review</div>
+    <div class="sidebar-brand">{{SITENAME}}</div>
   </div>
   <nav class="sidebar-nav" aria-label="Page sections">
 {{SIDEBAR_NAV}}
@@ -504,7 +520,6 @@ em { font-style: italic; }
   <div class="content-inner">
 
     <header class="page-header" id="overview">
-      <div class="page-eyebrow">{{SCOPE}}</div>
       <h1 class="page-title">{{TITLE}}</h1>
       <div class="page-meta">
 {{HEADER_META}}

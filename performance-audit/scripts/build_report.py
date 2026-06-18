@@ -20,6 +20,7 @@ import re
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 # ── Canonical thresholds: (good_max, ni_max). Below good_max = good;
 #    up to ni_max = needs-improvement; above = poor. Units per REFERENCE.md. ──
@@ -97,6 +98,9 @@ DEV_ICON = {
 }
 EXT_SVG = ('<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">'
            '<path d="M6 3.5H3.5v9h9V10M9.5 3.5H13V7M13 3.5L7.5 9"/></svg>')
+GLOBE_SVG = ('<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+             'stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5'
+             'c1.8 1.7 2.8 4.1 2.8 6.5S9.8 12.8 8 14.5C6.2 12.8 5.2 10.4 5.2 8S6.2 3.2 8 1.5z"/></svg>')
 
 
 def rail_pos(key, value):
@@ -161,7 +165,9 @@ def build_groups(data):
                 len(audits), ", ".join(a.get("type", "Audit") for a in audits)),
             "sourceLinks": [{"type": a.get("type", "Audit"), "url": a.get("reportUrl")}
                             for a in audits if a.get("reportUrl")],
-            "perfScore": int(round(sum(scores) / len(scores))) if scores else None,
+            # Only a genuine average earns a score; a lone contributing score
+            # would just repeat its audit's tab, so leave it off the Overall tab.
+            "perfScore": int(round(sum(scores) / len(scores))) if len(scores) > 1 else None,
             "items": avg_items,
         }
         # Skip the Overall tab when there's a single audit (it would just duplicate it).
@@ -185,6 +191,25 @@ def slugify(text):
 
 def attr(text):
     return html.escape(str(text), quote=True)
+
+
+def display_url(url):
+    """Human-readable URL: drop scheme and a trailing slash, keep host + path."""
+    s = re.sub(r"^https?://", "", str(url)).rstrip("/")
+    return s or str(url)
+
+
+def site_name(meta):
+    """Short site label for headings: the URL host (sans www), else the title
+    with a trailing ' — Site Audit' stripped."""
+    url = meta.get("url")
+    if url:
+        host = urlparse(url if "://" in url else "http://" + url).hostname or ""
+        host = re.sub(r"^www\.", "", host)
+        if host:
+            return host
+    title = str(meta.get("title", "")).strip()
+    return re.sub(r"\s*[—–-]\s*site audit$", "", title, flags=re.I) or "Site"
 
 
 def inline_html(text):
@@ -296,7 +321,7 @@ def used_glossary(data):
 def build_markdown(data):
     meta = data["meta"]
     out = []
-    out.append("# " + meta.get("title", "Site Audit"))
+    out.append("# Performance Review: " + site_name(meta))
     out.append("")
     bits = []
     if meta.get("url"):
@@ -750,22 +775,28 @@ def build_html(data, template, slug):
         body.append(section("appendix", "Appendix — raw test runs",
                             build_tests_html(runs, "Test runs")))
 
-    # Header meta
+    # Header meta — a URL button leads, then key/value chips in keeping with it.
     meta_rows = []
     if meta.get("url"):
-        meta_rows.append('        <span>URL: <a href="' + attr(meta["url"]) + '">'
-                         + html.escape(meta["url"]) + '</a></span>')
-    meta_rows.append('        <span>Date: <strong>'
-                     + html.escape(str(meta.get("date", date.today().isoformat()))) + '</strong></span>')
-    if meta.get("auditedBy"):
-        meta_rows.append('        <span>By: <strong>' + html.escape(meta["auditedBy"]) + '</strong></span>')
-    if meta.get("audience"):
-        meta_rows.append('        <span>Audience: <strong>' + html.escape(meta["audience"]) + '</strong></span>')
+        meta_rows.append('        <a class="url-btn" href="' + attr(meta["url"])
+                         + '" target="_blank" rel="noopener">' + GLOBE_SVG
+                         + '<span>' + html.escape(display_url(meta["url"])) + '</span>'
+                         + EXT_SVG + '</a>')
 
+    def meta_chip(label, value):
+        return ('        <span class="meta-chip"><span class="mc-k">' + html.escape(label)
+                + '</span><span class="mc-v">' + html.escape(str(value)) + '</span></span>')
+
+    meta_rows.append(meta_chip("Date", meta.get("date", date.today().isoformat())))
+    if meta.get("auditedBy"):
+        meta_rows.append(meta_chip("By", meta["auditedBy"]))
+    if meta.get("audience"):
+        meta_rows.append(meta_chip("Audience", meta["audience"]))
+
+    page_title = "Performance Review: " + site_name(meta)
     replacements = {
-        "{{TITLE}}": html.escape(meta.get("title", "Site Audit")),
-        "{{SCOPE}}": html.escape(meta.get("scope", "Site audit")),
-        "{{DATE}}": html.escape(str(meta.get("date", date.today().isoformat()))),
+        "{{TITLE}}": html.escape(page_title),
+        "{{SITENAME}}": html.escape(site_name(meta)),
         "{{HEADER_META}}": "\n".join(meta_rows),
         "{{SIDEBAR_NAV}}": "\n".join(nav),
         "{{CONTENT}}": "\n\n".join(body),
