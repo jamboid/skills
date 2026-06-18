@@ -39,7 +39,7 @@
   .toc li { margin: 2px 0; }
   .toc a { display: block; padding: 6px 10px; border-radius: 6px; color: var(--text-muted); border-left: 2px solid transparent; }
   .toc a:hover { background: var(--surface-alt); text-decoration: none; color: var(--text); }
-  .toc a.active { background: var(--accent-soft); color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+  .toc a.active { background: var(--accent-soft); color: var(--accent); border-left-color: var(--accent); border-top-left-radius: 0; border-bottom-left-radius: 0; font-weight: 500; }
 
   .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 20px; padding: 4px 10px 4px 6px; border-radius: 6px; transition: color .15s, background .15s; }
   .back-link:hover { color: var(--accent); background: var(--accent-soft); text-decoration: none; }
@@ -68,7 +68,7 @@
   thead th { background: var(--surface-alt); font-weight: 600; }
   td code, th code { font-family: var(--mono); font-size: .88em; background: var(--surface-alt); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; }
 
-  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 16px 20px; border-radius: var(--radius); margin: 20px 0; box-shadow: var(--shadow-sm); }
+  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 16px 20px; border-radius: var(--radius); border-top-left-radius: 0; border-bottom-left-radius: 0; margin: 20px 0; box-shadow: var(--shadow-sm); }
   .callout p:last-child { margin-bottom: 0; }
 
   .compare { margin: 20px 0; display: flex; flex-direction: column; gap: 18px; }
@@ -117,6 +117,7 @@
   .pc-grid > * { min-width: 0; }
   @media (max-width: 700px) { .pc-grid { grid-template-columns: 1fr; } }
   .pc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: var(--shadow-sm); }
+  .pc-card.pros, .pc-card.cons { border-top-left-radius: 0; border-top-right-radius: 0; }
   .pc-card.pros { border-top: 3px solid var(--good); }
   .pc-card.cons { border-top: 3px solid var(--bad); }
   .pc-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; }
