@@ -26,6 +26,12 @@ from `##` headings), syntax highlighting, and all component markup.
 **You author:** section breakdown and titles, the lede and chips, counter-
 examples, which directives to use, and any bespoke SVG.
 
+**Styling convention:** where a container carries a thick coloured border
+(e.g. the active TOC item's accent left border, a `:::callout`'s left bar, a
+pros/cons card's top bar), the radius on that bordered edge is squared to `0`
+so the colour runs flush and isn't deformed by the corner curve. Keep this
+when editing the template CSS — only the un-bordered corners stay rounded.
+
 ## Frontmatter (optional)
 
 A YAML block at the very top of a pattern `.md`. Minimal subset: `key: value`
