@@ -12,23 +12,26 @@
 
 ## Performance
 
+<!-- Metrics, asset breakdown, and candidate findings come from the JSON data
+     exports you drop in this directory — you don't transcribe them here. -->
+
 ### Tests
+
+<!-- Public result links to cite in the report (the data files stay local). -->
 
 - PageSpeed Insights:
 - WebPageTest:
 - Lighthouse:
 
-### Top-level stats
+### Observations
 
-<!-- Paste from PageSpeed/Lighthouse. Include LCP, CLS, INP, page weight, request count, perf score. Mobile + desktop if both useful. -->
-
-### Findings
-
-<!-- Bullet observations. What's slow, what's bloated, the cause. Specific numbers beat generalisations. -->
+<!-- Anything the data can't tell you, or context for it. What's slow and why,
+     the cause behind a number, things to confirm. Specific beats general. -->
 
 ### Images & assets
 
-<!-- Only fill in if relevant. Image size range, optimisation status, format (jpg/webp/avif), lazy loading, etc. -->
+<!-- Optional. Notes the breakdown table won't capture: optimisation status,
+     format (jpg/webp/avif), lazy loading, a specific oversized asset. -->
 
 ## Accessibility
 
