@@ -60,6 +60,116 @@ GLOSSARY = {
 RATING_LABEL = {"good": "Good", "needs-improvement": "Needs improvement",
                 "poor": "Poor", "neutral": "—", "na": "N/A"}
 
+# ── Metrics-as-load-timeline presentation ──────────────────────────────────────
+# Metric acronym for the rail's secondary line; full name comes from GLOSSARY.
+ACR = {"LCP": "LCP", "CLS": "CLS", "INP": "INP", "TBT": "TBT", "SI": "SI", "FCP": "FCP"}
+
+# Plain-language moment each metric marks in the page-load story.
+MOMENT = {
+    "FCP": "First paint", "LCP": "Main content in", "SI": "Visually complete",
+    "TBT": "Ready to respond", "INP": "Stays snappy", "CLS": "Layout settled",
+    "weight": "Page weight", "requests": "Requests",
+}
+RES_DESC = {"weight": "Total bytes downloaded", "requests": "HTTP requests made"}
+
+# Phases of the load, in narrative order; the last (resources) renders as cards.
+PHASES = [
+    ("Painting the page", "How soon visitors see content", ["FCP", "LCP", "SI"]),
+    ("Responding to input", "How quickly the page reacts", ["TBT", "INP"]),
+    ("Visual stability", "Whether content stays put while loading", ["CLS"]),
+    ("Page resources", "What the browser had to download", ["weight", "requests"]),
+]
+RES_KEYS = ("weight", "requests")
+METRIC_ORDER = ["FCP", "LCP", "SI", "TBT", "CLS", "INP", "weight", "requests"]
+SCORE_WORD = {"good": "Good", "needs-improvement": "Needs improvement", "poor": "Poor"}
+
+RES_ICON = {
+    "weight": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+               'stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>'),
+    "requests": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+                 'stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg>'),
+}
+DEV_ICON = {
+    "Desktop": ('<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">'
+                '<rect x="1.5" y="2" width="13" height="9" rx="1"/><path d="M5.5 14h5M8 11v3"/></svg>'),
+    "Mobile": ('<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">'
+               '<rect x="4" y="1.5" width="8" height="13" rx="1.5"/><path d="M7 12.5h2"/></svg>'),
+}
+EXT_SVG = ('<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">'
+           '<path d="M6 3.5H3.5v9h9V10M9.5 3.5H13V7M13 3.5L7.5 9"/></svg>')
+
+
+def rail_pos(key, value):
+    """Fraction 0–1 along a good→ni→poor rail (good 0–40%, ni 40–70%, poor 70–100%)."""
+    good_max, ni_max = THRESHOLDS[key]
+    if value <= 0:
+        return 0.02
+    if value < good_max:
+        return (value / good_max) * 0.40
+    if value <= ni_max:
+        return 0.40 + ((value - good_max) / (ni_max - good_max)) * 0.30
+    return 0.70 + min((value - ni_max) / ni_max, 1) * 0.30
+
+
+def audit_type_from_source(src):
+    s = str(src or "").strip()
+    return s.split()[0] if s else "Audit"
+
+
+def build_groups(data):
+    """Normalise metrics into [{device, datasets:[overall?, ...audits]}].
+
+    New schema: metrics.groups[].audits[]. Falls back to the legacy
+    metrics.devices[] (each device becomes a single-audit group)."""
+    metrics = data.get("metrics") or {}
+    groups_raw = metrics.get("groups")
+    if not groups_raw:
+        groups_raw = [{"device": d.get("name", "Audit"),
+                       "audits": [{"type": audit_type_from_source(d.get("source")),
+                                   "source": d.get("source"), "perfScore": d.get("perfScore"),
+                                   "reportUrl": d.get("reportUrl"), "items": d.get("items") or []}]}
+                      for d in (metrics.get("devices") or [])]
+
+    groups = []
+    for g in groups_raw:
+        audits = g.get("audits") or []
+        device = g.get("device", "")
+        audit_ds = []
+        for a in audits:
+            by_key = {it.get("key"): it for it in (a.get("items") or [])}
+            audit_ds.append({
+                "kind": "audit", "type": a.get("type", "Audit"), "device": device,
+                "source": a.get("source", ""), "perfScore": a.get("perfScore"),
+                "reportUrl": a.get("reportUrl"),
+                "items": [by_key[k] for k in METRIC_ORDER if k in by_key],
+            })
+
+        # Per-metric mean across the audits that measured it.
+        avg_items = []
+        for k in METRIC_ORDER:
+            vals = [it["value"] for a in audits for it in (a.get("items") or [])
+                    if it.get("key") == k and it.get("value") is not None]
+            if vals:
+                avg_items.append({"key": k, "value": sum(vals) / len(vals)})
+            elif any(it.get("key") == k for a in audits for it in (a.get("items") or [])):
+                avg_items.append({"key": k, "value": None, "display": "lab N/A", "rating": "na"})
+
+        scores = [a.get("perfScore") for a in audits if a.get("perfScore") is not None]
+        overall = {
+            "kind": "average", "type": "Overall", "device": device,
+            "source": "Mean of {0} runs ({1})".format(
+                len(audits), ", ".join(a.get("type", "Audit") for a in audits)),
+            "sourceLinks": [{"type": a.get("type", "Audit"), "url": a.get("reportUrl")}
+                            for a in audits if a.get("reportUrl")],
+            "perfScore": int(round(sum(scores) / len(scores))) if scores else None,
+            "items": avg_items,
+        }
+        # Skip the Overall tab when there's a single audit (it would just duplicate it).
+        datasets = ([overall] if len(audits) > 1 else []) + audit_ds
+        if datasets:
+            groups.append({"device": device, "datasets": datasets})
+    return groups
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -174,9 +284,10 @@ def used_glossary(data):
         return [k for k in GLOSSARY if k in keys]
     # fall back to whatever metric keys actually appear
     seen = set()
-    for dev in (data.get("metrics") or {}).get("devices") or []:
-        for item in dev.get("items") or []:
-            seen.add(item.get("key"))
+    for g in build_groups(data):
+        for ds in g["datasets"]:
+            for item in ds["items"]:
+                seen.add(item.get("key"))
     return [k for k in GLOSSARY if k in seen]
 
 
@@ -208,24 +319,35 @@ def build_markdown(data):
     # Metrics
     out.append("## Metrics")
     out.append("")
-    for dev in (data.get("metrics") or {}).get("devices") or []:
-        head = "### " + dev.get("name", "Device")
-        if dev.get("perfScore") is not None:
-            head += " — performance score {0}".format(int(dev["perfScore"]))
-        out.append(head)
-        if dev.get("source"):
+    for g in build_groups(data):
+        out.append("### " + (g["device"] or "Device"))
+        out.append("")
+        for ds in g["datasets"]:
+            name = ("Overall average" if ds["kind"] == "average" else ds["type"])
+            head = "#### " + name
+            if ds.get("perfScore") is not None:
+                head += " — performance score {0}".format(int(ds["perfScore"]))
+            out.append(head)
             out.append("")
-            out.append("_" + dev["source"] + "_")
-        out.append("")
-        out.append("| Metric | Value | Rating |")
-        out.append("|---|---|---|")
-        for item in dev.get("items") or []:
-            key = item.get("key")
-            disp = metric_display(key, item.get("value"), item.get("display"))
-            rating = metric_rating(key, item.get("value"), item.get("rating"))
-            out.append("| {0} | {1} | {2} |".format(
-                METRIC_LABEL.get(key, key), disp, RATING_LABEL.get(rating, rating)))
-        out.append("")
+            meta_bits = []
+            if ds.get("source"):
+                meta_bits.append("_" + ds["source"] + "_")
+            if ds.get("reportUrl"):
+                meta_bits.append("[full report]({0})".format(ds["reportUrl"]))
+            for l in ds.get("sourceLinks") or []:
+                meta_bits.append("[{0}]({1})".format(l["type"], l["url"]))
+            if meta_bits:
+                out.append(" · ".join(meta_bits))
+                out.append("")
+            out.append("| Metric | Value | Rating |")
+            out.append("|---|---|---|")
+            for item in ds["items"]:
+                key = item.get("key")
+                disp = metric_display(key, item.get("value"), item.get("display"))
+                rating = metric_rating(key, item.get("value"), item.get("rating"))
+                out.append("| {0} | {1} | {2} |".format(
+                    METRIC_LABEL.get(key, key), disp, RATING_LABEL.get(rating, rating)))
+            out.append("")
 
     # Architecture
     if str(data.get("architecture") or "").strip():
@@ -364,32 +486,119 @@ def section(sid, heading, body):
             + body + '\n    </section>')
 
 
-def build_metrics_html(data):
-    rows = []
-    for dev in (data.get("metrics") or {}).get("devices") or []:
-        rows.append('      <div class="device-block">')
-        rows.append('        <div class="device-head">')
-        rows.append('          <span class="device-name">' + html.escape(dev.get("name", "Device")) + '</span>')
-        if dev.get("source"):
-            rows.append('          <span class="device-source">' + html.escape(dev["source"]) + '</span>')
-        if dev.get("perfScore") is not None:
-            sc = int(dev["perfScore"])
-            rows.append('          <span class="device-score ' + score_rating(sc)
-                        + '">Score ' + str(sc) + '</span>')
-        rows.append('        </div>')
-        rows.append('        <div class="metric-grid">')
-        for item in dev.get("items") or []:
-            key = item.get("key")
-            disp = metric_display(key, item.get("value"), item.get("display"))
-            rating = metric_rating(key, item.get("value"), item.get("rating"))
-            rows.append('          <div class="metric-card ' + rating + '">')
-            rows.append('            <div class="metric-value">' + html.escape(disp) + '</div>')
-            rows.append('            <div class="metric-label">'
-                        + html.escape(METRIC_LABEL.get(key, str(key))) + '</div>')
-            rows.append('          </div>')
-        rows.append('        </div>')
-        rows.append('      </div>')
+def _rail_row_html(item):
+    key = item.get("key")
+    rating = metric_rating(key, item.get("value"), item.get("rating"))
+    disp = metric_display(key, item.get("value"), item.get("display"))
+    has_rail = key in THRESHOLDS and item.get("value") is not None
+    if has_rail:
+        pos = rail_pos(key, item["value"]) * 100
+        mid = ('<div class="rail-track"><span class="rail-marker ' + rating
+               + '" style="left:{0:.1f}%"></span></div>'.format(pos))
+    else:
+        mid = '<div class="rail-track"><span class="rail-na">not measured in this run</span></div>'
+    full = GLOSSARY.get(key, (key, ""))[0]
+    return ('            <div class="tl-row"><div class="tl-label">'
+            '<div class="moment">' + html.escape(MOMENT.get(key, key)) + '</div>'
+            '<div class="metric"><b>' + html.escape(ACR.get(key, key)) + '</b> · '
+            + html.escape(full) + '</div></div>' + mid
+            + '<div class="rail-val ' + rating + '">' + html.escape(disp) + '</div></div>')
+
+
+def _res_cards_html(items):
+    cards = []
+    for item in items:
+        key = item.get("key")
+        disp = metric_display(key, item.get("value"), item.get("display"))
+        cards.append('<div class="res-card"><div class="rc-icon">' + RES_ICON.get(key, "")
+                     + '</div><div class="rc-body"><div class="rc-val">' + html.escape(disp) + '</div>'
+                     '<div class="rc-title">' + html.escape(MOMENT.get(key, key)) + '</div>'
+                     '<div class="rc-desc">' + html.escape(RES_DESC.get(key, "")) + '</div></div></div>')
+    return '            <div class="res-cards">' + "".join(cards) + '</div>'
+
+
+def _timeline_html(dataset):
+    by_key = {it.get("key"): it for it in dataset["items"]}
+    rows = ['          <div class="tl">']
+    for title, blurb, keys in PHASES:
+        present = [by_key[k] for k in keys if k in by_key]
+        if not present:
+            continue
+        is_res = set(keys) <= set(RES_KEYS)
+        rows.append('            <div class="tl-phase"><div class="tl-spine">'
+                    '<span class="tl-node' + (' muted' if is_res else '') + '"></span></div>')
+        rows.append('              <div class="tl-body"><div class="tl-head">'
+                    '<div class="tl-title">' + html.escape(title) + '</div>'
+                    '<div class="tl-blurb">' + html.escape(blurb) + '</div></div>')
+        rows.append(_res_cards_html(present) if is_res
+                    else "\n".join(_rail_row_html(it) for it in present))
+        rows.append('              </div></div>')
+    rows.append('          </div>')
     return "\n".join(rows)
+
+
+def _score_hero_html(dataset):
+    if dataset.get("perfScore") is None:
+        return ""
+    sr = score_rating(dataset["perfScore"])
+    sub = ("Averaged across runs" if dataset["kind"] == "average"
+           else dataset["type"] + " lab score") + " · " + SCORE_WORD[sr]
+    return ('          <div class="score-wrap"><div class="score-hero ' + sr + '">'
+            '<div class="score-num">' + str(dataset["perfScore"])
+            + '<span class="score-den">/100</span></div>'
+            '<div class="score-meta"><div class="score-title">Performance score</div>'
+            '<div class="score-sub">' + html.escape(sub) + '</div></div></div></div>')
+
+
+def _panel_html(dataset, idx, active, device):
+    cap_name = ("Overall average for " if dataset["kind"] == "average"
+                else dataset["type"] + " for ") + device
+    pill = '<span class="cap-avg">averaged</span>' if dataset["kind"] == "average" else ""
+    link = ""
+    if dataset["kind"] == "audit" and dataset.get("reportUrl"):
+        link = ('<a class="cap-link" href="' + attr(dataset["reportUrl"])
+                + '" target="_blank" rel="noopener">View full ' + html.escape(dataset["type"])
+                + ' report ' + EXT_SVG + '</a>')
+    elif dataset["kind"] == "average" and dataset.get("sourceLinks"):
+        link = '<span class="cap-srclinks">' + "".join(
+            '<a href="' + attr(l["url"]) + '" target="_blank" rel="noopener">'
+            + html.escape(l["type"]) + ' ' + EXT_SVG + '</a>'
+            for l in dataset["sourceLinks"]) + '</span>'
+    cap = ('          <div class="panel-cap"><span class="cap-name">' + html.escape(cap_name)
+           + '</span>' + pill + '<span class="cap-src">' + html.escape(dataset.get("source", ""))
+           + '</span>' + link + '</div>')
+    return ('        <div class="panel' + (' active' if active else '') + '" data-aud="' + str(idx) + '">\n'
+            + cap + '\n' + _score_hero_html(dataset) + '\n' + _timeline_html(dataset) + '\n        </div>')
+
+
+def build_metrics_html(data):
+    groups = build_groups(data)
+    if not groups:
+        return '      <p class="empty-note">No metrics provided.</p>'
+    out = ['      <div class="metrics-component">']
+    if len(groups) > 1:
+        out.append('        <div class="devbar"><span class="dev-lab">Tested on</span>')
+        out.append('          <div class="seg">')
+        for i, g in enumerate(groups):
+            out.append('            <button class="seg-btn' + (' active' if i == 0 else '')
+                       + '" data-dev="' + str(i) + '">' + DEV_ICON.get(g["device"], "")
+                       + html.escape(g["device"]) + '</button>')
+        out.append('          </div></div>')
+    for i, g in enumerate(groups):
+        out.append('        <div class="dev-group' + (' active' if i == 0 else '')
+                   + '" data-dev="' + str(i) + '">')
+        out.append('          <div class="tabrow">')
+        for j, ds in enumerate(g["datasets"]):
+            out.append('            <button class="atab' + (' active' if j == 0 else '')
+                       + '" data-aud="' + str(j) + '">' + html.escape(ds["type"]) + '</button>')
+        out.append('          </div>')
+        out.append('          <div class="panel-stack">')
+        for j, ds in enumerate(g["datasets"]):
+            out.append(_panel_html(ds, j, j == 0, g["device"]))
+        out.append('          </div>')
+        out.append('        </div>')
+    out.append('      </div>')
+    return "\n".join(out)
 
 
 def build_findings_html(findings):

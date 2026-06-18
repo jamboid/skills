@@ -26,7 +26,7 @@ Audit values live at `audits["<id>"]`; prefer `numericValue` for the number and
 
 | audit.json target          | Lighthouse path |
 |----------------------------|-----------------|
-| device `perfScore`         | `categories.performance.score` × 100 |
+| audit `perfScore`          | `categories.performance.score` × 100 |
 | `LCP` (s)                  | `audits["largest-contentful-paint"].numericValue` ÷ 1000 |
 | `CLS`                      | `audits["cumulative-layout-shift"].numericValue` |
 | `TBT` (ms)                 | `audits["total-blocking-time"].numericValue` |
@@ -125,6 +125,14 @@ the lab CWV and the failing-audit findings.
 
 ## Reconciling both tools
 
-If a device has both a Lighthouse and a WPT file, build one device block:
-Lighthouse for CWV + perfScore + opportunities, WPT for `weight` / `requests` /
-asset breakdown. Note the dual source in the device `source` string.
+If a device has both a Lighthouse and a WPT file, keep them as **separate audits
+under one device group** — each becomes its own tab. Don't merge their numbers:
+Lighthouse carries CWV + `perfScore` + opportunities, WPT carries the real
+multi-run `weight` / `requests` / asset breakdown. The script auto-adds an
+**Overall** tab (the per-metric mean across the device's audits), so the reader
+gets the blended view without you hand-averaging. Give each audit a `type`
+(tab label, e.g. `"Lighthouse"`, `"WebPageTest"`), a `source` string, and a
+`reportUrl` when a shareable result link exists.
+
+Put each device (Desktop, Mobile) in its own `metrics.groups[]` entry. The device
+segmented control appears only when there's more than one group.

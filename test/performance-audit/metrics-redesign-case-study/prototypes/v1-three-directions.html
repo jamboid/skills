@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metrics section — prototypes</title>
+<style>
+:root {
+  --c-good:            #1f7a3a;
+  --c-good-light:      #e7f5ec;
+  --c-good-border:     #b7e0c4;
+  --c-ni:              #b45309;
+  --c-ni-light:        #fff7ed;
+  --c-ni-border:       #fed7aa;
+  --c-poor:            #dc2626;
+  --c-poor-light:      #fef2f2;
+  --c-poor-border:     #fecaca;
+  --c-neutral:         #5a5a55;
+  --c-bg:              #fafaf9;
+  --c-surface:         #ffffff;
+  --c-text:            #1a1a18;
+  --c-text-muted:      #5a5a55;
+  --c-border:          #e5e4e0;
+  --c-accent:          #3a5cff;
+  --radius:            8px;
+  --font-sans:         system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:         'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.6;
+  padding: 40px max(24px, calc((100vw - 1040px) / 2)) 120px;
+}
+h1.proto-title { font-size: 28px; margin-bottom: 4px; }
+p.proto-intro { color: var(--c-text-muted); margin-bottom: 40px; max-width: 640px; }
+
+.variant { margin-bottom: 64px; }
+.variant-head {
+  display: flex; align-items: baseline; gap: 12px;
+  border-bottom: 2px solid var(--c-border);
+  padding-bottom: 8px; margin-bottom: 24px;
+}
+.variant-tag {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #fff; background: var(--c-accent);
+  padding: 3px 8px; border-radius: 5px;
+}
+.variant-name { font-size: 20px; font-weight: 700; }
+.variant-note { font-size: 13px; color: var(--c-text-muted); margin-left: auto; max-width: 380px; text-align: right; }
+
+/* shared device head */
+.device-head {
+  display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px;
+}
+.device-name { font-size: 16px; font-weight: 700; }
+.device-source { font-size: 12px; color: var(--c-text-muted); }
+.device-score {
+  margin-left: auto; font-size: 13px; font-weight: 700;
+  padding: 3px 10px; border-radius: 9999px;
+}
+.device-score.good { background: var(--c-good-light); color: var(--c-good); border: 1px solid var(--c-good-border); }
+.device-score.needs-improvement { background: var(--c-ni-light); color: var(--c-ni); border: 1px solid var(--c-ni-border); }
+.device-score.poor { background: var(--c-poor-light); color: var(--c-poor); border: 1px solid var(--c-poor-border); }
+.device-block { margin-bottom: 28px; }
+
+.legend {
+  display: flex; gap: 18px; align-items: center;
+  font-size: 12px; color: var(--c-text-muted); margin-bottom: 18px;
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.lg-good { background: var(--c-good); }
+.lg-ni { background: var(--c-ni); }
+.lg-poor { background: var(--c-poor); }
+
+/* ============ VARIANT A — threshold rails ============ */
+.railcard {
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius); padding: 18px 22px;
+}
+.rail-row { display: grid; grid-template-columns: 56px 1fr 92px; align-items: center; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--c-border); }
+.rail-row:last-child { border-bottom: none; }
+.rail-key { font-size: 13px; font-weight: 700; }
+.rail-key small { display: block; font-size: 10px; font-weight: 600; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.rail-track {
+  position: relative; height: 8px; border-radius: 9999px; overflow: visible;
+  background: linear-gradient(to right,
+     var(--c-good-light) 0 40%, var(--c-ni-light) 40% 70%, var(--c-poor-light) 70% 100%);
+}
+.rail-track::before {
+  content: ""; position: absolute; inset: 0; border-radius: 9999px;
+  background: linear-gradient(to right,
+     var(--c-good) 0 40%, var(--c-ni) 40% 70%, var(--c-poor) 70% 100%);
+  opacity: 0.28;
+}
+.rail-marker {
+  position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 3px solid var(--c-surface);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+.rail-marker.good { background: var(--c-good); }
+.rail-marker.needs-improvement { background: var(--c-ni); }
+.rail-marker.poor { background: var(--c-poor); }
+.rail-val { text-align: right; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rail-val.good { color: var(--c-good); }
+.rail-val.needs-improvement { color: var(--c-ni); }
+.rail-val.poor { color: var(--c-poor); }
+.rail-val.neutral, .rail-val.na { color: var(--c-neutral); }
+.rail-res {
+  display: flex; gap: 28px; margin-top: 14px; padding-top: 14px;
+  border-top: 1px dashed var(--c-border);
+}
+.rail-res div { font-size: 13px; color: var(--c-text-muted); }
+.rail-res b { display: block; font-size: 18px; font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; }
+
+/* ============ VARIANT B — CWV hero + secondary ============ */
+.cwv-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+.gauge-card {
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius); padding: 20px; text-align: center;
+}
+.gauge-card.good { border-color: var(--c-good-border); background: linear-gradient(180deg, var(--c-good-light), var(--c-surface) 60%); }
+.gauge-card.needs-improvement { border-color: var(--c-ni-border); background: linear-gradient(180deg, var(--c-ni-light), var(--c-surface) 60%); }
+.gauge-card.poor { border-color: var(--c-poor-border); background: linear-gradient(180deg, var(--c-poor-light), var(--c-surface) 60%); }
+.gauge-card.na { border-style: dashed; }
+.gauge-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto 8px; }
+.gauge-wrap svg { transform: rotate(-90deg); }
+.gauge-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.gauge-num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.gauge-card.good .gauge-num { color: var(--c-good); }
+.gauge-card.needs-improvement .gauge-num { color: var(--c-ni); }
+.gauge-card.poor .gauge-num { color: var(--c-poor); }
+.gauge-card.na .gauge-num { color: var(--c-text-muted); font-size: 15px; }
+.gauge-key { font-size: 12px; font-weight: 700; }
+.gauge-name { font-size: 11px; color: var(--c-text-muted); }
+.gauge-rating { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; }
+.gauge-card.good .gauge-rating { color: var(--c-good); }
+.gauge-card.needs-improvement .gauge-rating { color: var(--c-ni); }
+.gauge-card.poor .gauge-rating { color: var(--c-poor); }
+.gauge-card.na .gauge-rating { color: var(--c-text-muted); }
+.secondary-strip {
+  display: flex; flex-wrap: wrap; gap: 10px;
+}
+.sec-chip {
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: 9999px; padding: 7px 14px; display: flex; align-items: baseline; gap: 8px;
+  font-size: 13px;
+}
+.sec-chip b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sec-chip.good b { color: var(--c-good); }
+.sec-chip.needs-improvement b { color: var(--c-ni); }
+.sec-chip.poor b { color: var(--c-poor); }
+.sec-chip .sec-label { color: var(--c-text-muted); text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+
+/* ============ VARIANT C — comparison matrix ============ */
+.matrix { width: 100%; border-collapse: collapse; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius); overflow: hidden; }
+.matrix th { background: #f4f4f2; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-muted); border-bottom: 1px solid var(--c-border); }
+.matrix th.dev { text-align: left; }
+.matrix th .src { display: block; font-weight: 600; text-transform: none; letter-spacing: 0; font-size: 10px; margin-top: 2px; }
+.matrix td { padding: 12px 16px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
+.matrix tr:last-child td { border-bottom: none; }
+.matrix .m-key { font-weight: 700; font-size: 14px; }
+.matrix .m-key small { display: block; font-size: 11px; font-weight: 500; color: var(--c-text-muted); }
+.cell { display: flex; align-items: center; gap: 12px; }
+.cell-val { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 64px; }
+.cell-val.good { color: var(--c-good); }
+.cell-val.needs-improvement { color: var(--c-ni); }
+.cell-val.poor { color: var(--c-poor); }
+.cell-val.neutral, .cell-val.na { color: var(--c-neutral); }
+.minibar { position: relative; flex: 1; height: 6px; border-radius: 9999px;
+  background: linear-gradient(to right, var(--c-good-light) 0 40%, var(--c-ni-light) 40% 70%, var(--c-poor-light) 70% 100%); }
+.minibar::before { content:""; position:absolute; inset:0; border-radius:9999px; opacity:.25;
+  background: linear-gradient(to right, var(--c-good) 0 40%, var(--c-ni) 40% 70%, var(--c-poor) 70% 100%); }
+.minibar i { position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%,-50%); border: 2px solid var(--c-surface); box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+.minibar i.good { background: var(--c-good); }
+.minibar i.needs-improvement { background: var(--c-ni); }
+.minibar i.poor { background: var(--c-poor); }
+.cell.neutral .minibar { display: none; }
+</style>
+</head>
+<body>
+<h1 class="proto-title">Metrics section — alternative treatments</h1>
+<p class="proto-intro">Three directions, all rendered from the real Wattage staging audit data. Goal: show not just the value and its rating, but where it sits in its threshold range and how devices compare.</p>
+
+<div class="legend">
+  <span><i class="lg-good"></i> Good</span>
+  <span><i class="lg-ni"></i> Needs improvement</span>
+  <span><i class="lg-poor"></i> Poor</span>
+  <span style="margin-left:auto">Marker = measured value within its threshold range</span>
+</div>
+
+<section class="variant" id="vA">
+  <div class="variant-head">
+    <span class="variant-tag">A</span>
+    <span class="variant-name">Threshold rails</span>
+    <span class="variant-note">Each metric on a good→poor rail with a marker. Headroom is instantly legible; resource totals sit in a footer.</span>
+  </div>
+  <div id="railMount"></div>
+</section>
+
+<section class="variant" id="vB">
+  <div class="variant-head">
+    <span class="variant-tag">B</span>
+    <span class="variant-name">Core Web Vitals hero + secondary strip</span>
+    <span class="variant-note">The three Google CWV get arc gauges; lab/diagnostic + resource metrics drop to a compact chip strip.</span>
+  </div>
+  <div id="cwvMount"></div>
+</section>
+
+<section class="variant" id="vC">
+  <div class="variant-head">
+    <span class="variant-tag">C</span>
+    <span class="variant-name">Comparison matrix</span>
+    <span class="variant-note">Metrics as rows, devices as columns — direct cross-device reading, each cell carries a mini rail.</span>
+  </div>
+  <div id="matrixMount"></div>
+</section>
+
+<script>
+// ── Real data (from audit.json) ──
+const DATA = {
+  devices: [
+    { name: "Desktop", source: "Lighthouse 13.2.0 (lab)", perfScore: 100, items: [
+      {key:"LCP",value:0.74},{key:"CLS",value:0.0},{key:"INP",value:null,display:"lab N/A",rating:"na"},
+      {key:"TBT",value:0},{key:"SI",value:0.48},{key:"weight",value:1165647},{key:"requests",value:22} ]},
+    { name: "WebPageTest (Chrome)", source: "WebPageTest, median of 3 runs", items: [
+      {key:"LCP",value:0.56},{key:"CLS",value:0.015},{key:"SI",value:0.62},{key:"TBT",value:0},
+      {key:"FCP",value:0.56},{key:"weight",value:716907},{key:"requests",value:22} ]}
+  ]
+};
+const THRESHOLDS = { LCP:[2.5,4.0], CLS:[0.1,0.25], INP:[200,500], TBT:[200,600], SI:[3.4,5.8], FCP:[1.8,3.0] };
+const LABEL = { LCP:"LCP", CLS:"CLS", INP:"INP", TBT:"TBT", SI:"Speed Index", FCP:"FCP", weight:"Page weight", requests:"Requests" };
+const FULLNAME = { LCP:"Largest Contentful Paint", CLS:"Cumulative Layout Shift", INP:"Interaction to Next Paint",
+  TBT:"Total Blocking Time", SI:"Speed Index", FCP:"First Contentful Paint" };
+const CWV = ["LCP","CLS","INP"];
+const RES = ["weight","requests"];
+const RATING_LABEL = { good:"Good", "needs-improvement":"Needs work", poor:"Poor", neutral:"—", na:"N/A" };
+
+function disp(key,value,given){
+  if(given) return given;
+  if(value===null||value===undefined) return "—";
+  if(["LCP","SI","FCP"].includes(key)) return value.toFixed(1)+" s";
+  if(key==="CLS") return value.toFixed(2);
+  if(["INP","TBT"].includes(key)) return Math.round(value)+" ms";
+  if(key==="weight"){ const mb=value/1048576; return mb>=1?mb.toFixed(1)+" MB":Math.round(value/1024)+" KB"; }
+  if(key==="requests") return String(value);
+  return String(value);
+}
+function rating(key,value,given){
+  if(given) return given;
+  if(value===null||value===undefined||!THRESHOLDS[key]) return "neutral";
+  const [g,n]=THRESHOLDS[key];
+  if(value<g) return "good"; if(value<=n) return "needs-improvement"; return "poor";
+}
+// position 0..1 on a rail where good=0-40%, ni=40-70%, poor=70-100%
+function railPos(key,value){
+  const [g,n]=THRESHOLDS[key]; if(value<=0) return 0.02;
+  if(value<g) return (value/g)*0.40;
+  if(value<=n) return 0.40+((value-g)/(n-g))*0.30;
+  return 0.70+Math.min((value-n)/n,1)*0.30;
+}
+
+// ── Variant A ──
+function renderRails(){
+  let h="";
+  DATA.devices.forEach(dev=>{
+    const sr = dev.perfScore!=null ? (dev.perfScore>=90?"good":dev.perfScore>=50?"needs-improvement":"poor") : null;
+    h+=`<div class="device-block"><div class="device-head">
+      <span class="device-name">${dev.name}</span>
+      <span class="device-source">${dev.source}</span>
+      ${dev.perfScore!=null?`<span class="device-score ${sr}">Score ${dev.perfScore}</span>`:""}</div>
+      <div class="railcard">`;
+    dev.items.filter(i=>!RES.includes(i.key)).forEach(it=>{
+      const r=rating(it.key,it.value,it.rating);
+      const hasRail = THRESHOLDS[it.key] && it.value!=null;
+      const pos = hasRail ? railPos(it.key,it.value)*100 : 0;
+      h+=`<div class="rail-row">
+        <div class="rail-key">${it.key}<small>${(FULLNAME[it.key]||"").split(" ").map(w=>w[0]).join("")}</small></div>
+        <div class="rail-track">${hasRail?`<span class="rail-marker ${r}" style="left:${pos}%"></span>`:`<span style="font-size:11px;color:var(--c-text-muted)">${disp(it.key,it.value,it.display)==="—"?"not available in this run":""}</span>`}</div>
+        <div class="rail-val ${r}">${disp(it.key,it.value,it.display)}</div>
+      </div>`;
+    });
+    h+=`<div class="rail-res">`;
+    dev.items.filter(i=>RES.includes(i.key)).forEach(it=>{
+      h+=`<div>${LABEL[it.key]}<b>${disp(it.key,it.value,it.display)}</b></div>`;
+    });
+    h+=`</div></div></div>`;
+  });
+  document.getElementById("railMount").innerHTML=h;
+}
+
+// ── Variant B ──
+function arc(frac,color){
+  const R=52, C=2*Math.PI*R; const len=Math.max(0.02,frac)*C;
+  return `<svg width="120" height="120" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--c-border)" stroke-width="9"/>
+    <circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round"
+      stroke-dasharray="${len} ${C}"/></svg>`;
+}
+const RCOLOR={good:"var(--c-good)","needs-improvement":"var(--c-ni)",poor:"var(--c-poor)",na:"var(--c-border)",neutral:"var(--c-neutral)"};
+function renderCWV(){
+  let h="";
+  DATA.devices.forEach(dev=>{
+    const sr = dev.perfScore!=null ? (dev.perfScore>=90?"good":dev.perfScore>=50?"needs-improvement":"poor") : null;
+    h+=`<div class="device-block"><div class="device-head">
+      <span class="device-name">${dev.name}</span>
+      <span class="device-source">${dev.source}</span>
+      ${dev.perfScore!=null?`<span class="device-score ${sr}">Score ${dev.perfScore}</span>`:""}</div>
+      <div class="cwv-hero">`;
+    CWV.forEach(k=>{
+      const it=dev.items.find(i=>i.key===k);
+      if(!it){ h+=`<div class="gauge-card na"><div class="gauge-wrap">${arc(0,"var(--c-border)")}<div class="gauge-center"><div class="gauge-num">—</div></div></div><div class="gauge-key">${k}</div><div class="gauge-name">${FULLNAME[k]}</div><div class="gauge-rating">Not in run</div></div>`; return; }
+      const r=rating(it.key,it.value,it.rating);
+      const frac = (THRESHOLDS[k]&&it.value!=null) ? railPos(k,it.value) : 0;
+      h+=`<div class="gauge-card ${r}"><div class="gauge-wrap">${arc(frac,RCOLOR[r])}
+        <div class="gauge-center"><div class="gauge-num">${disp(k,it.value,it.display)}</div></div></div>
+        <div class="gauge-key">${k}</div><div class="gauge-name">${FULLNAME[k]}</div>
+        <div class="gauge-rating">${RATING_LABEL[r]}</div></div>`;
+    });
+    h+=`</div><div class="secondary-strip">`;
+    dev.items.filter(i=>!CWV.includes(i.key)).forEach(it=>{
+      const r=rating(it.key,it.value,it.rating);
+      h+=`<div class="sec-chip ${r}"><span class="sec-label">${LABEL[it.key]}</span><b>${disp(it.key,it.value,it.display)}</b></div>`;
+    });
+    h+=`</div></div>`;
+  });
+  document.getElementById("cwvMount").innerHTML=h;
+}
+
+// ── Variant C ──
+function renderMatrix(){
+  const order=["LCP","CLS","INP","FCP","SI","TBT","weight","requests"];
+  let h=`<table class="matrix"><thead><tr><th>Metric</th>`;
+  DATA.devices.forEach(d=>{ h+=`<th class="dev">${d.name}<span class="src">${d.source}</span></th>`; });
+  h+=`</tr></thead><tbody>`;
+  order.forEach(k=>{
+    if(!DATA.devices.some(d=>d.items.find(i=>i.key===k))) return;
+    h+=`<tr><td class="m-key">${LABEL[k]}${FULLNAME[k]?`<small>${FULLNAME[k]}</small>`:""}</td>`;
+    DATA.devices.forEach(d=>{
+      const it=d.items.find(i=>i.key===k);
+      if(!it){ h+=`<td><span style="color:var(--c-text-muted);font-size:13px">—</span></td>`; return; }
+      const r=rating(it.key,it.value,it.rating);
+      const hasRail=THRESHOLDS[k]&&it.value!=null;
+      const pos=hasRail?railPos(k,it.value)*100:0;
+      h+=`<td><div class="cell ${hasRail?'':'neutral'}">
+        <span class="cell-val ${r}">${disp(k,it.value,it.display)}</span>
+        ${hasRail?`<span class="minibar"><i class="${r}" style="left:${pos}%"></i></span>`:''}
+      </div></td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table>`;
+  document.getElementById("matrixMount").innerHTML=h;
+}
+
+renderRails(); renderCWV(); renderMatrix();
+</script>
+</body>
+</html>

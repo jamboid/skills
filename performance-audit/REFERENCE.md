@@ -21,28 +21,50 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
 
   "summary": "Executive summary prose. 3–5 sentences, plain language. Supports `code` and **bold**. Blank line separates paragraphs.",
 
-  // ── Metrics dashboard (computed from Lighthouse/WPT). One block per device. ──
+  // ── Metrics (computed from Lighthouse/WPT). Grouped by target device; each
+  //    device holds one or more audits. The script renders these as a load-
+  //    timeline: a device segmented control (shown only when >1 device), audit
+  //    tabs, and per-audit threshold rails grouped into load phases. ──
   "metrics": {
-    "devices": [
+    "groups": [
       {
-        "name":      "Mobile",                 // Mobile | Desktop
-        "source":    "Lighthouse 12.4 (lab)",  // what produced these numbers
-        "perfScore": 42,                        // 0–100, or null if unknown
-        "items": [
-          // key drives threshold lookup + glossary; value in the unit noted
-          // in the threshold table; display + rating optional (auto-derived).
-          { "key": "LCP",      "value": 4.8,      "display": "4.8 s" },
-          { "key": "CLS",      "value": 0.21 },
-          { "key": "INP",      "value": null,     "display": "lab N/A", "rating": "na" },
-          { "key": "TBT",      "value": 820 },
-          { "key": "SI",       "value": 6.1 },
-          { "key": "weight",   "value": 10800000, "display": "10.3 MB" },
-          { "key": "requests", "value": 150 }
+        "device": "Desktop",                  // Desktop | Mobile (tab + segmented control label)
+        "audits": [
+          {
+            "type":      "Lighthouse",         // audit/tool name — the tab label
+            "source":    "Lighthouse 13.2.0 (lab)",  // what produced these numbers (caption)
+            "perfScore": 100,                  // 0–100 Lighthouse score, or null/omit if none
+            "reportUrl": "https://pagespeed.web.dev/...",  // optional "View full report" link
+            "items": [
+              // key drives threshold lookup + glossary; value in the unit noted
+              // in the threshold table; display + rating optional (auto-derived).
+              // Items are reordered into load phases by the script — author order
+              // doesn't matter. Resource keys (weight/requests) render as cards.
+              { "key": "LCP",      "value": 0.74 },
+              { "key": "CLS",      "value": 0.0 },
+              { "key": "INP",      "value": null, "display": "lab N/A", "rating": "na" },
+              { "key": "TBT",      "value": 0 },
+              { "key": "SI",       "value": 0.48 },
+              { "key": "weight",   "value": 1165647 },
+              { "key": "requests", "value": 22 }
+            ]
+          },
+          {
+            "type":      "WebPageTest",
+            "source":    "WebPageTest (Chrome), median of 3 runs",
+            "reportUrl": "https://www.webpagetest.org/result/...",
+            "items": [ /* ...same shape; WPT has no perfScore... */ ]
+          }
         ]
       }
-      // ...Desktop block
+      // ...optional Mobile group with its own audits.
     ]
   },
+  // When a device has >1 audit the script prepends a computed "Overall" tab
+  // (per-metric mean across that device's audits; averaged perfScore). A device
+  // with a single audit shows no Overall tab. The legacy `metrics.devices[]`
+  // shape (one block per source) is still accepted — each becomes a one-audit
+  // group — but `groups` is preferred.
 
   "architecture": "1–2 paragraphs on CMS / framework / build approach and the code shape it produces. Omit the key (or null) if the notes had nothing.",
 
