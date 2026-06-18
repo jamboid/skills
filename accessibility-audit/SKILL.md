@@ -43,11 +43,16 @@ the `html/` folder at any domain.
 
 ## The HTML artifact
 
+- Warm-stone light theme: light content panel with a slightly darker light sidebar,
+  generously sized readable type, and severity colours reserved as accents.
 - Severity-grouped sidebar nav with scroll-spy; mobile-friendly; print stylesheet.
-- Every issue card carries a checkbox; ticking it marks that issue fixed.
+- Every issue card carries a checkbox; ticking it marks that issue fixed — shown
+  with a green left border, tinted header, and struck-through title (the body stays
+  fully legible, not dimmed).
 - Fix state persists across browser sessions via `localStorage`, namespaced per
   report so multiple audits hosted on one domain never collide.
-- Live remediation progress bar, a "hide fixed" filter, and a reset control.
+- Live remediation progress bar, a "hide fixed" filter (in both the overview and the
+  sidebar, kept in sync), and a reset control.
 
 ## Notes
 
