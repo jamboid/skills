@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metrics — rails + tabs + narrative</title>
+<style>
+:root {
+  --c-good:#1f7a3a; --c-good-light:#e7f5ec; --c-good-border:#b7e0c4;
+  --c-ni:#b45309; --c-ni-light:#fff7ed; --c-ni-border:#fed7aa;
+  --c-poor:#dc2626; --c-poor-light:#fef2f2; --c-poor-border:#fecaca;
+  --c-neutral:#5a5a55; --c-bg:#fafaf9; --c-surface:#ffffff; --c-text:#1a1a18;
+  --c-text-muted:#5a5a55; --c-border:#e5e4e0; --c-accent:#3a5cff; --radius:8px;
+  --font-sans: system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono','Fira Code',Consolas,'Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--c-bg);color:var(--c-text);line-height:1.6;
+  padding:40px max(24px,calc((100vw - 1040px)/2)) 120px;}
+h1.proto-title{font-size:28px;margin-bottom:4px;}
+p.proto-intro{color:var(--c-text-muted);margin-bottom:36px;max-width:680px;}
+
+.variant{margin-bottom:72px;}
+.variant-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--c-border);padding-bottom:8px;margin-bottom:8px;}
+.variant-tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--c-accent);padding:3px 8px;border-radius:5px;}
+.variant-name{font-size:20px;font-weight:700;}
+.variant-desc{font-size:13px;color:var(--c-text-muted);margin:6px 0 20px;max-width:680px;}
+
+.legend{display:flex;gap:18px;align-items:center;font-size:12px;color:var(--c-text-muted);margin-bottom:24px;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
+.lg-good{background:var(--c-good);} .lg-ni{background:var(--c-ni);} .lg-poor{background:var(--c-poor);}
+
+/* tabs */
+.tabbar{display:flex;gap:2px;border-bottom:1px solid var(--c-border);margin-bottom:18px;}
+.tab{padding:9px 16px;font-size:13px;font-weight:600;color:var(--c-text-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;}
+.tab:hover{color:var(--c-text);}
+.tab.active{color:var(--c-text);border-bottom-color:var(--c-accent);}
+.tab .tab-score{font-size:11px;font-weight:800;padding:1px 7px;border-radius:9999px;}
+.tab-score.good{background:var(--c-good-light);color:var(--c-good);}
+.tab-score.needs-improvement{background:var(--c-ni-light);color:var(--c-ni);}
+.tab-score.poor{background:var(--c-poor-light);color:var(--c-poor);}
+.tabpanel{display:none;} .tabpanel.active{display:block;}
+.tab-source{font-size:12px;color:var(--c-text-muted);margin-bottom:14px;}
+
+/* rail card / rows */
+.railcard{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:6px 22px;}
+.rail-row{display:grid;grid-template-columns:200px 1fr 84px;align-items:center;gap:18px;padding:13px 0;border-bottom:1px solid var(--c-border);}
+.rail-row:last-child{border-bottom:none;}
+.rail-key{font-size:14px;font-weight:700;}
+.rail-key small{display:block;font-size:11px;font-weight:500;color:var(--c-text-muted);}
+.rail-track{position:relative;height:8px;border-radius:9999px;
+  background:linear-gradient(to right,var(--c-good-light) 0 40%,var(--c-ni-light) 40% 70%,var(--c-poor-light) 70% 100%);}
+.rail-track::before{content:"";position:absolute;inset:0;border-radius:9999px;opacity:.28;
+  background:linear-gradient(to right,var(--c-good) 0 40%,var(--c-ni) 40% 70%,var(--c-poor) 70% 100%);}
+.rail-marker{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);border:3px solid var(--c-surface);box-shadow:0 0 0 1px rgba(0,0,0,.15);}
+.rail-marker.good{background:var(--c-good);}
+.rail-marker.needs-improvement{background:var(--c-ni);}
+.rail-marker.poor{background:var(--c-poor);}
+.rail-na{font-size:11px;color:var(--c-text-muted);}
+.rail-val{text-align:right;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;}
+.rail-val.good{color:var(--c-good);} .rail-val.needs-improvement{color:var(--c-ni);}
+.rail-val.poor{color:var(--c-poor);} .rail-val.neutral,.rail-val.na{color:var(--c-neutral);}
+.rail-res{display:flex;gap:32px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--c-border);}
+.rail-res div{font-size:13px;color:var(--c-text-muted);}
+.rail-res b{display:block;font-size:18px;font-weight:800;color:var(--c-text);font-variant-numeric:tabular-nums;}
+
+/* N1 phase groups */
+.phase{margin-bottom:6px;}
+.phase-head{padding:16px 22px 4px;}
+.phase-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--c-text);}
+.phase-blurb{font-size:12px;color:var(--c-text-muted);}
+.phase + .phase .phase-head{border-top:1px solid var(--c-border);margin-top:6px;}
+
+/* N2 timeline ribbon */
+.ribbon{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:24px 28px 18px;}
+.ribbon-axis{position:relative;height:10px;border-radius:9999px;margin:54px 28px 30px;
+  background:linear-gradient(to right,var(--c-good-light) 0 50%,var(--c-ni-light) 50% 80%,var(--c-poor-light) 80% 100%);}
+.ribbon-axis::before{content:"";position:absolute;inset:0;border-radius:9999px;opacity:.22;
+  background:linear-gradient(to right,var(--c-good) 0 50%,var(--c-ni) 50% 80%,var(--c-poor) 80% 100%);}
+.zone-tick{position:absolute;top:-6px;bottom:-6px;width:1px;background:var(--c-border);}
+.zone-lab{position:absolute;top:16px;font-size:10px;color:var(--c-text-muted);transform:translateX(-50%);white-space:nowrap;}
+.flag{position:absolute;transform:translateX(-50%);text-align:center;}
+.flag .stem{width:2px;background:var(--c-border);margin:0 auto;}
+.flag .dot{width:13px;height:13px;border-radius:50%;margin:0 auto;border:3px solid var(--c-surface);box-shadow:0 0 0 1px rgba(0,0,0,.15);}
+.flag .dot.good{background:var(--c-good);} .flag .dot.needs-improvement{background:var(--c-ni);} .flag .dot.poor{background:var(--c-poor);}
+.flag .lab{font-size:12px;font-weight:800;white-space:nowrap;}
+.flag .lab b{font-variant-numeric:tabular-nums;}
+.flag .sub{font-size:10px;color:var(--c-text-muted);white-space:nowrap;}
+.flag.up{bottom:14px;} .flag.up .stem{height:22px;}
+.flag.down{top:14px;} .flag.down .stem{height:22px;}
+.ribbon-rest{margin-top:6px;}
+.ribbon-rest .subhead{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--c-text-muted);padding:14px 0 2px;}
+
+/* N3 stepped load story */
+.story{display:flex;gap:0;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:8px 8px 18px;overflow-x:auto;}
+.step{flex:1 0 0;min-width:150px;padding:18px 14px 0;position:relative;text-align:center;}
+.step::before{content:"";position:absolute;top:34px;left:0;right:0;height:2px;background:var(--c-border);z-index:0;}
+.step:first-child::before{left:50%;} .step:last-child::before{right:50%;}
+.step .sdot{position:relative;z-index:1;width:16px;height:16px;border-radius:50%;margin:0 auto 14px;border:3px solid var(--c-surface);box-shadow:0 0 0 1px rgba(0,0,0,.15);background:var(--c-neutral);}
+.step .sdot.good{background:var(--c-good);} .step .sdot.needs-improvement{background:var(--c-ni);} .step .sdot.poor{background:var(--c-poor);} .step .sdot.na{background:#cbd5e1;}
+.step .smoment{font-size:13px;font-weight:800;}
+.step .sval{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2;}
+.step .sval.good{color:var(--c-good);} .step .sval.needs-improvement{color:var(--c-ni);} .step .sval.poor{color:var(--c-poor);} .step .sval.na,.step .sval.neutral{color:var(--c-text-muted);}
+.step .sacr{font-size:11px;font-weight:700;color:var(--c-text-muted);letter-spacing:.03em;}
+.step .sdesc{font-size:11px;color:var(--c-text-muted);margin-top:6px;line-height:1.4;}
+.story-foot{display:flex;gap:32px;margin-top:14px;padding:14px 22px 0;border-top:1px dashed var(--c-border);}
+.story-foot div{font-size:13px;color:var(--c-text-muted);}
+.story-foot b{display:block;font-size:18px;font-weight:800;color:var(--c-text);font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<h1 class="proto-title">Metrics — rails, tabbed by run, with load-story narrative</h1>
+<p class="proto-intro">Foundation is the threshold rail from variant A. Now grouped behind tabs — an averaged dataset is the default, individual runs sit behind their own tabs — and three different ways to frame each metric within the page-load timeline.</p>
+
+<div class="legend">
+  <span><i class="lg-good"></i> Good</span>
+  <span><i class="lg-ni"></i> Needs improvement</span>
+  <span><i class="lg-poor"></i> Poor</span>
+  <span style="margin-left:auto">Marker / dot = measured value within its threshold range</span>
+</div>
+
+<section class="variant">
+  <div class="variant-head"><span class="variant-tag">N1</span><span class="variant-name">Phase-grouped rails</span></div>
+  <p class="variant-desc">Rails kept as-is, but sorted into three plain-language phases of the load — <b>Painting</b>, <b>Responding</b>, <b>Stability</b> — each with a one-line description, and every acronym spelled out. Lowest-effort narrative; reuses the rail component directly.</p>
+  <div id="n1"></div>
+</section>
+
+<section class="variant">
+  <div class="variant-head"><span class="variant-tag">N2</span><span class="variant-name">To-scale load timeline</span></div>
+  <p class="variant-desc">Paint milestones (FCP, LCP, Speed Index) plotted as flags on a real time axis with the LCP good/needs-work/poor zones shaded — so you literally see <i>how early in the load</i> each one lands. Duration / stability / field metrics that aren't a single moment sit as rails beneath.</p>
+  <div id="n2"></div>
+</section>
+
+<section class="variant">
+  <div class="variant-head"><span class="variant-tag">N3</span><span class="variant-name">Stepped "load story"</span></div>
+  <p class="variant-desc">The strongest narrative: each metric becomes a numbered moment in sequence — "first paint → main content in → visually complete → ready to respond → settled → stays snappy" — with a plain-English caption. Evenly spaced (sequence, not to scale), so it reads like a story rather than a chart.</p>
+  <div id="n3"></div>
+</section>
+
+<script>
+const DATA = {
+  devices: [
+    { name:"Desktop", source:"Lighthouse 13.2.0 (lab)", perfScore:100, items:[
+      {key:"LCP",value:0.74},{key:"CLS",value:0.0},{key:"INP",value:null,display:"lab N/A",rating:"na"},
+      {key:"TBT",value:0},{key:"SI",value:0.48},{key:"weight",value:1165647},{key:"requests",value:22} ]},
+    { name:"WebPageTest (Chrome)", source:"WebPageTest, median of 3 runs", items:[
+      {key:"LCP",value:0.56},{key:"CLS",value:0.015},{key:"SI",value:0.62},{key:"TBT",value:0},
+      {key:"FCP",value:0.56},{key:"weight",value:716907},{key:"requests",value:22} ]}
+  ]
+};
+const THRESHOLDS={LCP:[2.5,4.0],CLS:[0.1,0.25],INP:[200,500],TBT:[200,600],SI:[3.4,5.8],FCP:[1.8,3.0]};
+const LABEL={LCP:"LCP",CLS:"CLS",INP:"INP",TBT:"TBT",SI:"Speed Index",FCP:"FCP",weight:"Page weight",requests:"Requests"};
+const FULL={LCP:"Largest Contentful Paint",CLS:"Cumulative Layout Shift",INP:"Interaction to Next Paint",
+  TBT:"Total Blocking Time",SI:"Speed Index",FCP:"First Contentful Paint"};
+const DESC={FCP:"First text or image appears.",LCP:"Largest content element finishes rendering.",
+  SI:"How quickly the page visually fills in.",TBT:"Main-thread time that blocks response to input.",
+  INP:"Speed of response to taps and clicks (field data).",CLS:"How much the layout shifts unexpectedly.",
+  weight:"Total bytes downloaded.",requests:"Number of HTTP requests."};
+const MOMENT={FCP:"First paint",LCP:"Main content in",SI:"Visually complete",TBT:"Ready to respond",CLS:"Layout settled",INP:"Stays snappy"};
+const TL=["FCP","LCP","SI","TBT","CLS","INP"];
+const RES=["weight","requests"];
+const RATING_LABEL={good:"Good","needs-improvement":"Needs work",poor:"Poor",neutral:"—",na:"N/A"};
+const PHASES=[
+  {title:"Painting the page",blurb:"How soon visitors see content",keys:["FCP","LCP","SI"]},
+  {title:"Responding to input",blurb:"How quickly the page reacts",keys:["TBT","INP"]},
+  {title:"Visual stability",blurb:"Whether content stays put while loading",keys:["CLS"]},
+];
+
+function disp(k,v,given){
+  if(given)return given; if(v===null||v===undefined)return "—";
+  if(["LCP","SI","FCP"].includes(k))return v.toFixed(1)+" s";
+  if(k==="CLS")return v.toFixed(2);
+  if(["INP","TBT"].includes(k))return Math.round(v)+" ms";
+  if(k==="weight"){const mb=v/1048576;return mb>=1?mb.toFixed(1)+" MB":Math.round(v/1024)+" KB";}
+  if(k==="requests")return String(Math.round(v));
+  return String(v);
+}
+function rating(k,v,given){
+  if(given)return given;
+  if(v===null||v===undefined||!THRESHOLDS[k])return "neutral";
+  const[g,n]=THRESHOLDS[k]; if(v<g)return "good"; if(v<=n)return "needs-improvement"; return "poor";
+}
+function railPos(k,v){const[g,n]=THRESHOLDS[k];if(v<=0)return .02;
+  if(v<g)return (v/g)*.40; if(v<=n)return .40+((v-g)/(n-g))*.30; return .70+Math.min((v-n)/n,1)*.30;}
+function scoreRating(s){return s>=90?"good":s>=50?"needs-improvement":"poor";}
+
+// build the averaged dataset + the per-run datasets
+function buildDatasets(){
+  const order=[...TL,...RES];
+  const items=[];
+  order.forEach(k=>{
+    const vals=DATA.devices.map(d=>d.items.find(i=>i.key===k)).filter(it=>it&&it.value!=null).map(it=>it.value);
+    if(vals.length)items.push({key:k,value:vals.reduce((a,b)=>a+b,0)/vals.length});
+    else if(DATA.devices.some(d=>d.items.find(i=>i.key===k)))items.push({key:k,value:null,display:"lab N/A",rating:"na"});
+  });
+  const scores=DATA.devices.map(d=>d.perfScore).filter(s=>s!=null);
+  const avg={name:"Average",source:"Mean of "+DATA.devices.length+" runs ("+DATA.devices.map(d=>d.name).join(", ")+")",
+    items,perfScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null};
+  return [avg,...DATA.devices.map(d=>({...d,items:order.map(k=>d.items.find(i=>i.key===k)).filter(Boolean)}))];
+}
+const DATASETS=buildDatasets();
+
+// generic tab scaffold; render(dataset)->html
+let TABSEQ=0;
+function tabs(mountId,render){
+  const grp="tg"+(TABSEQ++);
+  let bar='<div class="tabbar">';
+  DATASETS.forEach((d,i)=>{
+    const sc=d.perfScore!=null?`<span class="tab-score ${scoreRating(d.perfScore)}">${d.perfScore}</span>`:"";
+    bar+=`<button class="tab ${i===0?'active':''}" data-grp="${grp}" data-i="${i}">${d.name}${sc}</button>`;
+  });
+  bar+='</div>';
+  let panels="";
+  DATASETS.forEach((d,i)=>{
+    panels+=`<div class="tabpanel ${i===0?'active':''}" data-grp="${grp}" data-i="${i}">
+      <div class="tab-source">${d.source}</div>${render(d)}</div>`;
+  });
+  document.getElementById(mountId).innerHTML=bar+panels;
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest(".tab"); if(!t)return;
+  const g=t.dataset.grp,i=t.dataset.i;
+  document.querySelectorAll(`.tab[data-grp="${g}"]`).forEach(b=>b.classList.toggle("active",b.dataset.i===i));
+  document.querySelectorAll(`.tabpanel[data-grp="${g}"]`).forEach(p=>p.classList.toggle("active",p.dataset.i===i));
+});
+
+function railRow(it){
+  const r=rating(it.key,it.value,it.rating);
+  const has=THRESHOLDS[it.key]&&it.value!=null;
+  const pos=has?railPos(it.key,it.value)*100:0;
+  return `<div class="rail-row">
+    <div class="rail-key">${it.key==="SI"?"Speed Index":it.key}<small>${FULL[it.key]||""}</small></div>
+    <div class="rail-track">${has?`<span class="rail-marker ${r}" style="left:${pos}%"></span>`:`<span class="rail-na">not available in this run</span>`}</div>
+    <div class="rail-val ${r}">${disp(it.key,it.value,it.display)}</div></div>`;
+}
+function resFoot(d){
+  const res=d.items.filter(i=>RES.includes(i.key)); if(!res.length)return"";
+  return `<div class="rail-res">`+res.map(it=>`<div>${LABEL[it.key]}<b>${disp(it.key,it.value,it.display)}</b></div>`).join("")+`</div>`;
+}
+
+// N1 — phase groups
+tabs("n1",d=>{
+  let h='<div class="railcard">';
+  PHASES.forEach(ph=>{
+    const its=ph.keys.map(k=>d.items.find(i=>i.key===k)).filter(Boolean);
+    if(!its.length)return;
+    h+=`<div class="phase"><div class="phase-head"><div class="phase-title">${ph.title}</div><div class="phase-blurb">${ph.blurb}</div></div>`;
+    its.forEach(it=>h+=railRow(it));
+    h+=`</div>`;
+  });
+  h+=resFoot(d)+'</div>';
+  return h;
+});
+
+// N2 — to-scale timeline
+const AXIS=5; // seconds
+function n2(d){
+  const paint=["FCP","LCP","SI"].map(k=>d.items.find(i=>i.key===k)).filter(it=>it&&it.value!=null);
+  let flags="";
+  paint.sort((a,b)=>a.value-b.value).forEach((it,idx)=>{
+    const left=Math.min(it.value/AXIS,1)*100;
+    const cls=idx%2===0?"up":"down";
+    const r=rating(it.key,it.value);
+    flags+=`<div class="flag ${cls}" style="left:${left}%">
+      ${cls==="up"?`<div class="lab">${it.key} <b>${disp(it.key,it.value)}</b></div><div class="sub">${MOMENT[it.key]}</div><div class="stem"></div><div class="dot ${r}"></div>`
+                  :`<div class="dot ${r}"></div><div class="stem"></div><div class="lab">${it.key} <b>${disp(it.key,it.value)}</b></div><div class="sub">${MOMENT[it.key]}</div>`}
+    </div>`;
+  });
+  const t1=2.5/AXIS*100, t2=4/AXIS*100;
+  let h=`<div class="ribbon"><div class="ribbon-axis">${flags}
+    <div class="zone-tick" style="left:${t1}%"></div><div class="zone-lab" style="left:${t1}%">2.5s</div>
+    <div class="zone-tick" style="left:${t2}%"></div><div class="zone-lab" style="left:${t2}%">4s</div>
+    <div class="zone-lab" style="left:0%;transform:none">0s</div>
+    <div class="zone-lab" style="left:100%;transform:translateX(-100%)">${AXIS}s</div></div>`;
+  const rest=["TBT","CLS","INP"].map(k=>d.items.find(i=>i.key===k)).filter(Boolean);
+  if(rest.length){
+    h+=`<div class="ribbon-rest"><div class="subhead">Not a single moment — measured across the load</div><div class="railcard" style="border:none;padding:0">`;
+    rest.forEach(it=>h+=railRow(it));
+    h+=`</div></div>`;
+  }
+  h+=resFoot(d).replace('rail-res','rail-res')+`</div>`;
+  return h;
+}
+tabs("n2",n2);
+
+// N3 — stepped story
+tabs("n3",d=>{
+  const steps=TL.map(k=>d.items.find(i=>i.key===k)).filter(Boolean);
+  let h='<div class="story">';
+  steps.forEach(it=>{
+    const r=rating(it.key,it.value,it.rating);
+    h+=`<div class="step"><div class="sdot ${r}"></div>
+      <div class="smoment">${MOMENT[it.key]}</div>
+      <div class="sval ${r}">${disp(it.key,it.value,it.display)}</div>
+      <div class="sacr">${it.key==="SI"?"Speed Index":it.key}</div>
+      <div class="sdesc">${DESC[it.key]}</div></div>`;
+  });
+  h+='</div>';
+  const res=d.items.filter(i=>RES.includes(i.key));
+  if(res.length){h+='<div class="story-foot">'+res.map(it=>`<div>${LABEL[it.key]}<b>${disp(it.key,it.value,it.display)}</b></div>`).join("")+'</div>';}
+  return h;
+});
+</script>
+</body>
+</html>
