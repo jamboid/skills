@@ -334,8 +334,8 @@ def build_markdown(data):
     out.append(" · ".join(bits))
     out.append("")
 
-    # Executive summary
-    out.append("## Executive summary")
+    # Summary
+    out.append("## Summary")
     out.append("")
     for para in paragraphs(data.get("summary")):
         out.append(para)
@@ -697,9 +697,8 @@ def build_html(data, template, slug):
     nav = ['    <a href="#overview" class="nav-top-link active" data-target="overview">Overview</a>']
     body = []
 
-    # Executive summary
-    nav.append(nav_link("summary", "Executive summary"))
-    body.append(section("summary", "Executive summary",
+    # Summary — part of the Overview nav entry (header + summary), no own link
+    body.append(section("summary", "Summary",
                         prose_block(data.get("summary"), "summary-text")
                         or '    <p class="empty-note">No summary provided.</p>'))
 
