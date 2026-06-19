@@ -321,7 +321,7 @@ def used_glossary(data):
 def build_markdown(data):
     meta = data["meta"]
     out = []
-    out.append("# Performance Review: " + site_name(meta))
+    out.append("# Website Performance Review: " + site_name(meta))
     out.append("")
     bits = []
     if meta.get("url"):
@@ -793,7 +793,7 @@ def build_html(data, template, slug):
     if meta.get("audience"):
         meta_rows.append(meta_chip("Audience", meta["audience"]))
 
-    page_title = "Performance Review: " + site_name(meta)
+    page_title = "Website Performance Review: " + site_name(meta)
     replacements = {
         "{{TITLE}}": html.escape(page_title),
         "{{SITENAME}}": html.escape(site_name(meta)),
