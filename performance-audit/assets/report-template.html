@@ -15,6 +15,10 @@
   --c-poor:            #dc2626;
   --c-poor-light:      #fef2f2;
   --c-poor-border:     #fecaca;
+  /* Rail fills — a touch more saturated than the -light tints for clearer bands */
+  --c-rail-good:       #b6ddc4;
+  --c-rail-ni:         #f6d29e;
+  --c-rail-poor:       #f3b4b4;
   --c-high:            #dc2626;
   --c-medium:          #d97706;
   --c-low:             #2563eb;
@@ -65,27 +69,7 @@ body {
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-.sidebar-header {
-  padding: 24px 20px 16px;
-  border-bottom: 1px solid #d4d2cc;
-  flex-shrink: 0;
-}
-.sidebar-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-muted);
-  margin-bottom: 3px;
-}
-.sidebar-brand {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--c-text);
-  line-height: 1.25;
-  word-break: break-word;
-}
-.sidebar-nav { padding: 12px 0 24px; flex: 1; }
+.sidebar-nav { padding: 48px 0 24px; flex: 1; }
 
 .nav-top-link {
   display: block;
@@ -126,6 +110,14 @@ body {
 
 /* ── Page header ── */
 .page-header { margin-bottom: 32px; }
+.page-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin-bottom: 6px;
+}
 .page-title {
   font-size: 32px; font-weight: 700; line-height: 1.2; margin-bottom: 16px;
   word-break: break-word;
@@ -271,8 +263,7 @@ body {
 .tl-label .moment { font-size: 14px; font-weight: 700; line-height: 1.25; }
 .tl-label .metric { font-size: 11px; color: var(--c-text-muted); }
 .tl-label .metric b { font-weight: 700; color: var(--c-text-muted); font-family: var(--font-mono); font-size: 10.5px; }
-.rail-track { position: relative; height: 8px; border-radius: 9999px; background: linear-gradient(to right, var(--c-good-light) 0 40%, var(--c-ni-light) 40% 70%, var(--c-poor-light) 70% 100%); }
-.rail-track::before { content: ""; position: absolute; inset: 0; border-radius: 9999px; opacity: 0.28; background: linear-gradient(to right, var(--c-good) 0 40%, var(--c-ni) 40% 70%, var(--c-poor) 70% 100%); }
+.rail-track { position: relative; height: 8px; border-radius: 9999px; background: linear-gradient(to right, var(--c-rail-good) 0 calc(40% - 1px), #fff calc(40% - 1px) calc(40% + 1px), var(--c-rail-ni) calc(40% + 1px) calc(70% - 1px), #fff calc(70% - 1px) calc(70% + 1px), var(--c-rail-poor) calc(70% + 1px) 100%); }
 .rail-marker { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); border: 3px solid var(--c-surface); box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
 .rail-marker.good { background: var(--c-good); }
 .rail-marker.needs-improvement { background: var(--c-ni); }
@@ -297,10 +288,10 @@ body {
 .finding {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  border-left: 4px solid var(--c-neutral);
+  border-radius: var(--radius);
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-  border-radius: var(--radius);
+  border-left: 4px solid var(--c-neutral);
   margin-bottom: 16px;
   overflow: hidden;
 }
@@ -507,10 +498,6 @@ em { font-style: italic; }
 <div class="sidebar-overlay" id="overlay"></div>
 
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-kicker">Performance review</div>
-    <div class="sidebar-brand">{{SITENAME}}</div>
-  </div>
   <nav class="sidebar-nav" aria-label="Page sections">
 {{SIDEBAR_NAV}}
   </nav>
@@ -520,7 +507,8 @@ em { font-style: italic; }
   <div class="content-inner">
 
     <header class="page-header" id="overview">
-      <h1 class="page-title">{{TITLE}}</h1>
+      <div class="page-kicker">Website Performance Review</div>
+      <h1 class="page-title">{{SITENAME}}</h1>
       <div class="page-meta">
 {{HEADER_META}}
       </div>
@@ -555,6 +543,14 @@ em { font-style: italic; }
   sidebar.querySelectorAll('a').forEach(function (a) {
     a.addEventListener('click', function () { if (window.innerWidth <= 900) closeSidebar(); });
   });
+  // Overview points at the very top of the page, not the header's offset position.
+  const overviewLink = sidebar.querySelector('[data-target="overview"]');
+  if (overviewLink) {
+    overviewLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
   const navLinks = sidebar.querySelectorAll('[data-target]');
   function setActive(id) {

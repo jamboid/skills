@@ -1,2 +1,7 @@
 .DS_Store
 .nova/
+
+# Generated performance-audit reports (build_report.py output)
+/test/performance-audit/audit.json
+/test/performance-audit/html/
+/test/performance-audit/*-audit.md
