@@ -130,6 +130,16 @@ visually (outline, tinted centre) added more noise than they removed*. The
 eventual fix was subtractive — de-emphasise the category bars on open rather than
 restyle the item bars.
 
+## Part 6.5 — Item-bar scaling (left open)
+
+**Ask:** "Are the item bars proportional to the largest file size overall?" → yes,
+a single global ruler. Then: _"Let's try per category scaling."_
+→ Switched item bars to scale per category (each category's items vs that
+category's heaviest file) so small categories (Script/Stylesheet) show readable
+bars instead of slivers. Trade-off: cross-category bar comparison is lost (size
+numbers still carry it). User is **mulling global vs per-category**; prototype
+currently ships per-category. Captured in `HANDOFF.md` → "Open decisions".
+
 ## Part 7 — Handoff
 
 Wrote `HANDOFF.md` (v4 spec + Phase B checklist) and updated `conversation.md`.

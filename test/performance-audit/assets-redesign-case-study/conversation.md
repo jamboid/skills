@@ -74,6 +74,16 @@ Iterated on v1 against live feedback:
   item), so to stop readers comparing the two, **the category bars fade when the
   section is open**, handing focus to the item bars.
 
+## Round 2.5 — Item-bar scaling (open)
+
+Item bars were scaled to the single largest file across the whole list (one
+ruler), which makes a category of small files (Script, 2–4 KB) render as near-
+invisible slivers. Switched to **per-category** scaling (each category's items
+measured against that category's heaviest file) so small categories read clearly
+— trade-off: bar lengths are no longer comparable across categories, only the
+size numbers are. **Left as an open decision** (global vs per-category); user is
+mulling. The prototype currently ships per-category.
+
 ## Round 3 — Wiring in (not started)
 
 See `HANDOFF.md` for the full spec and the Phase B checklist: ship v4 into

@@ -44,9 +44,13 @@ Single table, columns: **Category/file · Req · bars · Size**.
   colour) and **M** (same colour at `opacity:.42`). The `D`/`M` key labels show
   only in "Both" mode. Sizes are stacked to align with the bars (D line bold, M
   line muted).
-  - **Scale:** category bars scale to the heaviest *category* (desktop kb); item
-    bars scale to the heaviest *item* (max of desktop/mobile across all items).
-    These are deliberately different scales — see "rejected ideas".
+  - **Scale:** category bars scale to the heaviest *category* (desktop kb). Item
+    bars currently scale **per category** (to that category's heaviest file), so
+    small categories (Script, Stylesheet) still show readable bars — at the cost
+    of cross-category comparability. **This is an open decision** the user is
+    mulling: global item scale (one ruler across all files; small categories show
+    slivers) vs per-category (current). Whichever ships, category and item bars
+    are on different rulers — which is why the open-category bar fade exists.
 - **Open-state cue:** when a category is open, fade **just its category bars** to
   `opacity:.3` (`details[open] > .cat-sum .bars`), so the item bars lead. Pure
   CSS off the `<details open>` state.
@@ -62,6 +66,11 @@ Single table, columns: **Category/file · Req · bars · Size**.
 - Copy-to-clipboard buttons per filename: noise > value, full names are
   selectable.
 - Collapsing the SVG icons into one row: dropped so every filename is real/full.
+
+## Open decisions (resolve before/while wiring)
+
+- **Item-bar scaling:** per-category (current) vs global. User is mulling. See the
+  bars "Scale" note above.
 
 ## Phase B — wiring in (next session)
 
