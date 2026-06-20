@@ -18,6 +18,8 @@ top-border, a big number, a label. The number's colour told you good / needs-imp
 / poor, but nothing showed *where in the range* a value sat, how much headroom existed,
 or how two test runs compared.
 
+![Original flat metric cards](../images/v0-original-cards.png)
+
 ---
 
 ## Round 1 — Three directions

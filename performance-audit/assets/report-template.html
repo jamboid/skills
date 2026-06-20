@@ -252,7 +252,7 @@ body {
 .tl-spine::before { content: ""; position: absolute; left: 19px; top: 0; bottom: 0; width: 2px; background: var(--c-border); }
 .tl-phase:first-child .tl-spine::before { top: 30px; }
 .tl-phase:last-child .tl-spine::before { height: 30px; bottom: auto; }
-.tl-node { position: absolute; left: 11px; top: 22px; width: 18px; height: 18px; border-radius: 50%; background: var(--c-accent); border: 3px solid var(--c-surface); box-shadow: 0 0 0 2px var(--c-accent); z-index: 1; }
+.tl-node { position: absolute; left: 11px; top: 17px; width: 18px; height: 18px; border-radius: 50%; background: var(--c-accent); border: 3px solid var(--c-surface); box-shadow: 0 0 0 2px var(--c-accent); z-index: 1; }
 .tl-node.muted { background: #c4c2bb; box-shadow: 0 0 0 2px #c4c2bb; }
 .tl-head { padding: 16px 14px 12px 2px; }
 .tl-title { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; }
@@ -377,6 +377,9 @@ body {
 .data-table tr:last-child td { border-bottom: none; }
 .data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .data-table tr.total td { font-weight: 700; background: #faf9f7; }
+.data-table.asset-detail td:first-child { max-width: 360px; }
+.asset-name { display: block; font-family: var(--font-mono); font-size: 12px; word-break: break-all; }
+.asset-note { display: block; margin-top: 2px; font-size: 11.5px; color: var(--c-text-muted); }
 
 /* ── Tests / links list ── */
 .test-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }

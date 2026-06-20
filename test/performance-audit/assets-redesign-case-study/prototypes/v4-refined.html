@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page resources — v4 refined</title>
+<style>
+:root{
+  --c-bg:#fafaf9;--c-surface:#ffffff;--c-text:#1a1a18;--c-text-muted:#5a5a55;
+  --c-border:#e5e4e0;--c-accent:#3a5cff;--radius:8px;--icon-ink:#2c2b29;
+  --font-sans:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono','Fira Code',Consolas,'Courier New',monospace;
+  /* category base + light tint (tint behind a dark icon; base = bars/identity) */
+  --cat-Images:#3a5cff;     --tint-Images:#dfe5ff;
+  --cat-Font:#7c3aed;       --tint-Font:#ece4fd;
+  --cat-Document:#0891b2;   --tint-Document:#d8eef3;
+  --cat-Stylesheet:#db2777; --tint-Stylesheet:#fbe1ee;
+  --cat-Script:#ea580c;     --tint-Script:#fde3d4;
+  --cat-Other:#64748b;      --tint-Other:#e7eaef;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--c-bg);color:var(--c-text);line-height:1.5;
+  padding:40px max(24px,calc((100vw - 1000px)/2)) 120px;}
+h1.proto-title{font-size:26px;margin-bottom:4px;}
+p.proto-intro{color:var(--c-text-muted);margin-bottom:22px;max-width:740px;font-size:15px;}
+
+.res{--cols:minmax(240px,1fr) 50px minmax(130px,1fr) 96px;
+  border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-surface);overflow:hidden;}
+.res-head{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;height:46px;align-items:center;
+  background:#faf9f7;border-bottom:1px solid var(--c-border);
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--c-text-muted);}
+.res-head .r{text-align:right;}
+
+/* device toggle, sits in the bars column header */
+.scope{display:inline-flex;background:#eceae5;border:1px solid var(--c-border);border-radius:7px;padding:2px;gap:1px;}
+.scope button{border:none;background:none;font-family:inherit;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--c-text-muted);padding:3px 9px;border-radius:5px;cursor:pointer;}
+.scope button:hover{color:var(--c-text);}
+.scope button.active{background:var(--c-surface);color:var(--c-text);box-shadow:0 1px 1.5px rgba(0,0,0,.12);}
+
+details{border-bottom:1px solid var(--c-border);}
+details:last-of-type{border-bottom:none;}
+.cat-sum{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;min-height:60px;align-items:center;
+  cursor:pointer;list-style:none;}
+.cat-sum::-webkit-details-marker{display:none;}
+.cat-sum:hover{background:#faf9f7;}
+.cat-name{display:flex;align-items:center;gap:11px;font-weight:700;font-size:15px;min-width:0;}
+.chev{width:13px;height:13px;color:var(--c-text-muted);transition:transform .15s;flex-shrink:0;}
+details[open] .chev{transform:rotate(90deg);}
+.cat-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--icon-ink);flex-shrink:0;}
+.cat-icon svg{width:17px;height:17px;}
+.req{font-size:13px;color:var(--c-text-muted);text-align:right;font-variant-numeric:tabular-nums;}
+
+/* stacked bars (desktop / mobile), with sizes stacked to match */
+.bars{display:flex;flex-direction:column;gap:7px;transition:opacity .15s;}
+/* when a category is open, fade its bars so the item bars lead */
+details[open] > .cat-sum .bars{opacity:.3;}
+.brow{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:center;height:13px;}
+.brow .k{font-size:9.5px;font-weight:800;color:var(--c-text-muted);letter-spacing:.03em;}
+.track{height:9px;background:#f0efea;border-radius:5px;overflow:hidden;}
+.fill{height:100%;border-radius:5px;}
+.fill.m{opacity:.42;}
+.szs{display:flex;flex-direction:column;gap:7px;align-items:flex-end;}
+.sline{height:13px;display:flex;align-items:center;font-variant-numeric:tabular-nums;}
+.sline.d{font-weight:700;font-size:13.5px;}
+.sline.m{font-weight:600;font-size:13px;color:var(--c-text-muted);}
+
+/* asset rows */
+.asset-row{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;min-height:52px;align-items:center;
+  background:#fcfcfb;}
+.asset-row:nth-of-type(even){background:#f7f6f3;}
+.fname{padding-left:43px;min-width:0;}
+.fname .nm{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--c-text);word-break:break-all;}
+
+.res-foot{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;min-height:54px;align-items:center;
+  background:#faf9f7;border-top:1px solid var(--c-border);}
+.res-foot .lbl{font-size:14px;font-weight:800;}
+.res-foot .szs .sline{color:var(--c-text);font-weight:800;}
+.res-foot .szs .sline.m{color:var(--c-text-muted);}
+
+.legend{margin-top:14px;font-size:12px;color:var(--c-text-muted);}
+code{font-family:var(--font-mono);font-size:11.5px;background:#f4f4f2;border:1px solid var(--c-border);padding:1px 5px;border-radius:3px;}
+@media (max-width:680px){
+  .res{--cols:1fr 70px;}
+  .res-head .bcol,.cat-sum .bcol,.asset-row .bcol,.res-foot .bcol,.req,.res-head .reqh{display:none;}
+}
+</style>
+</head>
+<body>
+<h1 class="proto-title">Page resources — v4 · refined</h1>
+<p class="proto-intro">Top-line metrics per asset category; click a category to expand its full asset list.
+Toggle the header control between both devices and a single device. With both shown, each row carries a
+desktop and a mobile bar scaled to the heaviest item — the hero's two bars stay equal (it never shrinks for
+phones), while banner2/3 show a short mobile bar where the responsive derivative saves.</p>
+
+<div class="res" id="res"></div>
+<p class="legend">Transfer (compressed) bytes from the Lighthouse network log; <code>chrome-extension://</code> requests excluded.
+Bars scaled to the heaviest single asset (categories) / the heaviest file (rows).</p>
+
+<script>
+const DATA={
+ total:{req:[22,22],kb:[1138,727]},
+ categories:[
+  {type:'Images',req:[16,16],kb:[1007,575],assets:[
+    {name:'wattage_sample_banner4.png.webp',kb:[314,314]},
+    {name:'wattage_sample_banner2.png.webp',kb:[297,87]},
+    {name:'wattage_sample_banner3.png.webp',kb:[276,43]},
+    {name:'wattage_sample_headshot.png.webp',kb:[61,61]},
+    {name:'sander-weeteling-iGDg_f_mlWo-unsplash.jpg.webp',kb:[26,36]},
+    {name:'energy_inst_logo.svg',kb:[6,6]},
+    {name:'wattage_dots.svg',kb:[5,5]},
+    {name:'wattage_logo.svg',kb:[5,5]},
+    {name:'icon_ai.svg',kb:[3,3]},
+    {name:'wattage_dots_lime.svg',kb:[3,3]},
+    {name:'icon_magnify.svg',kb:[3,3]},
+    {name:'icon_eye.svg',kb:[2,2]},
+    {name:'icon_graph.svg',kb:[2,2]},
+    {name:'icon_hourglass.svg',kb:[2,2]},
+    {name:'icon_tag.svg',kb:[2,2]},
+    {name:'icon_barbell.svg',kb:[1,1]},
+  ]},
+  {type:'Font',req:[1,1],kb:[76,76],assets:[
+    {name:'PPNeueMontreal-Regular.woff2',kb:[76,76]},
+  ]},
+  {type:'Document',req:[1,1],kb:[39,39],assets:[
+    {name:'/',kb:[39,39]},
+  ]},
+  {type:'Stylesheet',req:[2,2],kb:[8,27],assets:[
+    {name:'css_73bAv145fk0MBJnf4xeJhRDKz6PhTh4_wVjsfs2nsSE.css',kb:[7,25]},
+    {name:'css_FEx1Wcz4WWqzw8R6nnA0juvEB5JGKHsmg4-fgA_8jDw.css',kb:[1,2]},
+  ]},
+  {type:'Script',req:[1,1],kb:[2,4],assets:[
+    {name:'js_u2wnIPF3upgFgreJx4ZDYoBgyxayPWIFfUjByIau6Bo.js',kb:[2,4]},
+  ]},
+  {type:'Other',req:[1,1],kb:[6,6],assets:[
+    {name:'favicon.ico',kb:[6,6]},
+  ]},
+ ]
+};
+const ICON={
+ Images:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg>',
+ Font:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>',
+ Document:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 2h8l4 4v16H6zM14 2v4h4"/></svg>',
+ Stylesheet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 3h16l-1.5 16L12 21l-6.5-2z"/><path d="M8 8h8M8 12h6"/></svg>',
+ Script:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13 6l-2 12"/></svg>',
+ Other:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>',
+};
+const CHEV='<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>';
+const KEY=['D','M'];
+const SCOPES=[['both','Both'],['0','Desktop'],['1','Mobile']];
+const css=t=>getComputedStyle(document.documentElement).getPropertyValue(t).trim();
+const fmt=kb=>kb>=1024?(kb/1024).toFixed(2)+' MB':kb+' KB';
+
+let scope='both';
+const devs=()=>scope==='both'?[0,1]:[+scope];
+
+function bars(kb,scale,type){
+ const base=css('--cat-'+type), ds=devs(), multi=ds.length>1;
+ return '<div class="bars">'+ds.map(i=>{
+   const w=Math.max(1.5,100*kb[i]/scale), cls=i===0?'d':'m';
+   const k=`<span class="k">${multi?KEY[i]:''}</span>`;
+   return `<div class="brow">${k}<div class="track"><div class="fill ${cls}" style="width:${w}%;background:${base}"></div></div></div>`;
+ }).join('')+'</div>';
+}
+function szs(kb){
+ return '<div class="szs">'+devs().map(i=>`<div class="sline ${i===0?'d':'m'}">${fmt(kb[i])}</div>`).join('')+'</div>';
+}
+
+function render(){
+ const el=document.getElementById('res');
+ const catScale=Math.max(...DATA.categories.map(c=>c.kb[0]));
+ const itemScale=Math.max(...DATA.categories.flatMap(c=>c.assets.map(a=>Math.max(a.kb[0],a.kb[1]))));
+ const toggle='<div class="scope">'+SCOPES.map(([v,l])=>
+   `<button data-scope="${v}"${v===scope?' class="active"':''}>${l}</button>`).join('')+'</div>';
+ let h=`<div class="res-head"><div>Category / file</div><div class="r reqh">Req</div>`
+   +`<div class="bcol">${toggle}</div><div class="r">Size</div></div>`;
+ for(const c of DATA.categories){
+   h+=`<details><summary class="cat-sum">
+     <div class="cat-name">${CHEV}<span class="cat-icon" style="background:${css('--tint-'+c.type)}">${ICON[c.type]}</span>${c.type}</div>
+     <div class="req">${c.req[0]}</div>
+     <div class="bcol">${bars(c.kb,catScale,c.type)}</div>
+     ${szs(c.kb)}
+   </summary>`;
+   for(const a of c.assets){
+     h+=`<div class="asset-row">
+       <div class="fname"><span class="nm">${a.name}</span></div>
+       <div class="req"></div>
+       <div class="bcol">${bars(a.kb,itemScale,c.type)}</div>
+       ${szs(a.kb)}
+     </div>`;
+   }
+   h+='</details>';
+ }
+ h+=`<div class="res-foot"><div class="lbl">Total</div><div class="req">${DATA.total.req[0]}</div>`
+   +`<div class="bcol"></div>${szs(DATA.total.kb)}</div>`;
+ el.innerHTML=h;
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('.scope button'); if(!b)return;
+ e.preventDefault();
+ // keep open categories open across a re-render
+ const open=[...document.querySelectorAll('#res details')].map(d=>d.open);
+ scope=b.dataset.scope; render();
+ document.querySelectorAll('#res details').forEach((d,i)=>d.open=open[i]);
+});
+render();
+</script>
+</body>
+</html>

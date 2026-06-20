@@ -102,7 +102,26 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
         { "type": "Images", "requests": 48, "bytes": 8200000, "display": "8.2 MB" },
         { "type": "Script", "requests": 61, "bytes": 1400000, "display": "1.4 MB" }
       ],
-      "total": { "requests": 150, "bytes": 10800000, "display": "10.3 MB" }
+      "total": { "requests": 150, "bytes": 10800000, "display": "10.3 MB" },
+
+      // Optional itemised breakdown of individual assets, rendered as a second
+      // table under the type summary. Omit the whole `items` key to skip it.
+      // Pull rows from Lighthouse `network-requests` / WPT `requests[]`; list the
+      // heavy contributors and collapse long tails (e.g. "12 SVG icons") rather
+      // than dumping every request. `columns` are the value-column headers — use
+      // ["Desktop", "Mobile"] to contrast per-device transfer sizes (the clearest
+      // way to expose responsive-image problems), or omit for a single "Size".
+      // Each row's `values` align to `columns` (use `display` for a single value);
+      // `note` is an optional muted caption under the asset name.
+      "items": {
+        "caption": "Largest individual assets (transfer size)",
+        "columns": ["Desktop", "Mobile"],
+        "rows": [
+          { "name": "hero.webp", "type": "Image", "values": ["314 KB", "314 KB"],
+            "note": "LCP hero — served at full size on mobile too" },
+          { "name": "12 SVG icons", "type": "Image", "values": ["30 KB", "30 KB"] }
+        ]
+      }
     }
   },
 

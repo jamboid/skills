@@ -1,0 +1,190 @@
+{
+  "meta": {
+    "title": "wattage.staging.gd — Site Audit",
+    "slug": "wattage-staging",
+    "url": "https://wattage.staging.gd/",
+    "date": "2026-06-20",
+    "auditedBy": "Jamie Boyd",
+    "audience": "internal SD/AD",
+    "scope": "site audit, performance-focused"
+  },
+
+  "summary": "`wattage.staging.gd` is **solved on desktop** (Lighthouse **100**, LCP 0.7 s, 0 ms blocking, no layout shift) and **good-but-improvable on mobile** (Lighthouse **91**, LCP **3.4 s** in the pessimistic lab). It's a lean Drupal build: server-rendered HTML, aggregated CSS/JS, only ~2–4 KB of script, all-SVG icons — so **TBT stays 0 even on mobile at 4× CPU throttle**. The mobile problem is not JavaScript; it's LCP.\n\nTwo causes drive it: an oversized hero image (a phone is served the **314 KB desktop derivative**, where its sibling banners right-size to 43–87 KB) and an untuned **HTTP/1.1** server (~850 ms of mobile LCP from head-of-line blocking). Both are cheap to fix.\n\nLab coverage is now complete on both form factors. The remaining gap is **field/CrUX data** to confirm what real mobile users feel.",
+
+  "metrics": {
+    "groups": [
+      {
+        "device": "Desktop",
+        "audits": [
+          {
+            "type": "Lighthouse",
+            "source": "Lighthouse 13.2.0 (lab, simulated desktop)",
+            "perfScore": 100,
+            "items": [
+              { "key": "FCP", "value": 0.48 },
+              { "key": "LCP", "value": 0.74 },
+              { "key": "SI", "value": 0.48 },
+              { "key": "TBT", "value": 0 },
+              { "key": "INP", "value": null, "display": "lab N/A", "rating": "na" },
+              { "key": "CLS", "value": 0.0 },
+              { "key": "weight", "value": 1165647 },
+              { "key": "requests", "value": 22 }
+            ]
+          },
+          {
+            "type": "WebPageTest",
+            "source": "WebPageTest (Chrome 145, desktop), median of 3 runs",
+            "items": [
+              { "key": "FCP", "value": 0.56 },
+              { "key": "LCP", "value": 0.56 },
+              { "key": "SI", "value": 0.62 },
+              { "key": "TBT", "value": 0 },
+              { "key": "CLS", "value": 0.015 },
+              { "key": "weight", "value": 716907 },
+              { "key": "requests", "value": 22 }
+            ]
+          }
+        ]
+      },
+      {
+        "device": "Mobile",
+        "audits": [
+          {
+            "type": "Lighthouse",
+            "source": "Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + ~1.6 Mbps)",
+            "perfScore": 91,
+            "items": [
+              { "key": "FCP", "value": 1.77 },
+              { "key": "LCP", "value": 3.40 },
+              { "key": "SI", "value": 1.77 },
+              { "key": "TBT", "value": 0 },
+              { "key": "INP", "value": null, "display": "lab N/A", "rating": "na" },
+              { "key": "CLS", "value": 0.0 },
+              { "key": "weight", "value": 744253 },
+              { "key": "requests", "value": 23 }
+            ]
+          },
+          {
+            "type": "WebPageTest",
+            "source": "WebPageTest (Chrome 145, mobile, throttled link), median of 3 runs",
+            "items": [
+              { "key": "FCP", "value": 1.38 },
+              { "key": "LCP", "value": 1.38 },
+              { "key": "SI", "value": 1.54 },
+              { "key": "TBT", "value": 0 },
+              { "key": "CLS", "value": 0.044 },
+              { "key": "weight", "value": 743237 },
+              { "key": "requests", "value": 23 }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+
+  "architecture": "Drupal, served from a custom theme (`/themes/custom/wattage/`); stack-pack detection and the `/core/` and `/sites/default/files/` paths confirm it. CSS/JS aggregation is on — the whole page ships as 2 hashed CSS aggregates plus a single ~2–4 KB JS file. There is no SPA framework or hydration bundle, which is why the main thread is idle and **TBT is 0 on every run, including mobile at 4× CPU throttle**: this is a server-rendered HTML page, not a JavaScript app.\n\nThe icon system is SVG (logo and `icon_*` glyphs), so it costs almost nothing. The page's byte budget is therefore almost entirely raster photography, delivered through Drupal image styles (`width_scale_xl`, `width_scale_m`) — and those derivatives aren't right-sized for mobile (see findings). The staging host runs plain HTTP/1.1 with text compression off; those are staging defaults, not code defects, but they cost real time on mobile. Confirm production fronting (CDN/edge) before acting.",
+
+  "performance": {
+    "tests": [
+      { "label": "Lighthouse 13.2.0 — desktop lab", "url": "https://wattage.staging.gd/" },
+      { "label": "Lighthouse 13.2.0 — mobile lab", "url": "https://wattage.staging.gd/" },
+      { "label": "WebPageTest — desktop (3 runs)", "url": "https://wattage.staging.gd/" },
+      { "label": "WebPageTest — mobile (3 runs)", "url": "https://wattage.staging.gd/" }
+    ],
+    "findings": [
+      {
+        "id": "P-1",
+        "title": "The LCP hero is the full desktop image, even on mobile",
+        "severity": "high",
+        "savingsDisplay": "~227 KB on mobile · LCP −0.3 s",
+        "source": "lighthouse:image-delivery-insight",
+        "confirmed": true,
+        "body": "On mobile this audit scores 0 (it was 0.5 on desktop). The per-asset data pins it exactly: the three sample banners all ship as `width_scale_xl` on desktop (~276–314 KB each), and on mobile two of them **correctly drop to `width_scale_m` (297→87 KB and 276→43 KB) — but the LCP hero stays at 314 KB.** The reason is P-2: the hero is a CSS background (`b_media__bg`), and backgrounds get no responsive `srcset`/derivative, so the phone is forced to download the full desktop image.\n\nThe images are **already WebP**, so this is a sizing problem, not a format one. Give the hero a responsive treatment (the same image styles its siblings already use, ideally via a real `<img srcset>` per P-2); that alone reclaims ~227 KB and ~0.3 s of LCP on mobile. AVIF would shave a little more, but sizing is the lever."
+      },
+      {
+        "id": "P-3",
+        "title": "Server is on HTTP/1.1 — no multiplexing",
+        "severity": "high",
+        "savingsDisplay": "est. mobile LCP −0.85 s · FCP −0.6 s",
+        "source": "lighthouse:modern-http-insight",
+        "confirmed": true,
+        "body": "All 23 requests are served over HTTP/1.1, so they queue (head-of-line blocking). Negligible on desktop (~0.25 s), but on mobile Lighthouse estimates **LCP −850 ms and FCP −600 ms**. Enabling HTTP/2 (or HTTP/3) is the highest-value config change here. It's a server setting, not code — confirm production isn't already doing it before prioritising."
+      },
+      {
+        "id": "P-2",
+        "title": "LCP hero is a CSS background image, so it can't be preloaded",
+        "severity": "medium",
+        "savingsDisplay": "enables the cheapest LCP fix",
+        "source": "lighthouse:lcp-discovery-insight",
+        "confirmed": true,
+        "body": "The largest element is `div.b_media__bg` (\"Turbine in the mist\"), a background set via a `--bg` custom property rather than an `<img>`. The preload scanner never sees background images, so the most important image is discovered late. Its own measured saving is ~0, but it's the *enabler*: until the hero is a real `<img>`, you can't apply `fetchpriority=\"high\"` or `<link rel=\"preload\">` — the cheapest fix for the 3.4 s mobile LCP. Do it alongside P-1."
+      },
+      {
+        "id": "P-5",
+        "title": "Render-blocking CSS/JS in the head",
+        "severity": "medium",
+        "savingsDisplay": "est. mobile FCP −0.6 s",
+        "source": "lighthouse:render-blocking-insight",
+        "confirmed": true,
+        "body": "Two aggregated CSS files and one JS file block first paint. Minor on desktop (~0.18 s), but on mobile that's **FCP −600 ms**. Inline critical CSS and defer the JS; the page is light enough that this is straightforward."
+      },
+      {
+        "id": "P-4",
+        "title": "Text assets served without compression",
+        "severity": "low",
+        "savingsDisplay": "free win",
+        "source": "lighthouse:document-latency-insight",
+        "confirmed": true,
+        "body": "Both runs report `usesCompression: false` — the HTML document and CSS ship uncompressed. The absolute cost is small on this light page, but gzip/brotli is standard and free, and its absence signals the staging box isn't tuned. Turn it on at the server. (The server itself is fast: ~80 ms response, no redirects.)"
+      },
+      {
+        "id": "P-6",
+        "title": "Images lack explicit width and height",
+        "severity": "low",
+        "savingsDisplay": "CLS insurance",
+        "source": "lighthouse:unsized-images",
+        "confirmed": true,
+        "body": "14 images have no explicit `width`/`height`, so the browser reserves no space before they load. CLS is good on all four runs (≤ 0.044), but that's fragile: as content grows, unsized images are the usual cause of layout shift. Add dimensions (or CSS `aspect-ratio`) to lock the good CLS in."
+      }
+    ],
+    "assets": {
+      "rows": [
+        { "type": "Images", "requests": 17, "bytes": 1031388, "display": "1007 KB" },
+        { "type": "Font", "requests": 1, "bytes": 77835, "display": "76 KB" },
+        { "type": "Document", "requests": 1, "bytes": 40270, "display": "39 KB" },
+        { "type": "Stylesheet", "requests": 2, "bytes": 8125, "display": "8 KB" },
+        { "type": "Script", "requests": 1, "bytes": 1989, "display": "2 KB" }
+      ],
+      "total": { "requests": 22, "bytes": 1165647, "display": "1.11 MB" },
+      "items": {
+        "caption": "Largest individual assets — transfer size, desktop vs mobile",
+        "columns": ["Desktop", "Mobile"],
+        "rows": [
+          { "name": "wattage_sample_banner4.png.webp", "type": "Image", "values": ["314 KB", "314 KB"], "note": "**LCP hero.** A CSS background (`b_media__bg`), so it gets no responsive derivative — the phone downloads the full desktop image." },
+          { "name": "wattage_sample_banner2.png.webp", "type": "Image", "values": ["297 KB", "87 KB"], "note": "`width_scale_xl` → `width_scale_m` on mobile — right-sized correctly." },
+          { "name": "wattage_sample_banner3.png.webp", "type": "Image", "values": ["276 KB", "43 KB"], "note": "Right-sized correctly for mobile." },
+          { "name": "PPNeueMontreal-Regular.woff2", "type": "Font", "values": ["76 KB", "76 KB"], "note": "Self-hosted, already `woff2`." },
+          { "name": "wattage_sample_headshot.png.webp", "type": "Image", "values": ["61 KB", "61 KB"], "note": "`width_scale_m` on both." },
+          { "name": "/ (HTML document)", "type": "Document", "values": ["39 KB", "39 KB"], "note": "Served uncompressed — see P-4." },
+          { "name": "11 SVG icons & logos", "type": "Image", "values": ["31 KB", "31 KB"], "note": "Vector — negligible." },
+          { "name": "CSS (2 aggregated files)", "type": "Stylesheet", "values": ["8 KB", "27 KB"] },
+          { "name": "sander-weeteling-…-unsplash.jpg.webp", "type": "Image", "values": ["26 KB", "9 KB"] },
+          { "name": "favicon.ico", "type": "Other", "values": ["6 KB", "6 KB"] },
+          { "name": "JS (1 aggregated file)", "type": "Script", "values": ["2 KB", "4 KB"], "note": "The site's entire JavaScript — why TBT is 0." }
+        ]
+      }
+    }
+  },
+
+  "conclusions": "A lean, competently built Drupal site — server-rendered, aggregated assets, negligible JavaScript, SVG iconography. Desktop is solved. The mobile data, now in hand, turns the earlier desktop-only prediction into a fact: the page is **LCP-bound on mobile (3.4 s in the pessimistic lab), driven by oversized images and an untuned HTTP/1.1 server — not by JavaScript** (TBT is 0 on every run). It's worth ignoring Lighthouse's 820 KB of \"unused JavaScript\": every byte of it is the auditor's own browser extensions, not site code.\n\nThe good news is that every lever is cheap. The single highest-value change does double duty: promote the hero from a CSS background to a responsive `<img>` — that both right-sizes it for mobile (314 KB → ~87 KB, the size its siblings already use) and makes it preloadable. Add HTTP/2 + compression at the server and that's well over a second of mobile LCP reclaimed, with no re-architecture. The images are already WebP, so this is sizing and transport, not format. Note the two tools disagree on mobile LCP (Lighthouse 3.4 s vs WebPageTest 1.4 s): the simulated mobile lab is pessimistic, WebPageTest's throttle gentler, and real-world LCP sits between them. Lab coverage is now complete on both form factors; the one thing still missing is field/CrUX data to confirm what users actually feel.",
+
+  "priorities": [
+    "Convert the LCP hero from a CSS background to a responsive `<img>` (`srcset` + `fetchpriority=\"high\"`). One change, two fixes: it right-sizes the hero on mobile (314 KB → ~87 KB, matching its siblings) and makes it discoverable for preload. Highest-value action.",
+    "Enable HTTP/2 (and text compression) on the server — Lighthouse estimates ~850 ms of mobile LCP from HTTP/1.1 head-of-line blocking alone.",
+    "Trim render-blocking CSS/JS in the head (inline critical CSS, defer JS) — ~600 ms of mobile FCP.",
+    "Confirm the rest of the imagery is right-sized per breakpoint (the other banners already are). Images are already WebP; AVIF would shave a little more if needed.",
+    "Add explicit `width`/`height` to images to lock in the good CLS, then collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off."
+  ],
+
+  "glossary": ["LCP", "CLS", "INP", "TBT", "SI", "FCP", "weight", "requests"]
+}

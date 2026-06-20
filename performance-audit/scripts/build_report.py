@@ -426,6 +426,24 @@ def build_markdown(data):
                     tot.get("requests", ""),
                     tot.get("display", humanize_bytes(tot.get("bytes", 0)))))
             out.append("")
+            items = assets.get("items")
+            if items and items.get("rows"):
+                out.append("#### " + (items.get("caption") or "Largest individual assets"))
+                out.append("")
+                cols = items.get("columns") or ["Size"]
+                out.append("| Asset | Type | " + " | ".join(cols) + " |")
+                out.append("|---|---|" + "|".join(["---:"] * len(cols)) + "|")
+                for r in items["rows"]:
+                    name = str(r.get("name", ""))
+                    if r.get("note"):
+                        name += " — _" + r["note"] + "_"
+                    vals = r.get("values")
+                    if vals is None:
+                        vals = [r.get("display", "")]
+                    vals = (list(vals) + [""] * len(cols))[:len(cols)]
+                    out.append("| {0} | {1} | {2} |".format(
+                        name, r.get("type", ""), " | ".join(str(v) for v in vals)))
+                out.append("")
 
     # Accessibility
     acc = data.get("accessibility") or {}
@@ -681,6 +699,29 @@ def build_assets_html(assets):
                     + html.escape(str(tot.get("requests", ""))) + '</td><td class="num">'
                     + html.escape(disp) + '</td></tr>')
     rows += ['        </tbody>', '      </table>']
+    items = assets.get("items")
+    if items and items.get("rows"):
+        cols = items.get("columns") or ["Size"]
+        rows.append('      <div class="subhead">'
+                    + html.escape(items.get("caption") or "Largest individual assets") + '</div>')
+        rows.append('      <table class="data-table asset-detail">')
+        rows.append('        <thead><tr><th>Asset</th><th>Type</th>'
+                    + "".join('<th class="num">' + html.escape(c) + '</th>' for c in cols)
+                    + '</tr></thead>')
+        rows.append('        <tbody>')
+        for r in items["rows"]:
+            vals = r.get("values")
+            if vals is None:
+                vals = [r.get("display", "")]
+            vals = (list(vals) + [""] * len(cols))[:len(cols)]
+            name_cell = '<span class="asset-name">' + html.escape(str(r.get("name", ""))) + '</span>'
+            if r.get("note"):
+                name_cell += '<span class="asset-note">' + inline_html(r["note"]) + '</span>'
+            rows.append('          <tr><td>' + name_cell + '</td><td>'
+                        + html.escape(str(r.get("type", ""))) + '</td>'
+                        + "".join('<td class="num">' + html.escape(str(v)) + '</td>' for v in vals)
+                        + '</tr>')
+        rows += ['        </tbody>', '      </table>']
     return "\n".join(rows)
 
 

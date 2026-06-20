@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Performance Review: wattage.staging.gd</title>
+<style>
+:root {
+  --c-good:            #1f7a3a;
+  --c-good-light:      #e7f5ec;
+  --c-good-border:     #b7e0c4;
+  --c-ni:              #b45309;
+  --c-ni-light:        #fff7ed;
+  --c-ni-border:       #fed7aa;
+  --c-poor:            #dc2626;
+  --c-poor-light:      #fef2f2;
+  --c-poor-border:     #fecaca;
+  /* Rail fills — a touch more saturated than the -light tints for clearer bands */
+  --c-rail-good:       #b6ddc4;
+  --c-rail-ni:         #f6d29e;
+  --c-rail-poor:       #f3b4b4;
+  --c-high:            #dc2626;
+  --c-medium:          #d97706;
+  --c-low:             #2563eb;
+  --c-neutral:         #5a5a55;
+  --c-bg:              #fafaf9;
+  --c-surface:         #ffffff;
+  --c-sidebar-bg:      #efeeea;
+  --c-sidebar-text:    #45453f;
+  --c-sidebar-active:  #1a1a18;
+  --c-sidebar-hover:   #f4f4f2;
+  --c-text:            #1a1a18;
+  --c-text-muted:      #5a5a55;
+  --c-border:          #e5e4e0;
+  --c-accent:          #3a5cff;
+  --sidebar-w:         268px;
+  --content-max:       960px;
+  --radius:            8px;
+  --font-sans:         system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:         'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.65;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--c-sidebar-bg);
+  border-right: 1px solid #c4c2bb;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.sidebar-nav { padding: 48px 0 24px; flex: 1; }
+
+.nav-top-link {
+  display: block;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: var(--c-sidebar-text);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.nav-top-link:hover { color: var(--c-text); background: var(--c-sidebar-hover); }
+.nav-top-link.active {
+  color: var(--c-sidebar-active);
+  font-weight: 600;
+  background: #e3e1db;
+  border-left-color: var(--c-accent);
+}
+
+/* ── Mobile toggle ── */
+.mob-toggle {
+  display: none;
+  position: fixed;
+  top: 14px; left: 14px;
+  z-index: 200;
+  background: var(--c-sidebar-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  width: 40px; height: 40px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Main content ── */
+.content { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+.content-inner { max-width: var(--content-max); margin: 0 auto; padding: 48px 40px 80px; }
+
+/* ── Page header ── */
+.page-header { margin-bottom: 32px; }
+.page-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin-bottom: 6px;
+}
+.page-title {
+  font-size: 32px; font-weight: 700; line-height: 1.2; margin-bottom: 16px;
+  word-break: break-word;
+}
+.page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.url-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  text-decoration: none;
+  transition: border-color .12s, background .12s;
+}
+.url-btn:hover { background: var(--c-sidebar-bg); border-color: #c9c7c0; }
+.url-btn .ic { width: 15px; height: 15px; flex-shrink: 0; color: var(--c-text-muted); }
+.url-btn svg:last-child { width: 12px; height: 12px; color: var(--c-text-muted); }
+.meta-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 11px;
+  font-size: 13px;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+}
+.meta-chip .mc-k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.meta-chip .mc-v { font-weight: 600; color: var(--c-text); }
+
+/* ── Section headings ── */
+.content-section { margin-bottom: 56px; scroll-margin-top: 24px; }
+.section-heading {
+  font-size: 23px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--c-border);
+}
+.subhead {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-text-muted);
+  margin: 24px 0 10px;
+}
+
+/* ── Prose ── */
+.prose p { font-size: 16px; margin-bottom: 12px; }
+.prose p:last-child { margin-bottom: 0; }
+.summary-text {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  font-size: 17px;
+  line-height: 1.7;
+}
+.summary-text p { margin-bottom: 12px; }
+.summary-text p:last-child { margin-bottom: 0; }
+
+/* ── Metrics: load-timeline rails, tabbed by device × audit ── */
+.metrics-component { margin-bottom: 8px; }
+
+/* device segmented control */
+.devbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.devbar .dev-lab { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-muted); }
+.seg { display: inline-flex; background: #eceae5; border: 1px solid var(--c-border); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg-btn { border: none; background: none; padding: 7px 18px; font-size: 13.5px; font-weight: 600; color: var(--c-text-muted); border-radius: 6px; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 7px; }
+.seg-btn:hover { color: var(--c-text); }
+.seg-btn.active { background: var(--c-surface); color: var(--c-text); box-shadow: 0 1px 2px rgba(0,0,0,0.10); }
+.seg-btn .ic { width: 14px; height: 14px; opacity: 0.7; }
+.seg-btn.active .ic { opacity: 1; }
+
+.dev-group { display: none; }
+.dev-group.active { display: block; }
+
+/* audit folder tabs attached to the panel */
+.tabrow { display: flex; gap: 4px; padding-left: 2px; position: relative; z-index: 2; }
+.atab { background: #f1f0ec; border: 1px solid var(--c-border); border-bottom: none; border-radius: 8px 8px 0 0; padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); cursor: pointer; font-family: inherit; margin-bottom: -1px; transition: background 0.12s, color 0.12s; }
+.atab:hover { background: #e9e8e3; color: var(--c-text); }
+.atab.active { background: var(--c-surface); color: var(--c-text); font-weight: 700; border-bottom: 1px solid var(--c-surface); }
+
+.panel { display: none; border: 1px solid var(--c-border); border-top-left-radius: 0; border-radius: 0 var(--radius) var(--radius) var(--radius); background: var(--c-surface); padding: 18px 24px 10px; position: relative; z-index: 1; }
+.panel.active { display: block; }
+.panel-cap { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--c-border); }
+.panel-cap .cap-name { font-size: 15px; font-weight: 800; }
+.panel-cap .cap-src { font-size: 12px; color: var(--c-text-muted); }
+.panel-cap .cap-avg { font-size: 11px; font-weight: 700; color: var(--c-accent); background: #eef1ff; border: 1px solid #d6def9; padding: 2px 8px; border-radius: 9999px; }
+.panel-cap .cap-link { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--c-accent); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.panel-cap .cap-link:hover { text-decoration: underline; }
+.panel-cap .cap-link svg { width: 13px; height: 13px; }
+.cap-srclinks { margin-left: auto; display: flex; gap: 14px; }
+.cap-srclinks a { font-size: 12.5px; font-weight: 600; color: var(--c-accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.cap-srclinks a:hover { text-decoration: underline; }
+.cap-srclinks svg { width: 12px; height: 12px; }
+
+/* score hero */
+.score-wrap { display: flex; justify-content: flex-start; margin: 18px 0 8px; }
+.score-hero { display: inline-flex; align-items: center; gap: 13px; padding: 9px 20px 9px 15px; border-radius: 10px; border: 1px solid; }
+.score-hero.good { background: var(--c-good-light); border-color: var(--c-good-border); }
+.score-hero.needs-improvement { background: var(--c-ni-light); border-color: var(--c-ni-border); }
+.score-hero.poor { background: var(--c-poor-light); border-color: var(--c-poor-border); }
+.score-num { font-size: 32px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.score-hero.good .score-num { color: var(--c-good); }
+.score-hero.needs-improvement .score-num { color: var(--c-ni); }
+.score-hero.poor .score-num { color: var(--c-poor); }
+.score-den { font-size: 14px; font-weight: 700; opacity: 0.55; }
+.score-title { font-size: 13px; font-weight: 800; }
+.score-sub { font-size: 11.5px; color: var(--c-text-muted); }
+
+/* timeline spine + phases */
+.tl { padding: 2px 0 0; }
+.tl-phase { display: grid; grid-template-columns: 40px 1fr; }
+.tl-spine { position: relative; }
+.tl-spine::before { content: ""; position: absolute; left: 19px; top: 0; bottom: 0; width: 2px; background: var(--c-border); }
+.tl-phase:first-child .tl-spine::before { top: 30px; }
+.tl-phase:last-child .tl-spine::before { height: 30px; bottom: auto; }
+.tl-node { position: absolute; left: 11px; top: 17px; width: 18px; height: 18px; border-radius: 50%; background: var(--c-accent); border: 3px solid var(--c-surface); box-shadow: 0 0 0 2px var(--c-accent); z-index: 1; }
+.tl-node.muted { background: #c4c2bb; box-shadow: 0 0 0 2px #c4c2bb; }
+.tl-head { padding: 16px 14px 12px 2px; }
+.tl-title { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; }
+.tl-blurb { font-size: 13px; color: var(--c-text-muted); }
+
+/* rail rows */
+.tl-row { display: grid; grid-template-columns: 220px 1fr 84px; align-items: center; gap: 20px; padding: 13px 4px; border-top: 1px solid var(--c-border); }
+.tl-label .moment { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.tl-label .metric { font-size: 11px; color: var(--c-text-muted); }
+.tl-label .metric b { font-weight: 700; color: var(--c-text-muted); font-family: var(--font-mono); font-size: 10.5px; }
+.rail-track { position: relative; height: 8px; border-radius: 9999px; background: linear-gradient(to right, var(--c-rail-good) 0 calc(40% - 1px), #fff calc(40% - 1px) calc(40% + 1px), var(--c-rail-ni) calc(40% + 1px) calc(70% - 1px), #fff calc(70% - 1px) calc(70% + 1px), var(--c-rail-poor) calc(70% + 1px) 100%); }
+.rail-marker { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); border: 3px solid var(--c-surface); box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+.rail-marker.good { background: var(--c-good); }
+.rail-marker.needs-improvement { background: var(--c-ni); }
+.rail-marker.poor { background: var(--c-poor); }
+.rail-na { font-size: 11px; color: var(--c-text-muted); }
+.rail-val { text-align: right; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rail-val.good { color: var(--c-good); }
+.rail-val.needs-improvement { color: var(--c-ni); }
+.rail-val.poor { color: var(--c-poor); }
+.rail-val.neutral, .rail-val.na { color: var(--c-neutral); }
+
+/* resource cards */
+.res-cards { display: flex; gap: 14px; padding: 14px 4px 10px 2px; }
+.res-card { flex: 1; display: flex; gap: 14px; align-items: flex-start; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 8px; padding: 14px 18px; }
+.res-card .rc-icon { width: 38px; height: 38px; border-radius: 9px; background: var(--c-surface); border: 1px solid var(--c-border); display: flex; align-items: center; justify-content: center; color: var(--c-text-muted); flex-shrink: 0; }
+.res-card .rc-icon svg { width: 20px; height: 20px; }
+.res-card .rc-val { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.res-card .rc-title { font-size: 13px; font-weight: 700; margin-top: 6px; }
+.res-card .rc-desc { font-size: 11px; color: var(--c-text-muted); }
+
+/* ── Findings cards ── */
+.finding {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 4px solid var(--c-neutral);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.finding.high   { border-left-color: var(--c-high); }
+.finding.medium { border-left-color: var(--c-medium); }
+.finding.low    { border-left-color: var(--c-low); }
+.finding-header {
+  padding: 16px 20px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.finding-id {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 5px;
+  color: #fff;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+.finding.high   .finding-id { background: var(--c-high); }
+.finding.medium .finding-id { background: var(--c-medium); }
+.finding.low    .finding-id { background: var(--c-low); }
+.finding-title { font-size: 17px; font-weight: 700; line-height: 1.3; flex: 1; min-width: 200px; }
+.savings-chip {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: #f4f4f2;
+  border: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  align-self: center;
+}
+.candidate-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--c-ni-light);
+  color: var(--c-ni);
+  border: 1px solid var(--c-ni-border);
+  align-self: center;
+}
+.finding-body { padding: 0 20px 16px; }
+.finding-body p { font-size: 16px; margin-bottom: 8px; }
+.finding-body p:last-child { margin-bottom: 0; }
+.finding-source {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-text-muted);
+  margin-top: 8px;
+}
+
+/* ── Tables ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 15px;
+}
+.data-table th {
+  background: #f4f4f2;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+  border-bottom: 1px solid var(--c-border);
+}
+.data-table td { padding: 11px 16px; border-bottom: 1px solid var(--c-border); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.data-table tr.total td { font-weight: 700; background: #faf9f7; }
+.data-table.asset-detail td:first-child { max-width: 360px; }
+.asset-name { display: block; font-family: var(--font-mono); font-size: 12px; word-break: break-all; }
+.asset-note { display: block; margin-top: 2px; font-size: 11.5px; color: var(--c-text-muted); }
+
+/* ── Tests / links list ── */
+.test-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.test-list li { font-size: 15px; }
+.test-list a { color: var(--c-accent); text-decoration: none; }
+.test-list a:hover { text-decoration: underline; }
+
+/* ── Bullet lists ── */
+.bullets { padding-left: 20px; }
+.bullets li { font-size: 16px; margin-bottom: 8px; }
+
+/* ── Priorities ── */
+.priority-list {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  list-style: none;
+  counter-reset: pri;
+}
+.priority-list li {
+  display: flex;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 16px;
+  counter-increment: pri;
+}
+.priority-list li:last-child { border-bottom: none; }
+.priority-list li::before {
+  content: counter(pri);
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--c-accent);
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Glossary ── */
+.glossary { display: flex; flex-direction: column; gap: 10px; }
+.glossary dt { font-weight: 700; font-size: 15px; }
+.glossary dd { font-size: 15px; color: var(--c-text-muted); margin-bottom: 4px; }
+
+/* ── Inline code ── */
+.prose code:not(pre *),
+.finding-body code:not(pre *),
+.summary-text code:not(pre *),
+.bullets code:not(pre *) {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: #f4f4f2;
+  border: 1px solid var(--c-border);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+strong { font-weight: 700; }
+em { font-style: italic; }
+.empty-note {
+  font-size: 15px;
+  color: var(--c-text-muted);
+  background: var(--c-surface);
+  border: 1px dashed var(--c-border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
+  .sidebar.open { transform: translateX(0); }
+  .content { margin-left: 0; }
+  .mob-toggle { display: flex; }
+  .content-inner { padding: 64px 20px 60px; }
+}
+@media (max-width: 500px) {
+  .content-inner { padding: 64px 16px 60px; }
+  .page-title { font-size: 22px; }
+}
+@media (max-width: 640px) {
+  .tl-phase { grid-template-columns: 26px 1fr; }
+  .tl-spine::before { left: 12px; }
+  .tl-node { left: 4px; }
+  .tl-row { grid-template-columns: 1fr auto; gap: 8px 14px; }
+  .tl-row .rail-track { grid-column: 1 / -1; order: 3; }
+  .res-cards { flex-direction: column; }
+}
+@media print {
+  .sidebar, .mob-toggle { display: none; }
+  .content { margin-left: 0; }
+  .content-inner { padding: 24px; max-width: 100%; }
+  .finding, .panel, .tl-phase, .res-card { break-inside: avoid; }
+  .dev-group { display: block !important; }
+  .panel { display: block !important; }
+  .tabrow, .devbar { display: none; }
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 90;
+}
+.sidebar-overlay.active { display: block; }
+</style>
+</head>
+<body>
+
+<button class="mob-toggle" id="mobToggle" aria-label="Open navigation" aria-expanded="false">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect width="18" height="2" rx="1" fill="currentColor"/><rect y="6" width="18" height="2" rx="1" fill="currentColor"/><rect y="12" width="18" height="2" rx="1" fill="currentColor"/></svg>
+</button>
+
+<div class="sidebar-overlay" id="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <nav class="sidebar-nav" aria-label="Page sections">
+    <a href="#overview" class="nav-top-link active" data-target="overview">Overview</a>
+    <a href="#metrics" class="nav-top-link" data-target="metrics">Metrics</a>
+    <a href="#architecture" class="nav-top-link" data-target="architecture">Site architecture</a>
+    <a href="#performance" class="nav-top-link" data-target="performance">Performance</a>
+    <a href="#conclusions" class="nav-top-link" data-target="conclusions">Conclusions</a>
+    <a href="#priorities" class="nav-top-link" data-target="priorities">Priority actions</a>
+    <a href="#glossary" class="nav-top-link" data-target="glossary">Glossary</a>
+    <a href="#appendix" class="nav-top-link" data-target="appendix">Appendix</a>
+  </nav>
+</aside>
+
+<main class="content">
+  <div class="content-inner">
+
+    <header class="page-header" id="overview">
+      <div class="page-kicker">Website Performance Review</div>
+      <h1 class="page-title">wattage.staging.gd</h1>
+      <div class="page-meta">
+        <a class="url-btn" href="https://wattage.staging.gd/" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c1.8 1.7 2.8 4.1 2.8 6.5S9.8 12.8 8 14.5C6.2 12.8 5.2 10.4 5.2 8S6.2 3.2 8 1.5z"/></svg><span>wattage.staging.gd</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3.5H3.5v9h9V10M9.5 3.5H13V7M13 3.5L7.5 9"/></svg></a>
+        <span class="meta-chip"><span class="mc-k">Date</span><span class="mc-v">2026-06-20</span></span>
+        <span class="meta-chip"><span class="mc-k">By</span><span class="mc-v">Jamie Boyd</span></span>
+        <span class="meta-chip"><span class="mc-k">Audience</span><span class="mc-v">internal SD/AD</span></span>
+      </div>
+    </header>
+
+    <section class="content-section" id="summary">
+      <h2 class="section-heading">Summary</h2>
+    <div class="summary-text">
+      <p><code>wattage.staging.gd</code> is <strong>solved on desktop</strong> (Lighthouse <strong>100</strong>, LCP 0.7 s, 0 ms blocking, no layout shift) and <strong>good-but-improvable on mobile</strong> (Lighthouse <strong>91</strong>, LCP <strong>3.4 s</strong> in the pessimistic lab). It's a lean Drupal build: server-rendered HTML, aggregated CSS/JS, only ~2–4 KB of script, all-SVG icons — so <strong>TBT stays 0 even on mobile at 4× CPU throttle</strong>. The mobile problem is not JavaScript; it's LCP.</p>
+      <p>Two causes drive it: an oversized hero image (a phone is served the <strong>314 KB desktop derivative</strong>, where its sibling banners right-size to 43–87 KB) and an untuned <strong>HTTP/1.1</strong> server (~850 ms of mobile LCP from head-of-line blocking). Both are cheap to fix.</p>
+      <p>Lab coverage is now complete on both form factors. The remaining gap is <strong>field/CrUX data</strong> to confirm what real mobile users feel.</p>
+    </div>
+    </section>
+
+    <section class="content-section" id="metrics">
+      <h2 class="section-heading">Metrics</h2>
+      <div class="metrics-component">
+        <div class="devbar"><span class="dev-lab">Tested on</span>
+          <div class="seg">
+            <button class="seg-btn active" data-dev="0"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2" width="13" height="9" rx="1"/><path d="M5.5 14h5M8 11v3"/></svg>Desktop</button>
+            <button class="seg-btn" data-dev="1"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="1.5" width="8" height="13" rx="1.5"/><path d="M7 12.5h2"/></svg>Mobile</button>
+          </div></div>
+        <div class="dev-group active" data-dev="0">
+          <div class="tabrow">
+            <button class="atab active" data-aud="0">Overall</button>
+            <button class="atab" data-aud="1">Lighthouse</button>
+            <button class="atab" data-aud="2">WebPageTest</button>
+          </div>
+          <div class="panel-stack">
+        <div class="panel active" data-aud="0">
+          <div class="panel-cap"><span class="cap-name">Overall average for Desktop</span><span class="cap-avg">averaged</span><span class="cap-src">Mean of 2 runs (Lighthouse, WebPageTest)</span></div>
+
+          <div class="tl">
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Painting the page</div><div class="tl-blurb">How soon visitors see content</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">First paint</div><div class="metric"><b>FCP</b> · First Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:11.6%"></span></div><div class="rail-val good">0.5 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Main content in</div><div class="metric"><b>LCP</b> · Largest Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:10.4%"></span></div><div class="rail-val good">0.7 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Visually complete</div><div class="metric"><b>SI</b> · Speed Index</div></div><div class="rail-track"><span class="rail-marker good" style="left:6.5%"></span></div><div class="rail-val good">0.6 s</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Responding to input</div><div class="tl-blurb">How quickly the page reacts</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Ready to respond</div><div class="metric"><b>TBT</b> · Total Blocking Time</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0 ms</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Stays snappy</div><div class="metric"><b>INP</b> · Interaction to Next Paint</div></div><div class="rail-track"><span class="rail-na">not measured in this run</span></div><div class="rail-val na">lab N/A</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Visual stability</div><div class="tl-blurb">Whether content stays put while loading</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Layout settled</div><div class="metric"><b>CLS</b> · Cumulative Layout Shift</div></div><div class="rail-track"><span class="rail-marker good" style="left:3.0%"></span></div><div class="rail-val good">0.01</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node muted"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Page resources</div><div class="tl-blurb">What the browser had to download</div></div>
+            <div class="res-cards"><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><div class="rc-body"><div class="rc-val">919 KB</div><div class="rc-title">Page weight</div><div class="rc-desc">Total bytes downloaded</div></div></div><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg></div><div class="rc-body"><div class="rc-val">22</div><div class="rc-title">Requests</div><div class="rc-desc">HTTP requests made</div></div></div></div>
+              </div></div>
+          </div>
+        </div>
+        <div class="panel" data-aud="1">
+          <div class="panel-cap"><span class="cap-name">Lighthouse for Desktop</span><span class="cap-src">Lighthouse 13.2.0 (lab, simulated desktop)</span></div>
+          <div class="score-wrap"><div class="score-hero good"><div class="score-num">100<span class="score-den">/100</span></div><div class="score-meta"><div class="score-title">Performance score</div><div class="score-sub">Lighthouse lab score · Good</div></div></div></div>
+          <div class="tl">
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Painting the page</div><div class="tl-blurb">How soon visitors see content</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">First paint</div><div class="metric"><b>FCP</b> · First Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:10.7%"></span></div><div class="rail-val good">0.5 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Main content in</div><div class="metric"><b>LCP</b> · Largest Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:11.8%"></span></div><div class="rail-val good">0.7 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Visually complete</div><div class="metric"><b>SI</b> · Speed Index</div></div><div class="rail-track"><span class="rail-marker good" style="left:5.6%"></span></div><div class="rail-val good">0.5 s</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Responding to input</div><div class="tl-blurb">How quickly the page reacts</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Ready to respond</div><div class="metric"><b>TBT</b> · Total Blocking Time</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0 ms</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Stays snappy</div><div class="metric"><b>INP</b> · Interaction to Next Paint</div></div><div class="rail-track"><span class="rail-na">not measured in this run</span></div><div class="rail-val na">lab N/A</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Visual stability</div><div class="tl-blurb">Whether content stays put while loading</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Layout settled</div><div class="metric"><b>CLS</b> · Cumulative Layout Shift</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0.00</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node muted"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Page resources</div><div class="tl-blurb">What the browser had to download</div></div>
+            <div class="res-cards"><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><div class="rc-body"><div class="rc-val">1.1 MB</div><div class="rc-title">Page weight</div><div class="rc-desc">Total bytes downloaded</div></div></div><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg></div><div class="rc-body"><div class="rc-val">22</div><div class="rc-title">Requests</div><div class="rc-desc">HTTP requests made</div></div></div></div>
+              </div></div>
+          </div>
+        </div>
+        <div class="panel" data-aud="2">
+          <div class="panel-cap"><span class="cap-name">WebPageTest for Desktop</span><span class="cap-src">WebPageTest (Chrome 145, desktop), median of 3 runs</span></div>
+
+          <div class="tl">
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Painting the page</div><div class="tl-blurb">How soon visitors see content</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">First paint</div><div class="metric"><b>FCP</b> · First Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:12.4%"></span></div><div class="rail-val good">0.6 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Main content in</div><div class="metric"><b>LCP</b> · Largest Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:9.0%"></span></div><div class="rail-val good">0.6 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Visually complete</div><div class="metric"><b>SI</b> · Speed Index</div></div><div class="rail-track"><span class="rail-marker good" style="left:7.3%"></span></div><div class="rail-val good">0.6 s</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Responding to input</div><div class="tl-blurb">How quickly the page reacts</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Ready to respond</div><div class="metric"><b>TBT</b> · Total Blocking Time</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0 ms</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Visual stability</div><div class="tl-blurb">Whether content stays put while loading</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Layout settled</div><div class="metric"><b>CLS</b> · Cumulative Layout Shift</div></div><div class="rail-track"><span class="rail-marker good" style="left:6.0%"></span></div><div class="rail-val good">0.01</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node muted"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Page resources</div><div class="tl-blurb">What the browser had to download</div></div>
+            <div class="res-cards"><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><div class="rc-body"><div class="rc-val">700 KB</div><div class="rc-title">Page weight</div><div class="rc-desc">Total bytes downloaded</div></div></div><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg></div><div class="rc-body"><div class="rc-val">22</div><div class="rc-title">Requests</div><div class="rc-desc">HTTP requests made</div></div></div></div>
+              </div></div>
+          </div>
+        </div>
+          </div>
+        </div>
+        <div class="dev-group" data-dev="1">
+          <div class="tabrow">
+            <button class="atab active" data-aud="0">Overall</button>
+            <button class="atab" data-aud="1">Lighthouse</button>
+            <button class="atab" data-aud="2">WebPageTest</button>
+          </div>
+          <div class="panel-stack">
+        <div class="panel active" data-aud="0">
+          <div class="panel-cap"><span class="cap-name">Overall average for Mobile</span><span class="cap-avg">averaged</span><span class="cap-src">Mean of 2 runs (Lighthouse, WebPageTest)</span></div>
+
+          <div class="tl">
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Painting the page</div><div class="tl-blurb">How soon visitors see content</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">First paint</div><div class="metric"><b>FCP</b> · First Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:35.0%"></span></div><div class="rail-val good">1.6 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Main content in</div><div class="metric"><b>LCP</b> · Largest Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:38.2%"></span></div><div class="rail-val good">2.4 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Visually complete</div><div class="metric"><b>SI</b> · Speed Index</div></div><div class="rail-track"><span class="rail-marker good" style="left:19.5%"></span></div><div class="rail-val good">1.7 s</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Responding to input</div><div class="tl-blurb">How quickly the page reacts</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Ready to respond</div><div class="metric"><b>TBT</b> · Total Blocking Time</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0 ms</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Stays snappy</div><div class="metric"><b>INP</b> · Interaction to Next Paint</div></div><div class="rail-track"><span class="rail-na">not measured in this run</span></div><div class="rail-val na">lab N/A</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Visual stability</div><div class="tl-blurb">Whether content stays put while loading</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Layout settled</div><div class="metric"><b>CLS</b> · Cumulative Layout Shift</div></div><div class="rail-track"><span class="rail-marker good" style="left:8.8%"></span></div><div class="rail-val good">0.02</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node muted"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Page resources</div><div class="tl-blurb">What the browser had to download</div></div>
+            <div class="res-cards"><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><div class="rc-body"><div class="rc-val">726 KB</div><div class="rc-title">Page weight</div><div class="rc-desc">Total bytes downloaded</div></div></div><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg></div><div class="rc-body"><div class="rc-val">23</div><div class="rc-title">Requests</div><div class="rc-desc">HTTP requests made</div></div></div></div>
+              </div></div>
+          </div>
+        </div>
+        <div class="panel" data-aud="1">
+          <div class="panel-cap"><span class="cap-name">Lighthouse for Mobile</span><span class="cap-src">Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + ~1.6 Mbps)</span></div>
+          <div class="score-wrap"><div class="score-hero good"><div class="score-num">91<span class="score-den">/100</span></div><div class="score-meta"><div class="score-title">Performance score</div><div class="score-sub">Lighthouse lab score · Good</div></div></div></div>
+          <div class="tl">
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Painting the page</div><div class="tl-blurb">How soon visitors see content</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">First paint</div><div class="metric"><b>FCP</b> · First Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:39.3%"></span></div><div class="rail-val good">1.8 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Main content in</div><div class="metric"><b>LCP</b> · Largest Contentful Paint</div></div><div class="rail-track"><span class="rail-marker needs-improvement" style="left:58.0%"></span></div><div class="rail-val needs-improvement">3.4 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Visually complete</div><div class="metric"><b>SI</b> · Speed Index</div></div><div class="rail-track"><span class="rail-marker good" style="left:20.8%"></span></div><div class="rail-val good">1.8 s</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Responding to input</div><div class="tl-blurb">How quickly the page reacts</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Ready to respond</div><div class="metric"><b>TBT</b> · Total Blocking Time</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0 ms</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Stays snappy</div><div class="metric"><b>INP</b> · Interaction to Next Paint</div></div><div class="rail-track"><span class="rail-na">not measured in this run</span></div><div class="rail-val na">lab N/A</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Visual stability</div><div class="tl-blurb">Whether content stays put while loading</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Layout settled</div><div class="metric"><b>CLS</b> · Cumulative Layout Shift</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0.00</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node muted"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Page resources</div><div class="tl-blurb">What the browser had to download</div></div>
+            <div class="res-cards"><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><div class="rc-body"><div class="rc-val">727 KB</div><div class="rc-title">Page weight</div><div class="rc-desc">Total bytes downloaded</div></div></div><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg></div><div class="rc-body"><div class="rc-val">23</div><div class="rc-title">Requests</div><div class="rc-desc">HTTP requests made</div></div></div></div>
+              </div></div>
+          </div>
+        </div>
+        <div class="panel" data-aud="2">
+          <div class="panel-cap"><span class="cap-name">WebPageTest for Mobile</span><span class="cap-src">WebPageTest (Chrome 145, mobile, throttled link), median of 3 runs</span></div>
+
+          <div class="tl">
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Painting the page</div><div class="tl-blurb">How soon visitors see content</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">First paint</div><div class="metric"><b>FCP</b> · First Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:30.7%"></span></div><div class="rail-val good">1.4 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Main content in</div><div class="metric"><b>LCP</b> · Largest Contentful Paint</div></div><div class="rail-track"><span class="rail-marker good" style="left:22.1%"></span></div><div class="rail-val good">1.4 s</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Visually complete</div><div class="metric"><b>SI</b> · Speed Index</div></div><div class="rail-track"><span class="rail-marker good" style="left:18.1%"></span></div><div class="rail-val good">1.5 s</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Responding to input</div><div class="tl-blurb">How quickly the page reacts</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Ready to respond</div><div class="metric"><b>TBT</b> · Total Blocking Time</div></div><div class="rail-track"><span class="rail-marker good" style="left:2.0%"></span></div><div class="rail-val good">0 ms</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Visual stability</div><div class="tl-blurb">Whether content stays put while loading</div></div>
+            <div class="tl-row"><div class="tl-label"><div class="moment">Layout settled</div><div class="metric"><b>CLS</b> · Cumulative Layout Shift</div></div><div class="rail-track"><span class="rail-marker good" style="left:17.6%"></span></div><div class="rail-val good">0.04</div></div>
+              </div></div>
+            <div class="tl-phase"><div class="tl-spine"><span class="tl-node muted"></span></div>
+              <div class="tl-body"><div class="tl-head"><div class="tl-title">Page resources</div><div class="tl-blurb">What the browser had to download</div></div>
+            <div class="res-cards"><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><div class="rc-body"><div class="rc-val">726 KB</div><div class="rc-title">Page weight</div><div class="rc-desc">Total bytes downloaded</div></div></div><div class="res-card"><div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg></div><div class="rc-body"><div class="rc-val">23</div><div class="rc-title">Requests</div><div class="rc-desc">HTTP requests made</div></div></div></div>
+              </div></div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section" id="architecture">
+      <h2 class="section-heading">Site architecture</h2>
+    <div class="prose">
+      <p>Drupal, served from a custom theme (<code>/themes/custom/wattage/</code>); stack-pack detection and the <code>/core/</code> and <code>/sites/default/files/</code> paths confirm it. CSS/JS aggregation is on — the whole page ships as 2 hashed CSS aggregates plus a single ~2–4 KB JS file. There is no SPA framework or hydration bundle, which is why the main thread is idle and <strong>TBT is 0 on every run, including mobile at 4× CPU throttle</strong>: this is a server-rendered HTML page, not a JavaScript app.</p>
+      <p>The icon system is SVG (logo and <code>icon_*</code> glyphs), so it costs almost nothing. The page's byte budget is therefore almost entirely raster photography, delivered through Drupal image styles (<code>width_scale_xl</code>, <code>width_scale_m</code>) — and those derivatives aren't right-sized for mobile (see findings). The staging host runs plain HTTP/1.1 with text compression off; those are staging defaults, not code defects, but they cost real time on mobile. Confirm production fronting (CDN/edge) before acting.</p>
+    </div>
+    </section>
+
+    <section class="content-section" id="performance">
+      <h2 class="section-heading">Performance</h2>
+      <div class="subhead">Tests</div>
+      <ul class="test-list">
+        <li><a href="https://wattage.staging.gd/">Lighthouse 13.2.0 — desktop lab</a></li>
+        <li><a href="https://wattage.staging.gd/">Lighthouse 13.2.0 — mobile lab</a></li>
+        <li><a href="https://wattage.staging.gd/">WebPageTest — desktop (3 runs)</a></li>
+        <li><a href="https://wattage.staging.gd/">WebPageTest — mobile (3 runs)</a></li>
+      </ul>
+      <div class="subhead">Findings</div>
+      <article class="finding high">
+        <div class="finding-header">
+          <span class="finding-id">P-1</span>
+          <span class="finding-title">The LCP hero is the full desktop image, even on mobile</span>
+          <span class="savings-chip">~227 KB on mobile · LCP −0.3 s</span>
+        </div>
+        <div class="finding-body">
+          <p>On mobile this audit scores 0 (it was 0.5 on desktop). The per-asset data pins it exactly: the three sample banners all ship as <code>width_scale_xl</code> on desktop (~276–314 KB each), and on mobile two of them <strong>correctly drop to <code>width_scale_m</code> (297→87 KB and 276→43 KB) — but the LCP hero stays at 314 KB.</strong> The reason is P-2: the hero is a CSS background (<code>b_media__bg</code>), and backgrounds get no responsive <code>srcset</code>/derivative, so the phone is forced to download the full desktop image.</p>
+          <p>The images are <strong>already WebP</strong>, so this is a sizing problem, not a format one. Give the hero a responsive treatment (the same image styles its siblings already use, ideally via a real <code>&lt;img srcset&gt;</code> per P-2); that alone reclaims ~227 KB and ~0.3 s of LCP on mobile. AVIF would shave a little more, but sizing is the lever.</p>
+          <div class="finding-source">lighthouse:image-delivery-insight</div>
+        </div>
+      </article>
+      <article class="finding high">
+        <div class="finding-header">
+          <span class="finding-id">P-3</span>
+          <span class="finding-title">Server is on HTTP/1.1 — no multiplexing</span>
+          <span class="savings-chip">est. mobile LCP −0.85 s · FCP −0.6 s</span>
+        </div>
+        <div class="finding-body">
+          <p>All 23 requests are served over HTTP/1.1, so they queue (head-of-line blocking). Negligible on desktop (~0.25 s), but on mobile Lighthouse estimates <strong>LCP −850 ms and FCP −600 ms</strong>. Enabling HTTP/2 (or HTTP/3) is the highest-value config change here. It's a server setting, not code — confirm production isn't already doing it before prioritising.</p>
+          <div class="finding-source">lighthouse:modern-http-insight</div>
+        </div>
+      </article>
+      <article class="finding medium">
+        <div class="finding-header">
+          <span class="finding-id">P-2</span>
+          <span class="finding-title">LCP hero is a CSS background image, so it can't be preloaded</span>
+          <span class="savings-chip">enables the cheapest LCP fix</span>
+        </div>
+        <div class="finding-body">
+          <p>The largest element is <code>div.b_media__bg</code> ("Turbine in the mist"), a background set via a <code>--bg</code> custom property rather than an <code>&lt;img&gt;</code>. The preload scanner never sees background images, so the most important image is discovered late. Its own measured saving is ~0, but it's the *enabler*: until the hero is a real <code>&lt;img&gt;</code>, you can't apply <code>fetchpriority="high"</code> or <code>&lt;link rel="preload"&gt;</code> — the cheapest fix for the 3.4 s mobile LCP. Do it alongside P-1.</p>
+          <div class="finding-source">lighthouse:lcp-discovery-insight</div>
+        </div>
+      </article>
+      <article class="finding medium">
+        <div class="finding-header">
+          <span class="finding-id">P-5</span>
+          <span class="finding-title">Render-blocking CSS/JS in the head</span>
+          <span class="savings-chip">est. mobile FCP −0.6 s</span>
+        </div>
+        <div class="finding-body">
+          <p>Two aggregated CSS files and one JS file block first paint. Minor on desktop (~0.18 s), but on mobile that's <strong>FCP −600 ms</strong>. Inline critical CSS and defer the JS; the page is light enough that this is straightforward.</p>
+          <div class="finding-source">lighthouse:render-blocking-insight</div>
+        </div>
+      </article>
+      <article class="finding low">
+        <div class="finding-header">
+          <span class="finding-id">P-4</span>
+          <span class="finding-title">Text assets served without compression</span>
+          <span class="savings-chip">free win</span>
+        </div>
+        <div class="finding-body">
+          <p>Both runs report <code>usesCompression: false</code> — the HTML document and CSS ship uncompressed. The absolute cost is small on this light page, but gzip/brotli is standard and free, and its absence signals the staging box isn't tuned. Turn it on at the server. (The server itself is fast: ~80 ms response, no redirects.)</p>
+          <div class="finding-source">lighthouse:document-latency-insight</div>
+        </div>
+      </article>
+      <article class="finding low">
+        <div class="finding-header">
+          <span class="finding-id">P-6</span>
+          <span class="finding-title">Images lack explicit width and height</span>
+          <span class="savings-chip">CLS insurance</span>
+        </div>
+        <div class="finding-body">
+          <p>14 images have no explicit <code>width</code>/<code>height</code>, so the browser reserves no space before they load. CLS is good on all four runs (≤ 0.044), but that's fragile: as content grows, unsized images are the usual cause of layout shift. Add dimensions (or CSS <code>aspect-ratio</code>) to lock the good CLS in.</p>
+          <div class="finding-source">lighthouse:unsized-images</div>
+        </div>
+      </article>
+      <div class="subhead">Assets</div>
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Requests</th><th>Size</th></tr></thead>
+        <tbody>
+          <tr><td>Images</td><td class="num">17</td><td class="num">1007 KB</td></tr>
+          <tr><td>Font</td><td class="num">1</td><td class="num">76 KB</td></tr>
+          <tr><td>Document</td><td class="num">1</td><td class="num">39 KB</td></tr>
+          <tr><td>Stylesheet</td><td class="num">2</td><td class="num">8 KB</td></tr>
+          <tr><td>Script</td><td class="num">1</td><td class="num">2 KB</td></tr>
+          <tr class="total"><td>Total</td><td class="num">22</td><td class="num">1.11 MB</td></tr>
+        </tbody>
+      </table>
+      <div class="subhead">Largest individual assets — transfer size, desktop vs mobile</div>
+      <table class="data-table asset-detail">
+        <thead><tr><th>Asset</th><th>Type</th><th class="num">Desktop</th><th class="num">Mobile</th></tr></thead>
+        <tbody>
+          <tr><td><span class="asset-name">wattage_sample_banner4.png.webp</span><span class="asset-note"><strong>LCP hero.</strong> A CSS background (<code>b_media__bg</code>), so it gets no responsive derivative — the phone downloads the full desktop image.</span></td><td>Image</td><td class="num">314 KB</td><td class="num">314 KB</td></tr>
+          <tr><td><span class="asset-name">wattage_sample_banner2.png.webp</span><span class="asset-note"><code>width_scale_xl</code> → <code>width_scale_m</code> on mobile — right-sized correctly.</span></td><td>Image</td><td class="num">297 KB</td><td class="num">87 KB</td></tr>
+          <tr><td><span class="asset-name">wattage_sample_banner3.png.webp</span><span class="asset-note">Right-sized correctly for mobile.</span></td><td>Image</td><td class="num">276 KB</td><td class="num">43 KB</td></tr>
+          <tr><td><span class="asset-name">PPNeueMontreal-Regular.woff2</span><span class="asset-note">Self-hosted, already <code>woff2</code>.</span></td><td>Font</td><td class="num">76 KB</td><td class="num">76 KB</td></tr>
+          <tr><td><span class="asset-name">wattage_sample_headshot.png.webp</span><span class="asset-note"><code>width_scale_m</code> on both.</span></td><td>Image</td><td class="num">61 KB</td><td class="num">61 KB</td></tr>
+          <tr><td><span class="asset-name">/ (HTML document)</span><span class="asset-note">Served uncompressed — see P-4.</span></td><td>Document</td><td class="num">39 KB</td><td class="num">39 KB</td></tr>
+          <tr><td><span class="asset-name">11 SVG icons &amp; logos</span><span class="asset-note">Vector — negligible.</span></td><td>Image</td><td class="num">31 KB</td><td class="num">31 KB</td></tr>
+          <tr><td><span class="asset-name">CSS (2 aggregated files)</span></td><td>Stylesheet</td><td class="num">8 KB</td><td class="num">27 KB</td></tr>
+          <tr><td><span class="asset-name">sander-weeteling-…-unsplash.jpg.webp</span></td><td>Image</td><td class="num">26 KB</td><td class="num">9 KB</td></tr>
+          <tr><td><span class="asset-name">favicon.ico</span></td><td>Other</td><td class="num">6 KB</td><td class="num">6 KB</td></tr>
+          <tr><td><span class="asset-name">JS (1 aggregated file)</span><span class="asset-note">The site's entire JavaScript — why TBT is 0.</span></td><td>Script</td><td class="num">2 KB</td><td class="num">4 KB</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="content-section" id="conclusions">
+      <h2 class="section-heading">Conclusions</h2>
+    <div class="prose">
+      <p>A lean, competently built Drupal site — server-rendered, aggregated assets, negligible JavaScript, SVG iconography. Desktop is solved. The mobile data, now in hand, turns the earlier desktop-only prediction into a fact: the page is <strong>LCP-bound on mobile (3.4 s in the pessimistic lab), driven by oversized images and an untuned HTTP/1.1 server — not by JavaScript</strong> (TBT is 0 on every run). It's worth ignoring Lighthouse's 820 KB of "unused JavaScript": every byte of it is the auditor's own browser extensions, not site code.</p>
+      <p>The good news is that every lever is cheap. The single highest-value change does double duty: promote the hero from a CSS background to a responsive <code>&lt;img&gt;</code> — that both right-sizes it for mobile (314 KB → ~87 KB, the size its siblings already use) and makes it preloadable. Add HTTP/2 + compression at the server and that's well over a second of mobile LCP reclaimed, with no re-architecture. The images are already WebP, so this is sizing and transport, not format. Note the two tools disagree on mobile LCP (Lighthouse 3.4 s vs WebPageTest 1.4 s): the simulated mobile lab is pessimistic, WebPageTest's throttle gentler, and real-world LCP sits between them. Lab coverage is now complete on both form factors; the one thing still missing is field/CrUX data to confirm what users actually feel.</p>
+    </div>
+    </section>
+
+    <section class="content-section" id="priorities">
+      <h2 class="section-heading">Priority actions</h2>
+    <ol class="priority-list">
+      <li>Convert the LCP hero from a CSS background to a responsive <code>&lt;img&gt;</code> (<code>srcset</code> + <code>fetchpriority="high"</code>). One change, two fixes: it right-sizes the hero on mobile (314 KB → ~87 KB, matching its siblings) and makes it discoverable for preload. Highest-value action.</li>
+      <li>Enable HTTP/2 (and text compression) on the server — Lighthouse estimates ~850 ms of mobile LCP from HTTP/1.1 head-of-line blocking alone.</li>
+      <li>Trim render-blocking CSS/JS in the head (inline critical CSS, defer JS) — ~600 ms of mobile FCP.</li>
+      <li>Confirm the rest of the imagery is right-sized per breakpoint (the other banners already are). Images are already WebP; AVIF would shave a little more if needed.</li>
+      <li>Add explicit <code>width</code>/<code>height</code> to images to lock in the good CLS, then collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off.</li>
+    </ol>
+    </section>
+
+    <section class="content-section" id="glossary">
+      <h2 class="section-heading">Glossary</h2>
+    <dl class="glossary">
+      <dt>Largest Contentful Paint</dt>
+      <dd>Time to render the largest visible content above the fold. Good &lt; 2.5 s, poor &gt; 4 s.</dd>
+      <dt>Cumulative Layout Shift</dt>
+      <dd>Sum of unexpected layout movement during load. Good &lt; 0.1, poor &gt; 0.25.</dd>
+      <dt>Interaction to Next Paint</dt>
+      <dd>Time from a user interaction to the next visual response. Good &lt; 200 ms, poor &gt; 500 ms. A field-data metric — not produced by a Lighthouse lab run.</dd>
+      <dt>Total Blocking Time</dt>
+      <dd>Lab proxy for INP: main-thread time blocked during load. Good &lt; 200 ms.</dd>
+      <dt>Speed Index</dt>
+      <dd>How quickly content visually populates during load. Good &lt; 3.4 s.</dd>
+      <dt>First Contentful Paint</dt>
+      <dd>Time to the first text or image painted. Good &lt; 1.8 s.</dd>
+      <dt>Page weight</dt>
+      <dd>Total bytes downloaded to render the page. More weight means longer load, more parsing, more mobile bandwidth.</dd>
+      <dt>Request count</dt>
+      <dd>Number of HTTP requests to render the page. High counts (&gt; 100) usually signal concatenation/optimisation gaps.</dd>
+    </dl>
+    </section>
+
+    <section class="content-section" id="appendix">
+      <h2 class="section-heading">Appendix — raw test runs</h2>
+      <div class="subhead">Test runs</div>
+      <ul class="test-list">
+        <li><a href="https://wattage.staging.gd/">Lighthouse 13.2.0 — desktop lab</a></li>
+        <li><a href="https://wattage.staging.gd/">Lighthouse 13.2.0 — mobile lab</a></li>
+        <li><a href="https://wattage.staging.gd/">WebPageTest — desktop (3 runs)</a></li>
+        <li><a href="https://wattage.staging.gd/">WebPageTest — mobile (3 runs)</a></li>
+      </ul>
+    </section>
+
+  </div><!-- /content-inner -->
+</main>
+
+<script>
+// ── Mobile sidebar + scroll spy (navigation only — report is static) ──
+(function () {
+  const sidebar = document.getElementById('sidebar');
+  const toggle  = document.getElementById('mobToggle');
+  const overlay = document.getElementById('overlay');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+  toggle.addEventListener('click', function () {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  overlay.addEventListener('click', closeSidebar);
+  sidebar.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function () { if (window.innerWidth <= 900) closeSidebar(); });
+  });
+  // Overview points at the very top of the page, not the header's offset position.
+  const overviewLink = sidebar.querySelector('[data-target="overview"]');
+  if (overviewLink) {
+    overviewLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  const navLinks = sidebar.querySelectorAll('[data-target]');
+  function setActive(id) {
+    navLinks.forEach(function (link) { link.classList.toggle('active', link.dataset.target === id); });
+  }
+  const targets = Array.from(navLinks)
+    .map(function (l) { return { link: l, el: document.getElementById(l.dataset.target) }; })
+    .filter(function (t) { return t.el; });
+  const observer = new IntersectionObserver(function (entries) {
+    const visible = entries.filter(function (e) { return e.isIntersecting; })
+      .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+    if (visible.length) setActive(visible[0].target.id);
+  }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+  targets.forEach(function (t) { observer.observe(t.el); });
+})();
+
+// ── Metrics: device segmented control + audit tabs ──
+(function () {
+  document.querySelectorAll('.metrics-component').forEach(function (mc) {
+    const segBtns = mc.querySelectorAll('.seg-btn');
+    const groups  = mc.querySelectorAll('.dev-group');
+    segBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        const d = b.dataset.dev;
+        segBtns.forEach(function (x) { x.classList.toggle('active', x.dataset.dev === d); });
+        groups.forEach(function (g) { g.classList.toggle('active', g.dataset.dev === d); });
+      });
+    });
+    groups.forEach(function (g) {
+      const tabs   = g.querySelectorAll('.atab');
+      const panels = g.querySelectorAll('.panel');
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          const a = t.dataset.aud;
+          tabs.forEach(function (x) { x.classList.toggle('active', x.dataset.aud === a); });
+          panels.forEach(function (p) { p.classList.toggle('active', p.dataset.aud === a); });
+        });
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
