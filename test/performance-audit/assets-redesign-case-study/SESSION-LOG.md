@@ -130,20 +130,67 @@ visually (outline, tinted centre) added more noise than they removed*. The
 eventual fix was subtractive — de-emphasise the category bars on open rather than
 restyle the item bars.
 
-## Part 6.5 — Item-bar scaling (left open)
+## Part 6.5 — Item-bar scaling (left open, then resolved in Part 8)
 
 **Ask:** "Are the item bars proportional to the largest file size overall?" → yes,
 a single global ruler. Then: _"Let's try per category scaling."_
 → Switched item bars to scale per category (each category's items vs that
 category's heaviest file) so small categories (Script/Stylesheet) show readable
 bars instead of slivers. Trade-off: cross-category bar comparison is lost (size
-numbers still carry it). User is **mulling global vs per-category**; prototype
-currently ships per-category. Captured in `HANDOFF.md` → "Open decisions".
+numbers still carry it). User was **mulling global vs per-category**; prototype
+shipped per-category and it was captured in `HANDOFF.md` → "Open decisions".
+**Resolved in Part 8** (locked per-category).
 
 ## Part 7 — Handoff
 
 Wrote `HANDOFF.md` (v4 spec + Phase B checklist) and updated `conversation.md`.
 Phase B (wiring v4 into `report-template.html` + `build_report.py`) not started.
+
+---
+
+## Part 8 — Resume: hiding negligible files (new session)
+
+Resumed from `HANDOFF.md`. First settled the open decision: _"Keep per-category
+for now."_ → item-bar scaling **locked as per-category**, global dropped.
+
+Then the core ask: _"I wanted to revisit showing all the files, even the ones
+that [are] negligible file size. This is primarily a performance tool not an
+asset auditing tool, so … we can hide the small files. Add a summary line at the
+bottom of each category … and a global 'show all files' toggle … A summary is
+probably only necessary for categories with long file lists, like images."_
+→ Built **small-file folding**: files whose larger device size is under 10 KB
+(`SMALL_KB`) fold into a per-category summary row, but only when ≥2 (`MIN_FOLD`)
+collapse (so no "1 file" summaries). Only Images folds in the wattage data.
+
+The toggle then went through its own subtractive arc, in order:
+
+1. _"I don't want the 'show all files' toggle to open all the sections at the
+   same time."_ → dropped the auto-open-all side-effect.
+2. Realised the **global** header toggle was invisible when every category was
+   collapsed: _"when you toggle it … when all the cat rows are closed there's
+   nothing. I do want to keep the category open/close toggle action separate …
+   add a toggle next to the category title that only displays when the category
+   is open."_ → replaced the global toggle with a **per-category** one, shown only
+   while that category is open.
+3. _"Make the active blue colour … less prominent. Maybe add + and - icons …
+   instead of a colour change."_ → +/- icon button, no blue active state.
+4. _"Let's try matching the style of the desktop/mobile toggle, with 'all' and
+   'fewer' as the two options."_ → **All / Fewer segmented control** reusing the
+   device-toggle styling. Final form.
+
+Summary-row styling, in parallel:
+- _"Give the summary rows a bit more prominence … same background as the icons …
+  larger/bolder … on a par with the file rows."_ → full category-tint background,
+  13px/600 label, file-row-parity sizes.
+- _"That colour is pretty overpowering … Same hue, but much fainter."_ → dialled
+  the background to a **38% tint wash**.
+- _"Put a 1px border in the icon background colour at the top of the summary
+  row."_ → **1px top border in the full-strength tint**.
+
+Updated `HANDOFF.md` (scaling locked, folding + All/Fewer toggle spec, Phase B
+notes), `conversation.md`, and this log; committed the v4 + HANDOFF changes
+(`3c7f2fb`) and removed a stray `first run/` test-output dir. Phase B still not
+started.
 
 ---
 
@@ -155,4 +202,9 @@ Two threads worth drawing out:
   split in action; the model repeatedly had to *reject* what the tool surfaced.
 - **Subtractive design** — Part 6's arc (add copy buttons → remove; overlay bar →
   two bars; outline → revert → fade) is a clean example of converging by removing
-  rather than adding.
+  rather than adding. Part 8 repeats the pattern at the interaction level: global
+  toggle → per-category, +/- icon → segmented control, overpowering tint → faint
+  wash. Each step strips prominence rather than adding it.
+- **Performance tool, not an inventory** — Part 8's small-file folding is the
+  clearest statement of the component's purpose: hide the long tail by default,
+  keep it one toggle away.

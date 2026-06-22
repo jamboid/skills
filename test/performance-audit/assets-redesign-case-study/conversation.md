@@ -74,15 +74,39 @@ Iterated on v1 against live feedback:
   item), so to stop readers comparing the two, **the category bars fade when the
   section is open**, handing focus to the item bars.
 
-## Round 2.5 — Item-bar scaling (open)
+## Round 2.5 — Item-bar scaling (decided: per-category)
 
 Item bars were scaled to the single largest file across the whole list (one
 ruler), which makes a category of small files (Script, 2–4 KB) render as near-
 invisible slivers. Switched to **per-category** scaling (each category's items
 measured against that category's heaviest file) so small categories read clearly
 — trade-off: bar lengths are no longer comparable across categories, only the
-size numbers are. **Left as an open decision** (global vs per-category); user is
-mulling. The prototype currently ships per-category.
+size numbers are. Held open for a session while the user mulled global vs
+per-category; **locked in as per-category** (global rejected). Category and item
+bars stay on different rulers, hence the open-category bar fade.
+
+## Round 2.6 — Hiding negligible files
+
+This is a performance tool, not an asset inventory, so the long tail of tiny
+files (16 image requests, but 11 of them are 1–6 KB icon SVGs) shouldn't clutter
+the list by default.
+
+- **Folding rule:** a file whose larger device size is under **10 KB**
+  (`SMALL_KB`) is folded into a per-category **summary row**, but only when **≥2**
+  files (`MIN_FOLD`) would collapse — a lone small file just shows, so we never
+  get a silly "1 file" summary (Stylesheet's 1 KB file stays visible; only Images
+  folds).
+- **Summary row:** `+N files under 10 KB` plus the combined sizes, styled for
+  parity with file rows. Iterated the background: full category tint across the
+  whole row was overpowering → dialled back to a **38% tint wash** (same hue,
+  much fainter) with a **1px top border in the full-strength tint**.
+- **Reveal control:** first tried a single **global "Show all files"** header
+  toggle — rejected, because with every category collapsed it changed nothing
+  visible. Replaced with a **per-category All / Fewer** segmented toggle that
+  reuses the device-toggle styling, sits next to the category title, and appears
+  **only while that category is open**. Briefly used a +/- icon button with a
+  blue active state; settled on the segmented control to match the device toggle.
+  State is per-category and independent of the chevron open/close.
 
 ## Round 3 — Wiring in (not started)
 
@@ -96,4 +120,5 @@ schema, remove the Performance ▸ Assets table, document per-asset extraction i
 - Every prototype renders from one shared `DATA` object holding the real numbers,
   so the three are visually comparable, not apples-to-oranges.
 - Transfer (compressed) bytes throughout; `chrome-extension://` requests excluded;
-  the 12 small SVG icons/logos collapse into one row to keep the list honest.
+  files under 10 KB fold into a per-category summary row by default (expandable via
+  the All/Fewer toggle) so the list stays performance-focused, not an inventory.
