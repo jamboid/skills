@@ -38,6 +38,10 @@ p.proto-intro{color:var(--c-text-muted);margin-bottom:22px;max-width:740px;font-
 .scope button:hover{color:var(--c-text);}
 .scope button.active{background:var(--c-surface);color:var(--c-text);box-shadow:0 1px 1.5px rgba(0,0,0,.12);}
 
+/* per-category All / Fewer toggle, next to the title — matches the device toggle, only while open */
+.cat-scope{display:none;}
+details[open] .cat-scope{display:inline-flex;}
+
 details{border-bottom:1px solid var(--c-border);}
 details:last-of-type{border-bottom:none;}
 .cat-sum{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;min-height:60px;align-items:center;
@@ -73,6 +77,10 @@ details[open] > .cat-sum .bars{opacity:.3;}
 .fname{padding-left:43px;min-width:0;}
 .fname .nm{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--c-text);word-break:break-all;}
 
+/* folded-small-files summary row */
+.sum-row{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;min-height:52px;align-items:center;}
+.sum-row .sum{padding-left:43px;font-size:13px;font-weight:600;color:var(--c-text);}
+
 .res-foot{display:grid;grid-template-columns:var(--cols);gap:16px;padding:0 18px;min-height:54px;align-items:center;
   background:#faf9f7;border-top:1px solid var(--c-border);}
 .res-foot .lbl{font-size:14px;font-weight:800;}
@@ -96,7 +104,8 @@ phones), while banner2/3 show a short mobile bar where the responsive derivative
 
 <div class="res" id="res"></div>
 <p class="legend">Transfer (compressed) bytes from the Lighthouse network log; <code>chrome-extension://</code> requests excluded.
-Bars scaled to the heaviest single asset (categories) / the heaviest file (rows).</p>
+Bars scaled to the heaviest single asset (categories) / the heaviest file (rows). Files under 10&nbsp;KB are folded into a
+per-category summary &mdash; this is a performance tool, not an asset inventory; open a category and switch it to <em>All</em> to expand the rest.</p>
 
 <script>
 const DATA={
@@ -152,7 +161,12 @@ const SCOPES=[['both','Both'],['0','Desktop'],['1','Mobile']];
 const css=t=>getComputedStyle(document.documentElement).getPropertyValue(t).trim();
 const fmt=kb=>kb>=1024?(kb/1024).toFixed(2)+' MB':kb+' KB';
 
+// files whose largest device size is under SMALL_KB are folded into a per-category
+// summary — but only when at least MIN_FOLD of them would collapse (no "1 file" rows).
+const SMALL_KB=10, MIN_FOLD=2;
+
 let scope='both';
+const showAll=new Set();   // category types whose full file list is expanded
 const devs=()=>scope==='both'?[0,1]:[+scope];
 
 function bars(kb,scale,type){
@@ -170,24 +184,48 @@ function szs(kb){
 function render(){
  const el=document.getElementById('res');
  const catScale=Math.max(...DATA.categories.map(c=>c.kb[0]));
- const itemScale=Math.max(...DATA.categories.flatMap(c=>c.assets.map(a=>Math.max(a.kb[0],a.kb[1]))));
  const toggle='<div class="scope">'+SCOPES.map(([v,l])=>
    `<button data-scope="${v}"${v===scope?' class="active"':''}>${l}</button>`).join('')+'</div>';
  let h=`<div class="res-head"><div>Category / file</div><div class="r reqh">Req</div>`
    +`<div class="bcol">${toggle}</div><div class="r">Size</div></div>`;
  for(const c of DATA.categories){
+   const catItemScale=Math.max(...c.assets.map(a=>Math.max(a.kb[0],a.kb[1])));
+   // a category is "foldable" if it has at least MIN_FOLD small files to roll up
+   const small=c.assets.filter(a=>Math.max(a.kb[0],a.kb[1])<SMALL_KB);
+   const foldable=small.length>=MIN_FOLD;
+   const expanded=showAll.has(c.type);
+   let shown=c.assets, folded=[];
+   if(foldable && !expanded){
+     shown =c.assets.filter(a=>Math.max(a.kb[0],a.kb[1])>=SMALL_KB);
+     folded=small;
+   }
+   const catToggle=foldable
+     ? `<div class="scope cat-scope">`
+       +`<button data-files="${c.type}" data-mode="all"${expanded?' class="active"':''}>All</button>`
+       +`<button data-files="${c.type}" data-mode="fewer"${!expanded?' class="active"':''}>Fewer</button>`
+       +`</div>`
+     : '';
    h+=`<details><summary class="cat-sum">
-     <div class="cat-name">${CHEV}<span class="cat-icon" style="background:${css('--tint-'+c.type)}">${ICON[c.type]}</span>${c.type}</div>
+     <div class="cat-name">${CHEV}<span class="cat-icon" style="background:${css('--tint-'+c.type)}">${ICON[c.type]}</span>${c.type}${catToggle}</div>
      <div class="req">${c.req[0]}</div>
      <div class="bcol">${bars(c.kb,catScale,c.type)}</div>
      ${szs(c.kb)}
    </summary>`;
-   for(const a of c.assets){
+   for(const a of shown){
      h+=`<div class="asset-row">
        <div class="fname"><span class="nm">${a.name}</span></div>
        <div class="req"></div>
-       <div class="bcol">${bars(a.kb,itemScale,c.type)}</div>
+       <div class="bcol">${bars(a.kb,catItemScale,c.type)}</div>
        ${szs(a.kb)}
+     </div>`;
+   }
+   if(folded.length){
+     const fk=[0,1].map(i=>folded.reduce((s,a)=>s+a.kb[i],0));
+     h+=`<div class="sum-row" style="background:color-mix(in srgb, ${css('--tint-'+c.type)} 38%, var(--c-surface));border-top:1px solid ${css('--tint-'+c.type)}">
+       <div class="sum">+${folded.length} files under ${SMALL_KB} KB</div>
+       <div class="req"></div>
+       <div class="bcol"></div>
+       ${szs(fk)}
      </div>`;
    }
    h+='</details>';
@@ -197,11 +235,15 @@ function render(){
  el.innerHTML=h;
 }
 document.addEventListener('click',e=>{
- const b=e.target.closest('.scope button'); if(!b)return;
- e.preventDefault();
+ const fb=e.target.closest('.cat-scope button');
+ const sb=!fb&&e.target.closest('.scope button');
+ if(!sb&&!fb)return;
+ e.preventDefault(); // for fb: stops the click from also toggling the <details>
  // keep open categories open across a re-render
  const open=[...document.querySelectorAll('#res details')].map(d=>d.open);
- scope=b.dataset.scope; render();
+ if(sb) scope=sb.dataset.scope;
+ if(fb){ const t=fb.dataset.files; fb.dataset.mode==='all'?showAll.add(t):showAll.delete(t); }
+ render();
  document.querySelectorAll('#res details').forEach((d,i)=>d.open=open[i]);
 });
 render();

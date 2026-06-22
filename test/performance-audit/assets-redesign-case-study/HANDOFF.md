@@ -40,17 +40,36 @@ Single table, columns: **Category/file · Req · bars · Size**.
 - **Item rows** (revealed on expand): left-indented **full monospace filename**
   (13px, weight 600 — as prominent as the sizes) · bars · stacked sizes. No copy
   button, no analysis notes (both tried and removed).
+- **Small-file folding:** this is a performance tool, not an asset inventory, so
+  negligible files are hidden by default. A file whose **larger device size** is
+  under **10 KB** (`SMALL_KB`) is folded into a per-category **summary row**, but
+  only when **≥2** files (`MIN_FOLD`) would collapse — a lone small file just
+  shows. In the wattage data only **Images** folds (5 files shown + the 11 icon
+  SVGs rolled up); Stylesheet's lone 1 KB file stays visible.
+  - **Summary row:** sits at the bottom of the category's list. Left: `+N files
+    under 10 KB` (sans, 13px/600, full text colour). Right: combined stacked
+    sizes (reuses the row size styling, respects the device scope). No bar — the
+    rolled-up tail isn't on any meaningful ruler. Background = the category tint
+    mixed 38% into the surface (faint wash, same hue as the icon chip); **1px top
+    border in the full-strength category tint**.
+- **All / Fewer toggle (per category):** a segmented control reusing the device
+  toggle's `.scope` styling, rendered next to the category title **only for
+  foldable categories** and **only while the category is open** (`details[open]
+  .cat-scope`). **Fewer** is the default (folded); **All** expands the full list
+  and removes the summary. Per-category state (a `Set` of category types), fully
+  independent of the chevron open/close. (An earlier *global* "Show all files"
+  header toggle was tried and rejected — it did nothing visible when all
+  categories were collapsed.)
 - **Bars** = two separate stacked bars per row: **D** (solid category base
   colour) and **M** (same colour at `opacity:.42`). The `D`/`M` key labels show
   only in "Both" mode. Sizes are stacked to align with the bars (D line bold, M
   line muted).
-  - **Scale:** category bars scale to the heaviest *category* (desktop kb). Item
-    bars currently scale **per category** (to that category's heaviest file), so
-    small categories (Script, Stylesheet) still show readable bars — at the cost
-    of cross-category comparability. **This is an open decision** the user is
-    mulling: global item scale (one ruler across all files; small categories show
-    slivers) vs per-category (current). Whichever ships, category and item bars
-    are on different rulers — which is why the open-category bar fade exists.
+  - **Scale (decided):** category bars scale to the heaviest *category* (desktop
+    kb). Item bars scale **per category** (to that category's heaviest file), so
+    small categories (Script, Stylesheet) still show readable bars — accepting the
+    loss of cross-category comparability. Global item scale was considered and
+    rejected. Category and item bars are on different rulers — which is why the
+    open-category bar fade exists.
 - **Open-state cue:** when a category is open, fade **just its category bars** to
   `opacity:.3` (`details[open] > .cat-sum .bars`), so the item bars lead. Pure
   CSS off the `<details open>` state.
@@ -66,11 +85,12 @@ Single table, columns: **Category/file · Req · bars · Size**.
 - Copy-to-clipboard buttons per filename: noise > value, full names are
   selectable.
 - Collapsing the SVG icons into one row: dropped so every filename is real/full.
+- Global "Show all files" header toggle: invisible when all categories collapsed;
+  replaced by the per-category All/Fewer toggle.
 
-## Open decisions (resolve before/while wiring)
+## Open decisions
 
-- **Item-bar scaling:** per-category (current) vs global. User is mulling. See the
-  bars "Scale" note above.
+- None — item-bar scaling resolved (per-category, see "Scale" note above).
 
 ## Phase B — wiring in (next session)
 
@@ -100,15 +120,24 @@ Remove the `performance.assets.items` block added earlier; note the breakdown
   small toggle JS to the template's `<script>` (mirror the `.metrics-component`
   tab IIFE).
 - Bar widths computed in Python from the bytes + the two scales above.
+- **Small-file folding** computed in Python: split each category's assets into
+  shown (larger device ≥ 10 KB) + folded (< 10 KB); fold only when ≥2 collapse.
+  Emit both the shown rows and the folded rows, with the summary row carrying the
+  count + summed bytes. The **All/Fewer** toggle then shows/hides the folded rows
+  + summary via a `data-files` attribute on the `<details>` + CSS (mirror the
+  `data-scope` device-toggle approach); add the toggle JS to the template script.
+  Expose `SMALL_KB`/`MIN_FOLD` as constants.
 - **Remove** `build_assets_html` + the `performance.assets` Markdown block; the
   Performance section keeps only Tests + Findings.
 - Reuse: `humanize_bytes`, `inline_html`, `attr`, `section`, `nav_link`.
 
 ### `assets/report-template.html`
 - Port the v4 CSS (category rows, icon chips, stacked bars, sizes, `<details>`
-  accordion, open-state bar fade, toggle, responsive collapse). Reuse existing
-  tokens; the report already has `--c-*`, `.subhead`, etc.
-- Print rule: force `<details>` open and show both D/M so the full list prints.
+  accordion, open-state bar fade, device toggle, per-category All/Fewer toggle +
+  summary row, responsive collapse). Reuse existing tokens; the report already
+  has `--c-*`, `.subhead`, etc.
+- Print rule: force `<details>` open, show both D/M, **and force All** (expand all
+  folded files) so the full list prints.
 
 ### Docs
 - `reading-audit-data.md` — new subsection on extracting the per-asset list (the
