@@ -34,11 +34,46 @@ Audit values live at `audits["<id>"]`; prefer `numericValue` for the number and
 | `FCP` (s)                  | `audits["first-contentful-paint"].numericValue` ÷ 1000 |
 | `weight` (bytes)           | `audits["total-byte-weight"].numericValue` |
 | `requests` (count)         | `audits["network-requests"].details.items.length` |
-| asset breakdown rows       | `audits["resource-summary"].details.items[]` → `resourceType`, `requestCount`, `transferSize` |
+| `resources` per-asset rows | `audits["network-requests"].details.items[]` → `url`, `resourceType`, `transferSize` (see "Per-asset resources" below) |
+| category request/byte totals | `audits["resource-summary"].details.items[]` → `resourceType`, `requestCount`, `transferSize` |
 
 **INP is not in a lab run.** Emit it as `{ "key": "INP", "value": null,
 "display": "lab N/A", "rating": "na" }` unless a PSI/CrUX file supplies field
 data (`loadingExperience.metrics.INTERACTION_TO_NEXT_PAINT`).
+
+### Per-asset resources (the `resources` component)
+
+The Page resources component wants a per-asset list, not just type totals. Build
+the top-level `resources` block (see REFERENCE.md for the schema) — this is draft
+work the model does from the raw export:
+
+1. **Source the requests.** Use Lighthouse `audits["network-requests"].details.items[]`
+   — each has `url`, `resourceType` (Image/Script/Stylesheet/Document/Font/Media/…),
+   and `transferSize` (compressed bytes on the wire). WebPageTest
+   `steps[0].requests[]` (`req_type`, `b_in`) is the fallback — **prefer Lighthouse
+   for the per-asset list even when WPT is present** (the opposite of the page-weight
+   *total* and CWV medians, where WPT's multi-run waterfall is better). Two reasons,
+   both seen on this project: Lighthouse emulates the mobile viewport, so it captures
+   the responsive image derivatives (`width_scale_m`) that make the desktop-vs-mobile
+   comparison meaningful, whereas a WPT mobile run may serve the full-size desktop
+   images and show no saving at all; and WPT records a single waterfall, so a
+   below-fold/lazy asset (here, a hero `banner2` slide) can be missing entirely. WPT
+   gives a leaner, truer *total* but a less complete per-asset picture.
+2. **Drop `chrome-extension://` requests.** They are the auditor's own browser
+   extensions, not site code — the source of the 820 KB "unused JavaScript" trap
+   that bit this project twice. Never count them.
+3. **Match assets across devices by basename.** Responsive variants have different
+   URLs per device (`…width_scale_xl…` on desktop, `…width_scale_m…` on mobile)
+   but the same filename — pair them so each asset's two `bytes` expose the
+   responsive-image saving (or, for a CSS-background hero, its *absence*). When two
+   distinct files share a basename, summing them is acceptable.
+4. **Group into categories** (`type`): Images, Font, Document, Stylesheet, Script,
+   Media, Other. Per category sum `requests` and `bytes` per device; the page
+   `total` is the sum across categories.
+5. **List every asset** — don't pre-collapse the long tail. The script folds files
+   whose larger device size is < 10 KB into a per-category summary row (only when
+   ≥2 collapse), so the component stays performance-focused without you editing the
+   data. This is a performance tool, not an asset inventory.
 
 ### Failing audits → candidate findings
 

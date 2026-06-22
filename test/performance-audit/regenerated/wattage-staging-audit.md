@@ -4,7 +4,7 @@
 
 ## Summary
 
-`wattage.staging.gd` is **solved on desktop** (Lighthouse **100**, LCP 0.7 s, 0 ms blocking, no layout shift) and **good-but-improvable on mobile** (Lighthouse **91**, LCP **3.4 s** in the pessimistic lab). It's a lean Drupal build: server-rendered HTML, aggregated CSS/JS, only ~2–4 KB of script, all-SVG icons — so **TBT stays 0 even on mobile at 4× CPU throttle**. The mobile problem is not JavaScript; it's LCP.
+`wattage.staging.gd` performance is **optimal on desktop** (Lighthouse **100**, LCP 0.7 s, 0 ms blocking, no layout shift) and **good-but-improvable on mobile** (Lighthouse **91**, LCP **3.4 s** in the pessimistic lab). It's a lean Drupal build: server-rendered HTML, aggregated CSS/JS, only ~2–4 KB of script, all-SVG icons — so **TBT stays 0 even on mobile at 4× CPU throttle**. The mobile problem is not JavaScript; it's LCP.
 
 Two causes drive it: an oversized hero image (a phone is served the **314 KB desktop derivative**, where its sibling banners right-size to 43–87 KB) and an untuned **HTTP/1.1** server (~850 ms of mobile LCP from head-of-line blocking). Both are cheap to fix.
 
@@ -26,8 +26,6 @@ _Mean of 2 runs (Lighthouse, WebPageTest)_
 | TBT | 0 ms | Good |
 | CLS | 0.01 | Good |
 | INP | lab N/A | N/A |
-| Page weight | 919 KB | — |
-| Requests | 22 | — |
 
 #### Lighthouse — performance score 100
 
@@ -41,8 +39,6 @@ _Lighthouse 13.2.0 (lab, simulated desktop)_
 | TBT | 0 ms | Good |
 | CLS | 0.00 | Good |
 | INP | lab N/A | N/A |
-| Page weight | 1.1 MB | — |
-| Requests | 22 | — |
 
 #### WebPageTest
 
@@ -55,8 +51,6 @@ _WebPageTest (Chrome 145, desktop), median of 3 runs_
 | Speed Index | 0.6 s | Good |
 | TBT | 0 ms | Good |
 | CLS | 0.01 | Good |
-| Page weight | 700 KB | — |
-| Requests | 22 | — |
 
 ### Mobile
 
@@ -72,8 +66,6 @@ _Mean of 2 runs (Lighthouse, WebPageTest)_
 | TBT | 0 ms | Good |
 | CLS | 0.02 | Good |
 | INP | lab N/A | N/A |
-| Page weight | 726 KB | — |
-| Requests | 23 | — |
 
 #### Lighthouse — performance score 91
 
@@ -87,8 +79,6 @@ _Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + ~1.6 Mbps)_
 | TBT | 0 ms | Good |
 | CLS | 0.00 | Good |
 | INP | lab N/A | N/A |
-| Page weight | 727 KB | — |
-| Requests | 23 | — |
 
 #### WebPageTest
 
@@ -101,8 +91,48 @@ _WebPageTest (Chrome 145, mobile, throttled link), median of 3 runs_
 | Speed Index | 1.5 s | Good |
 | TBT | 0 ms | Good |
 | CLS | 0.04 | Good |
-| Page weight | 726 KB | — |
-| Requests | 23 | — |
+
+## Page resources
+
+| Category | Requests | Desktop | Mobile |
+|---|---:|---:|---:|
+| Images | 16 | 1007 KB | 575 KB |
+| Font | 1 | 76 KB | 76 KB |
+| Document | 1 | 39 KB | 39 KB |
+| Stylesheet | 2 | 8 KB | 27 KB |
+| Script | 1 | 2 KB | 4 KB |
+| Other | 1 | 6 KB | 6 KB |
+| **Total** | 22 | 1.1 MB | 727 KB |
+
+**Images**
+
+- `wattage_sample_banner4.png.webp` — 314 KB / 314 KB
+- `wattage_sample_banner2.png.webp` — 297 KB / 87 KB
+- `wattage_sample_banner3.png.webp` — 276 KB / 43 KB
+- `wattage_sample_headshot.png.webp` — 61 KB / 61 KB
+- `sander-weeteling-iGDg_f_mlWo-unsplash.jpg.webp` — 26 KB / 36 KB
+- _+11 files under 10 KB — 34 KB / 34 KB_
+
+**Font**
+
+- `PPNeueMontreal-Regular.woff2` — 76 KB / 76 KB
+
+**Document**
+
+- `/` — 39 KB / 39 KB
+
+**Stylesheet**
+
+- `css_73bAv145fk0MBJnf4xeJhRDKz6PhTh4_wVjsfs2nsSE.css` — 7 KB / 25 KB
+- `css_FEx1Wcz4WWqzw8R6nnA0juvEB5JGKHsmg4-fgA_8jDw.css` — 1 KB / 2 KB
+
+**Script**
+
+- `js_u2wnIPF3upgFgreJx4ZDYoBgyxayPWIFfUjByIau6Bo.js` — 2 KB / 4 KB
+
+**Other**
+
+- `favicon.ico` — 6 KB / 6 KB
 
 ## Site architecture
 
@@ -146,33 +176,6 @@ Both runs report `usesCompression: false` — the HTML document and CSS ship unc
 **P-6** — Images lack explicit width and height _(CLS insurance)_
 
 14 images have no explicit `width`/`height`, so the browser reserves no space before they load. CLS is good on all four runs (≤ 0.044), but that's fragile: as content grows, unsized images are the usual cause of layout shift. Add dimensions (or CSS `aspect-ratio`) to lock the good CLS in.
-
-### Assets
-
-| Type | Requests | Size |
-|---|---:|---:|
-| Images | 17 | 1007 KB |
-| Font | 1 | 76 KB |
-| Document | 1 | 39 KB |
-| Stylesheet | 2 | 8 KB |
-| Script | 1 | 2 KB |
-| **Total** | 22 | 1.11 MB |
-
-#### Largest individual assets — transfer size, desktop vs mobile
-
-| Asset | Type | Desktop | Mobile |
-|---|---|---:|---:|
-| wattage_sample_banner4.png.webp — _**LCP hero.** A CSS background (`b_media__bg`), so it gets no responsive derivative — the phone downloads the full desktop image._ | Image | 314 KB | 314 KB |
-| wattage_sample_banner2.png.webp — _`width_scale_xl` → `width_scale_m` on mobile — right-sized correctly._ | Image | 297 KB | 87 KB |
-| wattage_sample_banner3.png.webp — _Right-sized correctly for mobile._ | Image | 276 KB | 43 KB |
-| PPNeueMontreal-Regular.woff2 — _Self-hosted, already `woff2`._ | Font | 76 KB | 76 KB |
-| wattage_sample_headshot.png.webp — _`width_scale_m` on both._ | Image | 61 KB | 61 KB |
-| / (HTML document) — _Served uncompressed — see P-4._ | Document | 39 KB | 39 KB |
-| 11 SVG icons & logos — _Vector — negligible._ | Image | 31 KB | 31 KB |
-| CSS (2 aggregated files) | Stylesheet | 8 KB | 27 KB |
-| sander-weeteling-…-unsplash.jpg.webp | Image | 26 KB | 9 KB |
-| favicon.ico | Other | 6 KB | 6 KB |
-| JS (1 aggregated file) — _The site's entire JavaScript — why TBT is 0._ | Script | 2 KB | 4 KB |
 
 ## Conclusions
 

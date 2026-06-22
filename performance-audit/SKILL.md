@@ -41,8 +41,8 @@ Two commands: `init` scaffolds, `draft` analyses and builds.
    to `cd` into the audit subdirectory or run `/performance-audit init` first.
 2. **Ingest data.** Glob the directory for `*.json`. For each, follow
    [reading-audit-data.md](reading-audit-data.md) to classify (Lighthouse vs
-   WebPageTest) and extract metrics, asset breakdown, and candidate findings.
-   Note any unrecognised file to the user.
+   WebPageTest) and extract metrics, the per-asset `resources` breakdown, and
+   candidate findings. Note any unrecognised file to the user.
 3. **Incorporate analysis (rebuild).** If `analysis.md` exists and is filled in,
    read it: its prose is the authoritative voice. It confirms/overrides candidate
    findings (drop unratified ones it dismisses) and supplies architecture,

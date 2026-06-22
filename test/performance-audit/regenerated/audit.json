@@ -146,34 +146,48 @@
         "confirmed": true,
         "body": "14 images have no explicit `width`/`height`, so the browser reserves no space before they load. CLS is good on all four runs (≤ 0.044), but that's fragile: as content grows, unsized images are the usual cause of layout shift. Add dimensions (or CSS `aspect-ratio`) to lock the good CLS in."
       }
-    ],
-    "assets": {
-      "rows": [
-        { "type": "Images", "requests": 17, "bytes": 1031388, "display": "1007 KB" },
-        { "type": "Font", "requests": 1, "bytes": 77835, "display": "76 KB" },
-        { "type": "Document", "requests": 1, "bytes": 40270, "display": "39 KB" },
-        { "type": "Stylesheet", "requests": 2, "bytes": 8125, "display": "8 KB" },
-        { "type": "Script", "requests": 1, "bytes": 1989, "display": "2 KB" }
-      ],
-      "total": { "requests": 22, "bytes": 1165647, "display": "1.11 MB" },
-      "items": {
-        "caption": "Largest individual assets — transfer size, desktop vs mobile",
-        "columns": ["Desktop", "Mobile"],
-        "rows": [
-          { "name": "wattage_sample_banner4.png.webp", "type": "Image", "values": ["314 KB", "314 KB"], "note": "**LCP hero.** A CSS background (`b_media__bg`), so it gets no responsive derivative — the phone downloads the full desktop image." },
-          { "name": "wattage_sample_banner2.png.webp", "type": "Image", "values": ["297 KB", "87 KB"], "note": "`width_scale_xl` → `width_scale_m` on mobile — right-sized correctly." },
-          { "name": "wattage_sample_banner3.png.webp", "type": "Image", "values": ["276 KB", "43 KB"], "note": "Right-sized correctly for mobile." },
-          { "name": "PPNeueMontreal-Regular.woff2", "type": "Font", "values": ["76 KB", "76 KB"], "note": "Self-hosted, already `woff2`." },
-          { "name": "wattage_sample_headshot.png.webp", "type": "Image", "values": ["61 KB", "61 KB"], "note": "`width_scale_m` on both." },
-          { "name": "/ (HTML document)", "type": "Document", "values": ["39 KB", "39 KB"], "note": "Served uncompressed — see P-4." },
-          { "name": "11 SVG icons & logos", "type": "Image", "values": ["31 KB", "31 KB"], "note": "Vector — negligible." },
-          { "name": "CSS (2 aggregated files)", "type": "Stylesheet", "values": ["8 KB", "27 KB"] },
-          { "name": "sander-weeteling-…-unsplash.jpg.webp", "type": "Image", "values": ["26 KB", "9 KB"] },
-          { "name": "favicon.ico", "type": "Other", "values": ["6 KB", "6 KB"] },
-          { "name": "JS (1 aggregated file)", "type": "Script", "values": ["2 KB", "4 KB"], "note": "The site's entire JavaScript — why TBT is 0." }
-        ]
-      }
-    }
+    ]
+  },
+
+  "resources": {
+    "devices": ["Desktop", "Mobile"],
+    "total": { "requests": [22, 22], "bytes": [1165312, 744448] },
+    "categories": [
+      { "type": "Images", "requests": [16, 16], "bytes": [1031168, 588800], "assets": [
+        { "name": "wattage_sample_banner4.png.webp", "bytes": [321536, 321536] },
+        { "name": "wattage_sample_banner2.png.webp", "bytes": [304128, 89088] },
+        { "name": "wattage_sample_banner3.png.webp", "bytes": [282624, 44032] },
+        { "name": "wattage_sample_headshot.png.webp", "bytes": [62464, 62464] },
+        { "name": "sander-weeteling-iGDg_f_mlWo-unsplash.jpg.webp", "bytes": [26624, 36864] },
+        { "name": "energy_inst_logo.svg", "bytes": [6144, 6144] },
+        { "name": "wattage_dots.svg", "bytes": [5120, 5120] },
+        { "name": "wattage_logo.svg", "bytes": [5120, 5120] },
+        { "name": "icon_ai.svg", "bytes": [3072, 3072] },
+        { "name": "wattage_dots_lime.svg", "bytes": [3072, 3072] },
+        { "name": "icon_magnify.svg", "bytes": [3072, 3072] },
+        { "name": "icon_eye.svg", "bytes": [2048, 2048] },
+        { "name": "icon_graph.svg", "bytes": [2048, 2048] },
+        { "name": "icon_hourglass.svg", "bytes": [2048, 2048] },
+        { "name": "icon_tag.svg", "bytes": [2048, 2048] },
+        { "name": "icon_barbell.svg", "bytes": [1024, 1024] }
+      ] },
+      { "type": "Font", "requests": [1, 1], "bytes": [77824, 77824], "assets": [
+        { "name": "PPNeueMontreal-Regular.woff2", "bytes": [77824, 77824] }
+      ] },
+      { "type": "Document", "requests": [1, 1], "bytes": [39936, 39936], "assets": [
+        { "name": "/", "bytes": [39936, 39936] }
+      ] },
+      { "type": "Stylesheet", "requests": [2, 2], "bytes": [8192, 27648], "assets": [
+        { "name": "css_73bAv145fk0MBJnf4xeJhRDKz6PhTh4_wVjsfs2nsSE.css", "bytes": [7168, 25600] },
+        { "name": "css_FEx1Wcz4WWqzw8R6nnA0juvEB5JGKHsmg4-fgA_8jDw.css", "bytes": [1024, 2048] }
+      ] },
+      { "type": "Script", "requests": [1, 1], "bytes": [2048, 4096], "assets": [
+        { "name": "js_u2wnIPF3upgFgreJx4ZDYoBgyxayPWIFfUjByIau6Bo.js", "bytes": [2048, 4096] }
+      ] },
+      { "type": "Other", "requests": [1, 1], "bytes": [6144, 6144], "assets": [
+        { "name": "favicon.ico", "bytes": [6144, 6144] }
+      ] }
+    ]
   },
 
   "conclusions": "A lean, competently built Drupal site — server-rendered, aggregated assets, negligible JavaScript, SVG iconography. Desktop is solved. The mobile data, now in hand, turns the earlier desktop-only prediction into a fact: the page is **LCP-bound on mobile (3.4 s in the pessimistic lab), driven by oversized images and an untuned HTTP/1.1 server — not by JavaScript** (TBT is 0 on every run). It's worth ignoring Lighthouse's 820 KB of \"unused JavaScript\": every byte of it is the auditor's own browser extensions, not site code.\n\nThe good news is that every lever is cheap. The single highest-value change does double duty: promote the hero from a CSS background to a responsive `<img>` — that both right-sizes it for mobile (314 KB → ~87 KB, the size its siblings already use) and makes it preloadable. Add HTTP/2 + compression at the server and that's well over a second of mobile LCP reclaimed, with no re-architecture. The images are already WebP, so this is sizing and transport, not format. Note the two tools disagree on mobile LCP (Lighthouse 3.4 s vs WebPageTest 1.4 s): the simulated mobile lab is pessimistic, WebPageTest's throttle gentler, and real-world LCP sits between them. Lab coverage is now complete on both form factors; the one thing still missing is field/CrUX data to confirm what users actually feel.",
