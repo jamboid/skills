@@ -112,8 +112,12 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
         "assets": [
           // One row per asset; match the same file across devices by basename so
           // the two `bytes` show the responsive-image saving (or its absence).
+          // `url` is optional: the full request URL. When present it renders as a
+          // small linked host line (with an outgoing-link icon) under the name,
+          // labelling each asset's origin — useful for opaque CDN/analytics files.
           { "name": "hero.png.webp",    "bytes": [321779, 321779] },
-          { "name": "banner2.png.webp", "bytes": [304128,  89088] }
+          { "name": "banner2.png.webp", "bytes": [304128,  89088],
+            "url": "https://cdn.example-images.com/banner2.png.webp" }
           // Files whose larger device size is < 10 KB fold into a per-category
           // "+N files under 10 KB" summary row (only when ≥2 collapse); the script
           // does the folding — list every asset here, don't pre-collapse the tail.

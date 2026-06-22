@@ -56,35 +56,35 @@ _Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)_ · [full report]
 
 **Images**
 
-- `jfais_web_cover.png.webp` — 118 KB / 118 KB
-- `homepage_buttons_strategic-framework.jpg.webp` — 114 KB / 114 KB
-- `homepage_buttons_journal-1.jpg.webp` — 83 KB / 83 KB
-- `results-chris.jpg.webp` — 20 KB / 20 KB
-- `devro1_0_0.png.webp` — 18 KB / 18 KB
+- `jfais_web_cover.png.webp` ([goodbrandconsultants.com](https://goodbrandconsultants.com/sites/default/files/styles/feature_promo_large/public/images/2026-05/jfais_web_cover.png.webp?itok=F-tV4pM8)) — 118 KB / 118 KB
+- `homepage_buttons_strategic-framework.jpg.webp` ([goodbrandconsultants.com](https://goodbrandconsultants.com/sites/default/files/styles/feature_promo_medium/public/images/2024-12/homepage_buttons_strategic-framework.jpg.webp?itok=X9dLVR1J)) — 114 KB / 114 KB
+- `homepage_buttons_journal-1.jpg.webp` ([goodbrandconsultants.com](https://goodbrandconsultants.com/sites/default/files/styles/feature_promo_medium/public/images/2024-12/homepage_buttons_journal-1.jpg.webp?itok=aNHLWDbF)) — 83 KB / 83 KB
+- `results-chris.jpg.webp` ([goodbrandconsultants.com](https://goodbrandconsultants.com/sites/default/files/styles/feature_promo_medium/public/images/2025-08/results-chris.jpg.webp?itok=HiWyYQpQ)) — 20 KB / 20 KB
+- `devro1_0_0.png.webp` ([goodbrandconsultants.com](https://goodbrandconsultants.com/sites/default/files/styles/feature_promo_medium/public/images/2024-09/devro1_0_0.png.webp?itok=M26Mpfpw)) — 18 KB / 18 KB
 - _+8 files under 10 KB — 24 KB / 24 KB_
 
 **Font**
 
-- `l` — 81 KB / 81 KB
+- `l` ([use.typekit.net](https://use.typekit.net/af/c71bce/00000000000000007754210b/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3)) — 81 KB / 81 KB
 
 **Document**
 
-- `goodbrandconsultants.com` — 7 KB / 7 KB
+- `goodbrandconsultants.com` ([goodbrandconsultants.com](https://goodbrandconsultants.com/)) — 7 KB / 7 KB
 
 **Stylesheet**
 
-- `screen.css` — 14 KB / 14 KB
+- `screen.css` ([goodbrandconsultants.com](https://goodbrandconsultants.com/themes/custom/good/assets/build/screen.css?tgxqsh)) — 14 KB / 14 KB
 - _+10 files under 10 KB — 8 KB / 8 KB_
 
 **Script**
 
-- `lhp3vTZiNH4QuI1DeMnkajxgWAYmE_BYWeqRghcX2zATLO0G` — 189 KB / 189 KB
-- `lhp3vTZiMgRl2YI2Hc2SG0AaWAYmE_BYWeqRghcX2zATLO0G` — 189 KB / 189 KB
-- `35z3` — 163 KB / 163 KB
-- `gtm.js` — 153 KB / 153 KB
-- `widget.js` — 66 KB / 66 KB
-- `radar.min.js` — 21 KB / 21 KB
-- `v833ccba57c9e4d2798f2e76cebdd09a11778172276447` — 11 KB / 11 KB
+- `lhp3vTZiNH4QuI1DeMnkajxgWAYmE_BYWeqRghcX2zATLO0G` ([goodbrandconsultants.com](https://goodbrandconsultants.com/35z3/lhp3vTZiNH4QuI1DeMnkajxgWAYmE_BYWeqRghcX2zATLO0G)) — 189 KB / 189 KB
+- `lhp3vTZiMgRl2YI2Hc2SG0AaWAYmE_BYWeqRghcX2zATLO0G` ([goodbrandconsultants.com](https://goodbrandconsultants.com/35z3/lhp3vTZiMgRl2YI2Hc2SG0AaWAYmE_BYWeqRghcX2zATLO0G)) — 189 KB / 189 KB
+- `35z3` ([goodbrandconsultants.com](https://goodbrandconsultants.com/35z3/)) — 163 KB / 163 KB
+- `gtm.js` ([www.googletagmanager.com](https://www.googletagmanager.com/gtm.js?id=GTM-5HZNGGB)) — 153 KB / 153 KB
+- `widget.js` ([chat.goodai.works](https://chat.goodai.works/widget.js)) — 66 KB / 66 KB
+- `radar.min.js` ([cdn.snitcher.com](https://cdn.snitcher.com/releases/latest/radar.min.js)) — 21 KB / 21 KB
+- `v833ccba57c9e4d2798f2e76cebdd09a11778172276447` ([static.cloudflareinsights.com](https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447)) — 11 KB / 11 KB
 - _+5 files under 10 KB — 18 KB / 18 KB_
 
 **Other**

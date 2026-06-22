@@ -362,7 +362,14 @@ body {
 }
 .asset-row:nth-of-type(even) { background: #f7f6f3; }
 .fname { padding-left: 43px; min-width: 0; }
-.fname .nm { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--c-text); word-break: break-all; }
+.fname .nm { display: flex; min-width: 0; align-items: baseline; font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--c-text); }
+.fname .nm-h { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fname .nm-t { white-space: nowrap; flex-shrink: 0; }
+.fname .host { display: flex; align-items: center; gap: 4px; margin-top: 1px; max-width: 100%; width: max-content; font-family: var(--font-mono); font-size: 11px; color: var(--c-text-muted); text-decoration: none; }
+.fname .host > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fname .host svg { width: 10px; height: 10px; flex-shrink: 0; }
+.fname .host:hover { color: var(--c-accent); }
+.fname .host:hover > span { text-decoration: underline; }
 
 /* folded-small-files summary row */
 .sum-row {

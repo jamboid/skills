@@ -66,7 +66,12 @@ work the model does from the raw export:
    URLs per device (`…width_scale_xl…` on desktop, `…width_scale_m…` on mobile)
    but the same filename — pair them so each asset's two `bytes` expose the
    responsive-image saving (or, for a CSS-background hero, its *absence*). When two
-   distinct files share a basename, summing them is acceptable.
+   distinct files share a basename, summing them is acceptable. **Keep the full
+   request `url`** on each asset (not just the basename): the component renders it
+   as a small linked host line (with an outgoing-link icon) under the name,
+   labelling each asset's origin — which is what disambiguates otherwise-opaque
+   files (e.g. randomly named Cloudflare or analytics scripts). Keep the url on
+   every asset.
 4. **Group into categories** (`type`): Images, Font, Document, Stylesheet, Script,
    Media, Other. Per category sum `requests` and `bytes` per device; the page
    `total` is the sum across categories.

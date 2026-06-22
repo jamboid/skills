@@ -375,7 +375,15 @@ def build_resources_markdown(data):
         out.append("**{0}**".format(c.get("type", "")))
         out.append("")
         for a in shown:
-            out.append("- `{0}` — {1}".format(a.get("name", ""), _md_sizes(a.get("bytes", [0]), ndev)))
+            ahost = _res_host(a.get("url"))
+            au = a.get("url", "")
+            # CommonMark: bare link destinations can't hold spaces or unbalanced
+            # parens (tracking urls often do); angle-wrap those.
+            if any(ch in au for ch in " ()"):
+                au = "<" + au + ">"
+            host_md = " ([{0}]({1}))".format(ahost, au) if ahost else ""
+            out.append("- `{0}`{1} — {2}".format(
+                a.get("name", ""), host_md, _md_sizes(a.get("bytes", [0]), ndev)))
         if foldable:
             fk = [sum((a.get("bytes") or [0])[i] for a in small) for i in range(ndev)]
             out.append("- _+{0} files under {1} KB — {2}_".format(
@@ -679,7 +687,7 @@ def _res_bars(byts, scale, t, ndev, multi):
         w = max(1.5, 100 * byts[i] / scale) if scale else 1.5
         cls = "d" if i == 0 else "m"
         klab = RES_KEY[i] if (multi and i < len(RES_KEY)) else ""
-        rows.append('<div class="brow"><span class="k">' + klab + '</span>'
+        rows.append('<div class="brow ' + cls + '"><span class="k">' + klab + '</span>'
                     '<div class="track"><div class="fill ' + cls + '" '
                     'style="width:{0:.1f}%;background:var(--cat-{1})"></div></div></div>'.format(w, key))
     return '<div class="bars">' + "".join(rows) + '</div>'
@@ -701,6 +709,21 @@ def _res_split(assets, ndev):
         byts = a.get("bytes") or [0]
         (small if max(byts[:ndev] or byts) < SMALL_BYTES else big).append(a)
     return big, small
+
+
+def _res_host(url):
+    """Return the lowercased host of an asset url for display, or "" if none."""
+    if not url:
+        return ""
+    return (urlparse(url if "://" in url else "http://" + url).hostname or "").lower()
+
+
+def _split_name(name):
+    """Split a filename into (head, tail) for CSS middle-truncation: the tail is
+    pinned (kept whole) so the extension survives; the head ellipsises. Short
+    names get an empty tail (no truncation needed)."""
+    n = str(name)
+    return (n[:-12], n[-12:]) if len(n) > 16 else (n, "")
 
 
 def build_resources_html(data):
@@ -750,9 +773,17 @@ def build_resources_html(data):
                    + '</div>' + _res_sizes(c.get("bytes", [0]), ndev) + '</summary>')
 
         def asset_row(a, extra=""):
+            ahost = _res_host(a.get("url"))
+            host_html = ('<a class="host" href="' + attr(a.get("url", "")) + '" '
+                         'target="_blank" rel="noopener"><span>' + html.escape(ahost)
+                         + '</span>' + EXT_SVG + '</a>') if ahost else ""
+            nm = str(a.get("name", ""))
+            head, tail = _split_name(nm)
+            name_html = ('<span class="nm" title="' + attr(nm) + '"><span class="nm-h">'
+                         + html.escape(head) + '</span><span class="nm-t">'
+                         + html.escape(tail) + '</span></span>')
             return ('          <div class="asset-row' + extra + '">'
-                    '<div class="fname"><span class="nm">' + html.escape(str(a.get("name", "")))
-                    + '</span></div><div class="req"></div>'
+                    '<div class="fname">' + name_html + host_html + '</div><div class="req"></div>'
                     '<div class="bcol">' + _res_bars(a.get("bytes", [0]), item_scale, t, ndev, multi)
                     + '</div>' + _res_sizes(a.get("bytes", [0]), ndev) + '</div>')
 
