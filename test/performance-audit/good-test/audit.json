@@ -1,0 +1,572 @@
+{
+  "meta": {
+    "title": "goodbrandconsultants.com — Site Audit",
+    "slug": "goodbrandconsultants",
+    "url": "https://goodbrandconsultants.com/",
+    "date": "2026-06-22",
+    "auditedBy": "Jamie Boyd",
+    "audience": "internal SD/AD",
+    "scope": "site audit, performance-focused"
+  },
+  "summary": "`goodbrandconsultants.com` is **strong on desktop** (Lighthouse **95**, LCP 1.3 s) but **drops into the poor band on mobile** (Lighthouse **81**, LCP **4.4 s**). It's a Drupal site fronted by Cloudflare, and the mobile problem is not the site's own code — that's tiny (~7 KB of theme CSS, ~7 KB of JS). It's what's bolted on around it.\n\nTwo things drive the 4.4 s mobile LCP. First, **render-blocking CSS and fonts**: a dozen un-aggregated Drupal component stylesheets plus Adobe Typekit block first paint, costing roughly **1.4 s** of FCP/LCP on mobile. Second, **third-party JavaScript dominates the page** — 830 KB of the 1.33 MB total is script, almost none of it first-party: ~550 KB of injected bot-management scripts on randomised paths, 157 KB of Google Tag Manager, a 67 KB chat widget, and visitor-tracking. The largest feature image (121 KB) is also shipped at full size to phones.\n\nDesktop absorbs all of this; a throttled phone does not. Every fix here is configuration or tag governance, not re-architecture.",
+  "metrics": {
+    "groups": [
+      {
+        "device": "Desktop",
+        "audits": [
+          {
+            "type": "Lighthouse",
+            "source": "Lighthouse 13.2.0 (lab, simulated desktop)",
+            "perfScore": 95,
+            "reportUrl": "https://goodbrandconsultants.com/",
+            "items": [
+              {
+                "key": "FCP",
+                "value": 0.93
+              },
+              {
+                "key": "LCP",
+                "value": 1.31
+              },
+              {
+                "key": "SI",
+                "value": 0.93
+              },
+              {
+                "key": "TBT",
+                "value": 3
+              },
+              {
+                "key": "INP",
+                "value": null,
+                "display": "lab N/A",
+                "rating": "na"
+              },
+              {
+                "key": "CLS",
+                "value": 0.002
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "device": "Mobile",
+        "audits": [
+          {
+            "type": "Lighthouse",
+            "source": "Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)",
+            "perfScore": 81,
+            "reportUrl": "https://goodbrandconsultants.com/",
+            "items": [
+              {
+                "key": "FCP",
+                "value": 2.41
+              },
+              {
+                "key": "LCP",
+                "value": 4.38
+              },
+              {
+                "key": "SI",
+                "value": 2.41
+              },
+              {
+                "key": "TBT",
+                "value": 133
+              },
+              {
+                "key": "INP",
+                "value": null,
+                "display": "lab N/A",
+                "rating": "na"
+              },
+              {
+                "key": "CLS",
+                "value": 0.026
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "architecture": "Drupal, custom theme `good` (`/themes/custom/good/`), with the Paragraphs module and Drupal image styles (`feature_promo_large`, `feature_promo_medium`) producing image derivatives. The site is fronted by **Cloudflare** — `/cdn-cgi/scripts/.../rocket-loader.min.js` and the `/cdn-cgi/rum` beacon confirm it, with Rocket Loader enabled.\n\nThe page is server-rendered and the first-party footprint is small: the theme ships ~14 KB of CSS (`screen.css`) and ~7 KB of JS (`good.js`). The weight is almost entirely third-party. Adobe **Typekit** serves the fonts (render-blocking). **Google Tag Manager** (157 KB) is present, **Snitcher** (`radar.min.js`, B2B visitor de-anonymisation) tracks visitors, and a **chat widget** (`chat.goodai.works`, 67 KB) loads on every page. A further ~550 KB of script is served from randomised first-party paths (`/35z3/…`) — the signature of an injected bot-management or anti-fraud layer; confirm the vendor (likely Cloudflare) before acting. That the CSS arrives as a dozen separate `core/modules/system/…` files means Drupal's CSS **aggregation is off or partial** — a config switch, not a code change.",
+  "performance": {
+    "tests": [
+      {
+        "label": "Lighthouse 13.2.0 — desktop lab",
+        "url": "https://goodbrandconsultants.com/"
+      },
+      {
+        "label": "Lighthouse 13.2.0 — mobile lab",
+        "url": "https://goodbrandconsultants.com/"
+      }
+    ],
+    "findings": [
+      {
+        "id": "P-1",
+        "title": "Render-blocking CSS and fonts delay first paint on mobile",
+        "severity": "high",
+        "savingsDisplay": "est. mobile FCP/LCP −1.4 s",
+        "source": "lighthouse:render-blocking-insight",
+        "confirmed": true,
+        "body": "Lighthouse counts a dozen render-blocking stylesheets in the head — the theme's `screen.css`, the cookie-banner and Paragraphs CSS, **Adobe Typekit** (`use.typekit.net`), and six separate Drupal `core/modules/system` component files (`clearfix`, `align`, `hidden`, …). That last group is the tell: those core files should be concatenated, so **CSS aggregation is off or incomplete**. On desktop the cost is minor; on mobile Lighthouse estimates **FCP and LCP −1.4 s** — the single biggest lever on the 4.4 s mobile LCP.\n\nTurn on Drupal CSS aggregation, inline the critical CSS, and load Typekit without blocking render (async or `preload`). The web fonts also lack `font-display: swap`, holding first paint a further ~50 ms."
+      },
+      {
+        "id": "P-2",
+        "title": "Third-party scripts are 62% of the page; the site's own code is ~7 KB",
+        "severity": "high",
+        "savingsDisplay": "830 KB of 1.33 MB is script",
+        "source": "lighthouse:network-requests",
+        "confirmed": true,
+        "body": "Script is **830 KB of the 1.33 MB page**, and almost none of it is the site's — the first-party JS is ~7 KB (`good.js`). The rest is bolted on: roughly **550 KB of injected scripts on randomised first-party paths** (`/35z3/…`, the signature of a Cloudflare-style bot-management / anti-fraud layer — confirm the vendor), **157 KB of Google Tag Manager**, a **67 KB chat widget**, and Snitcher visitor-tracking. Ignore Lighthouse's headline '755 KB unused JavaScript' — that figure is the auditor's own browser extensions, not site code. But the *real* third-party scripts still ship ~250 KB of unused code (GTM alone wastes 112 KB) and push mobile blocking time to 133 ms.\n\nThis is tag governance, not engineering. Audit what GTM loads, question whether the chat widget and Snitcher must load before first paint (defer or load on interaction), and confirm the bot-management layer needs to run site-wide. Rocket Loader is also on — verify it's helping rather than reordering this load badly."
+      },
+      {
+        "id": "P-3",
+        "title": "The LCP feature image ships at full size to phones",
+        "severity": "medium",
+        "savingsDisplay": "est. mobile LCP −0.6 s",
+        "source": "lighthouse:image-delivery-insight",
+        "confirmed": true,
+        "body": "The largest above-the-fold image — a `feature_promo` cover (`jfais_web_cover`, ~121 KB) — reaches mobile at essentially its desktop size, and Lighthouse's image-delivery insight estimates **LCP −0.6 s** from right-sizing it and its sibling feature images. They're **already WebP**, so this is sizing, not format. The Drupal image styles exist (`feature_promo_large` vs `_medium`); the fix is making the mobile breakpoint actually request the smaller derivative — a `srcset`/`sizes` or image-style mapping gap."
+      },
+      {
+        "id": "P-4",
+        "title": "Some images lack explicit width and height",
+        "severity": "low",
+        "savingsDisplay": "CLS insurance",
+        "source": "lighthouse:unsized-images",
+        "confirmed": true,
+        "body": "CLS is good on both runs (0.00 desktop, 0.03 mobile), but several images carry no intrinsic `width`/`height`, so the browser reserves no space before they load — fragile as content grows. Add dimensions (or CSS `aspect-ratio`) to lock the good score in."
+      }
+    ]
+  },
+  "conclusions": "A well-built Drupal site let down by what's layered on top of it. Desktop is genuinely good (95, LCP 1.3 s). The mobile score of 81 — and its **4.4 s LCP, in Google's 'poor' band** — comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB CSS, ~7 KB JS).\n\nThe order of work is clear. Fixing render-blocking (CSS aggregation + non-blocking Typekit) is the biggest single win at ~1.4 s and is a Drupal config switch. Right-sizing the LCP feature image adds ~0.6 s. The harder, more political fix is the third-party load — 830 KB of GTM, chat, tracking and bot-management — which needs a tag audit and an owner's sign-off rather than an engineering change. None of it is re-architecture. As with any single lab run, confirm against field/CrUX data before treating 4.4 s as what every mobile user feels — but it's a real risk worth acting on now.",
+  "priorities": [
+    "Turn on Drupal CSS aggregation so the dozen core/theme stylesheets stop shipping separately; inline critical CSS and load Adobe Typekit without blocking render. ~1.4 s of mobile FCP/LCP — the highest-value change, and a config switch.",
+    "Right-size the LCP feature image for mobile (the `feature_promo` derivatives already exist; fix the breakpoint mapping). ~0.6 s of mobile LCP. Already WebP, so sizing not format.",
+    "Audit the third-party script load — 830 KB of GTM, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JS. Defer or load-on-interaction whatever isn't needed for first paint; confirm the bot-management vendor and whether it must run site-wide.",
+    "Add explicit width/height (or `aspect-ratio`) to images to lock in the currently-good CLS.",
+    "Collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off, and verify Cloudflare Rocket Loader is helping rather than hurting the third-party ordering."
+  ],
+  "resources": {
+    "devices": [
+      "Desktop",
+      "Mobile"
+    ],
+    "total": {
+      "requests": [
+        49,
+        49
+      ],
+      "bytes": [
+        1333630,
+        1333430
+      ]
+    },
+    "categories": [
+      {
+        "type": "Images",
+        "requests": [
+          14,
+          14
+        ],
+        "bytes": [
+          387062,
+          386956
+        ],
+        "assets": [
+          {
+            "name": "jfais_web_cover.png.webp",
+            "bytes": [
+              121157,
+              121120
+            ]
+          },
+          {
+            "name": "homepage_buttons_strategic-framework.jpg.webp",
+            "bytes": [
+              117213,
+              117181
+            ]
+          },
+          {
+            "name": "homepage_buttons_journal-1.jpg.webp",
+            "bytes": [
+              85496,
+              85476
+            ]
+          },
+          {
+            "name": "results-chris.jpg.webp",
+            "bytes": [
+              20025,
+              20021
+            ]
+          },
+          {
+            "name": "devro1_0_0.png.webp",
+            "bytes": [
+              18368,
+              18367
+            ]
+          },
+          {
+            "name": "GoodBrandConsultants_STACKED.svg",
+            "bytes": [
+              8324,
+              8328
+            ]
+          },
+          {
+            "name": "good_logo_new.svg",
+            "bytes": [
+              8120,
+              8125
+            ]
+          },
+          {
+            "name": "dba_logo.svg",
+            "bytes": [
+              2809,
+              2803
+            ]
+          },
+          {
+            "name": "good_logo_retro.svg",
+            "bytes": [
+              2697,
+              2703
+            ]
+          },
+          {
+            "name": "icon_article.svg",
+            "bytes": [
+              1181,
+              1179
+            ]
+          },
+          {
+            "name": "red_arrow.svg",
+            "bytes": [
+              810,
+              802
+            ]
+          },
+          {
+            "name": "white_arrow_tiny.svg",
+            "bytes": [
+              733,
+              722
+            ]
+          },
+          {
+            "name": "696625996",
+            "bytes": [
+              129,
+              129
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Font",
+        "requests": [
+          1,
+          1
+        ],
+        "bytes": [
+          83279,
+          83278
+        ],
+        "assets": [
+          {
+            "name": "l",
+            "bytes": [
+              83279,
+              83278
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Document",
+        "requests": [
+          1,
+          1
+        ],
+        "bytes": [
+          7469,
+          7523
+        ],
+        "assets": [
+          {
+            "name": "goodbrandconsultants.com",
+            "bytes": [
+              7469,
+              7523
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Stylesheet",
+        "requests": [
+          11,
+          11
+        ],
+        "bytes": [
+          22172,
+          22166
+        ],
+        "assets": [
+          {
+            "name": "screen.css",
+            "bytes": [
+              14188,
+              14183
+            ]
+          },
+          {
+            "name": "cookie-banner.css",
+            "bytes": [
+              1445,
+              1444
+            ]
+          },
+          {
+            "name": "hidden.module.css",
+            "bytes": [
+              1185,
+              1185
+            ]
+          },
+          {
+            "name": "js.module.css",
+            "bytes": [
+              873,
+              880
+            ]
+          },
+          {
+            "name": "lep4nta.css",
+            "bytes": [
+              854,
+              854
+            ]
+          },
+          {
+            "name": "clearfix.module.css",
+            "bytes": [
+              753,
+              757
+            ]
+          },
+          {
+            "name": "align.module.css",
+            "bytes": [
+              745,
+              746
+            ]
+          },
+          {
+            "name": "container-inline.module.css",
+            "bytes": [
+              705,
+              697
+            ]
+          },
+          {
+            "name": "temp.css",
+            "bytes": [
+              669,
+              666
+            ]
+          },
+          {
+            "name": "paragraphs.unpublished.css",
+            "bytes": [
+              583,
+              582
+            ]
+          },
+          {
+            "name": "p.css",
+            "bytes": [
+              172,
+              172
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "requests": [
+          12,
+          12
+        ],
+        "bytes": [
+          829602,
+          829486
+        ],
+        "assets": [
+          {
+            "name": "lhp3vTZiNH4QuI1DeMnkajxgWAYmE_BYWeqRghcX2zATLO0G",
+            "bytes": [
+              193470,
+              193461
+            ]
+          },
+          {
+            "name": "lhp3vTZiMgRl2YI2Hc2SG0AaWAYmE_BYWeqRghcX2zATLO0G",
+            "bytes": [
+              193451,
+              193468
+            ]
+          },
+          {
+            "name": "35z3",
+            "bytes": [
+              166459,
+              166447
+            ]
+          },
+          {
+            "name": "gtm.js",
+            "bytes": [
+              157109,
+              157105
+            ]
+          },
+          {
+            "name": "widget.js",
+            "bytes": [
+              67397,
+              67397
+            ]
+          },
+          {
+            "name": "radar.min.js",
+            "bytes": [
+              21591,
+              21487
+            ]
+          },
+          {
+            "name": "v833ccba57c9e4d2798f2e76cebdd09a11778172276447",
+            "bytes": [
+              11545,
+              11545
+            ]
+          },
+          {
+            "name": "good.js",
+            "bytes": [
+              7495,
+              7492
+            ]
+          },
+          {
+            "name": "rocket-loader.min.js",
+            "bytes": [
+              4328,
+              4327
+            ]
+          },
+          {
+            "name": "696625996",
+            "bytes": [
+              2599,
+              2601
+            ]
+          },
+          {
+            "name": "copypastesubscribeformlogic.js",
+            "bytes": [
+              2421,
+              2421
+            ]
+          },
+          {
+            "name": "cookie-banner.js",
+            "bytes": [
+              1737,
+              1735
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Other",
+        "requests": [
+          10,
+          10
+        ],
+        "bytes": [
+          4046,
+          4021
+        ],
+        "assets": [
+          {
+            "name": "favicon_0.ico",
+            "bytes": [
+              1699,
+              1689
+            ]
+          },
+          {
+            "name": "settings",
+            "bytes": [
+              1135,
+              1126
+            ]
+          },
+          {
+            "name": "rum",
+            "bytes": [
+              486,
+              482
+            ]
+          },
+          {
+            "name": "config",
+            "bytes": [
+              391,
+              390
+            ]
+          },
+          {
+            "name": "event",
+            "bytes": [
+              272,
+              271
+            ]
+          },
+          {
+            "name": "collect",
+            "bytes": [
+              42,
+              42
+            ]
+          },
+          {
+            "name": "696625996",
+            "bytes": [
+              21,
+              21
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "glossary": [
+    "LCP",
+    "CLS",
+    "INP",
+    "TBT",
+    "SI",
+    "FCP"
+  ]
+}
