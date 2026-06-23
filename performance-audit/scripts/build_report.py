@@ -418,6 +418,9 @@ def build_markdown(data):
     # Metrics
     out.append("## Metrics")
     out.append("")
+    for para in paragraphs((data.get("metrics") or {}).get("intro")):
+        out.append(para)
+        out.append("")
     for g in build_groups(data):
         out.append("### " + (g["device"] or "Device"))
         out.append("")
@@ -890,7 +893,9 @@ def build_html(data, template, slug):
 
     # Metrics
     nav.append(nav_link("metrics", "Metrics"))
-    body.append(section("metrics", "Metrics", build_metrics_html(data)))
+    intro = prose_block((data.get("metrics") or {}).get("intro"), "section-intro")
+    metrics_body = (intro + "\n" + build_metrics_html(data)) if intro else build_metrics_html(data)
+    body.append(section("metrics", "Metrics", metrics_body))
 
     # Page resources
     if (data.get("resources") or {}).get("categories"):

@@ -4,7 +4,7 @@
 
 ## Summary
 
-`wattage.staging.gd` is the staging build of a Drupal site, and this is a performance-focused review of it — how quickly the page loads and becomes usable for a visitor. We measured it in the lab with two independent tools, Google's **Lighthouse** and **WebPageTest**, across both a desktop and a throttled mobile device, so the numbers below are controlled test results rather than live field data.
+`wattage.staging.gd` is the staging build of a Drupal site, and this is a performance-focused review of it — how quickly the page loads and becomes usable for a visitor. We measured it in the lab, across both a desktop and a throttled mobile device, so the numbers below are controlled test results rather than live field data.
 
 The headline: **near-perfect on desktop, good but improvable on mobile**. Lighthouse scores it **100 out of 100 on desktop** — the main image loads in 0.7 seconds, the page never freezes, and nothing shifts around as it loads — and **91 on mobile**, where that same main image takes **3.4 seconds** to appear. (That figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)
 
@@ -18,6 +18,8 @@ Desktop performance is excellent today, thanks to strong foundations. It's a lea
 Together these keep the page's TBT (Total Blocking Time — how long the page sits frozen and unresponsive while scripts run) at **0, even on a throttled mobile CPU**. So the mobile gap isn't JavaScript or the site's own code; it's a couple of specific, fixable things around the images and how the staging server delivers them. The findings and conclusions below lay those out, and what to do about them.
 
 ## Metrics
+
+The numbers below come from two independent tools run in the lab — **Google Lighthouse** (v13.2.0) and **WebPageTest** (Chrome 145) — rather than readings from real visitors. Each was run on a simulated **desktop** and a throttled mid-range **mobile**, with the WebPageTest figures taken as the median of three runs. Every export's full JSON was parsed for the performance score and the **Core Web Vitals** — Google's standard loading and responsiveness measures — shown per device below.
 
 ### Desktop
 

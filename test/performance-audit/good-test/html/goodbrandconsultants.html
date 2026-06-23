@@ -204,6 +204,11 @@ body {
 .summary-text p { margin-bottom: 12px; }
 .summary-text p:last-child { margin-bottom: 0; }
 
+/* section lead-in: orients the reader before a data component */
+.section-intro { margin-bottom: 22px; max-width: 70ch; }
+.section-intro p { font-size: 15px; line-height: 1.65; color: var(--c-text-muted); margin-bottom: 10px; }
+.section-intro p:last-child { margin-bottom: 0; }
+
 /* ── Metrics: load-timeline rails, tabbed by device × audit ── */
 .metrics-component { margin-bottom: 8px; }
 
@@ -669,6 +674,9 @@ em { font-style: italic; }
 
     <section class="content-section" id="metrics">
       <h2 class="section-heading">Metrics</h2>
+    <div class="section-intro">
+      <p>The numbers below come from <strong>Google Lighthouse</strong> (v13.2.0), run in the lab — a controlled local test, not readings from real visitors. Two runs were captured: a simulated <strong>desktop</strong> on a fast connection, and a throttled mid-range <strong>mobile</strong> (Moto-class, processor 4× slower, network capped). Each run's full JSON export was parsed for the performance score and the <strong>Core Web Vitals</strong> — Google's standard loading and responsiveness measures — shown per device below.</p>
+    </div>
       <div class="metrics-component">
         <div class="devbar"><span class="dev-lab">Tested on</span>
           <div class="seg">

@@ -65,8 +65,8 @@ Two commands: `init` scaffolds, `draft` analyses and builds.
 
 ## Tone rules
 
-Govern every prose field written into `audit.json` (summary, architecture,
-finding bodies, conclusions).
+Govern every prose field written into `audit.json` (summary, metrics intro,
+architecture, finding bodies, conclusions).
 
 1. **Plain.** Write for a smart non-specialist. ("Bloated code style" beats "elevated payload overhead.")
 2. **Define the jargon.** Gloss every technical term or acronym in plain words the first time it appears, then use it freely. "LCP (Largest Contentful Paint — when the biggest thing on screen finishes loading)"; "third-party scripts — code loaded from other companies' services." Don't introduce an acronym you never expand (drop FCP rather than leave it bare). The reader should never have to already know the term to follow the sentence.
@@ -77,6 +77,7 @@ finding bodies, conclusions).
 7. **List the enumerations.** When a sentence runs through three or more parallel items (third-party scripts, ordered fixes, causes), break them out as a Markdown bullet list with a short lead-in line, not a comma-run buried in prose. One item per line, the key term and its number bolded. `summary`, `architecture`, and `conclusions` all render Markdown `- ` bullets — use them. Keep genuinely one- or two-item points inline.
 8. **Summary orients; conclusions judge.** Open the `summary` by setting the scene — what the site/page is, that this is a performance audit, and how it was measured (which tools, lab vs. field, which form factors) — *before* the headline verdict. It should read like the way into the report, not its verdict, and hand off to the rest ("the findings below lay this out") rather than pre-empting it. Leave the fix detail, priorities, and the considered judgement to `conclusions`. Litmus test: if `summary` and `conclusions` could be swapped without anyone noticing, the summary isn't doing its own job — rewrite it to orient.
 9. **State, don't finish.** Performance is a point-in-time reading, not a finished task — a site that's fast today can be tanked next week by what gets added. Describe it as a current state ("desktop performance is excellent", "poor as it stands") that future changes could move. Avoid finality: no "solved", "done", "fixed for good", "sorted."
+10. **Metrics intro states provenance, not verdict.** The optional `metrics.intro` orients the reader before the numbers: which tools ran (Lighthouse, WebPageTest), how (lab vs. field, which form factors, what throttling), and that the full data exports were parsed for these figures. Keep it to a few sentences. Don't pre-empt the good/poor call — that's the summary's and the rails' job. Omit it entirely if it would only restate what the captions already say.
 
 Don't let plainness inflate the word count — looser sentences and lists are for clarity, not padding. A short clean report beats a padded one.
 

@@ -204,6 +204,11 @@ body {
 .summary-text p { margin-bottom: 12px; }
 .summary-text p:last-child { margin-bottom: 0; }
 
+/* section lead-in: orients the reader before a data component */
+.section-intro { margin-bottom: 22px; max-width: 70ch; }
+.section-intro p { font-size: 15px; line-height: 1.65; color: var(--c-text-muted); margin-bottom: 10px; }
+.section-intro p:last-child { margin-bottom: 0; }
+
 /* ── Metrics: load-timeline rails, tabbed by device × audit ── */
 .metrics-component { margin-bottom: 8px; }
 
@@ -654,7 +659,7 @@ em { font-style: italic; }
     <section class="content-section" id="summary">
       <h2 class="section-heading">Summary</h2>
     <div class="summary-text">
-      <p><code>wattage.staging.gd</code> is the staging build of a Drupal site, and this is a performance-focused review of it — how quickly the page loads and becomes usable for a visitor. We measured it in the lab with two independent tools, Google's <strong>Lighthouse</strong> and <strong>WebPageTest</strong>, across both a desktop and a throttled mobile device, so the numbers below are controlled test results rather than live field data.</p>
+      <p><code>wattage.staging.gd</code> is the staging build of a Drupal site, and this is a performance-focused review of it — how quickly the page loads and becomes usable for a visitor. We measured it in the lab, across both a desktop and a throttled mobile device, so the numbers below are controlled test results rather than live field data.</p>
       <p>The headline: <strong>near-perfect on desktop, good but improvable on mobile</strong>. Lighthouse scores it <strong>100 out of 100 on desktop</strong> — the main image loads in 0.7 seconds, the page never freezes, and nothing shifts around as it loads — and <strong>91 on mobile</strong>, where that same main image takes <strong>3.4 seconds</strong> to appear. (That figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)</p>
       <p>Desktop performance is excellent today, thanks to strong foundations. It's a lean Drupal build:</p>
       <ul class="bullets">
@@ -669,6 +674,9 @@ em { font-style: italic; }
 
     <section class="content-section" id="metrics">
       <h2 class="section-heading">Metrics</h2>
+    <div class="section-intro">
+      <p>The numbers below come from two independent tools run in the lab — <strong>Google Lighthouse</strong> (v13.2.0) and <strong>WebPageTest</strong> (Chrome 145) — rather than readings from real visitors. Each was run on a simulated <strong>desktop</strong> and a throttled mid-range <strong>mobile</strong>, with the WebPageTest figures taken as the median of three runs. Every export's full JSON was parsed for the performance score and the <strong>Core Web Vitals</strong> — Google's standard loading and responsiveness measures — shown per device below.</p>
+    </div>
       <div class="metrics-component">
         <div class="devbar"><span class="dev-lab">Tested on</span>
           <div class="seg">
