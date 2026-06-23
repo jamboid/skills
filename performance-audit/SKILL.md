@@ -69,12 +69,14 @@ Govern every prose field written into `audit.json` (summary, architecture,
 finding bodies, conclusions).
 
 1. **Plain.** Write for a smart non-specialist. ("Bloated code style" beats "elevated payload overhead.")
-2. **Specific.** Real numbers beat qualifiers. "10.3MB, 150 requests" beats "a lot of weight." Keep any number the data or notes give.
-3. **Diagnostic.** Explain *why* a finding is a problem (cause), not just *that* it is. "Large CSS because the framework is utility-class-heavy" beats "Large CSS file."
-4. **Trade-off-aware.** Name the choice that produced the situation.
-5. **No hedging.** Replace "could potentially be improved" with "fix this" or "consider replacing." (Exception: an unconfirmed **candidate** finding may say "likely" and is tagged as such until ratified.)
+2. **Define the jargon.** Gloss every technical term or acronym in plain words the first time it appears, then use it freely. "LCP (Largest Contentful Paint — when the biggest thing on screen finishes loading)"; "third-party scripts — code loaded from other companies' services." Don't introduce an acronym you never expand (drop FCP rather than leave it bare). The reader should never have to already know the term to follow the sentence.
+3. **Specific.** Real numbers beat qualifiers. "10.3MB, 150 requests" beats "a lot of weight." Keep any number the data or notes give.
+4. **Diagnostic.** Explain *why* a finding is a problem (cause), not just *that* it is. "Large CSS because the framework is utility-class-heavy" beats "Large CSS file."
+5. **Trade-off-aware.** Name the choice that produced the situation.
+6. **No hedging.** Replace "could potentially be improved" with "fix this" or "consider replacing." (Exception: an unconfirmed **candidate** finding may say "likely" and is tagged as such until ratified.)
+7. **List the enumerations.** When a sentence runs through three or more parallel items (third-party scripts, ordered fixes, causes), break them out as a Markdown bullet list with a short lead-in line, not a comma-run buried in prose. One item per line, the key term and its number bolded. `summary`, `architecture`, and `conclusions` all render Markdown `- ` bullets — use them. Keep genuinely one- or two-item points inline.
 
-A short clean report beats a padded one.
+Don't let plainness inflate the word count — looser sentences and lists are for clarity, not padding. A short clean report beats a padded one.
 
 ## Bundled files
 

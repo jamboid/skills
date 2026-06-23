@@ -655,9 +655,22 @@ em { font-style: italic; }
     <section class="content-section" id="summary">
       <h2 class="section-heading">Summary</h2>
     <div class="summary-text">
-      <p><code>goodbrandconsultants.com</code> is <strong>strong on desktop</strong> (Lighthouse <strong>95</strong>, LCP 1.3 s) but <strong>drops into the poor band on mobile</strong> (Lighthouse <strong>81</strong>, LCP <strong>4.4 s</strong>). It's a Drupal site fronted by Cloudflare, and the mobile problem is not the site's own code — that's tiny (~7 KB of theme CSS, ~7 KB of JS). It's what's bolted on around it.</p>
-      <p>Two things drive the 4.4 s mobile LCP. First, <strong>render-blocking CSS and fonts</strong>: a dozen un-aggregated Drupal component stylesheets plus Adobe Typekit block first paint, costing roughly <strong>1.4 s</strong> of FCP/LCP on mobile. Second, <strong>third-party JavaScript dominates the page</strong> — 830 KB of the 1.33 MB total is script, almost none of it first-party: ~550 KB of injected bot-management scripts on randomised paths, 157 KB of Google Tag Manager, a 67 KB chat widget, and visitor-tracking. The largest feature image (121 KB) is also shipped at full size to phones.</p>
-      <p>Desktop absorbs all of this; a throttled phone does not. Every fix here is configuration or tag governance, not re-architecture.</p>
+      <p><code>goodbrandconsultants.com</code> is <strong>fast on a desktop</strong> but <strong>slow on a phone</strong>. Google's Lighthouse tool scores it <strong>95 out of 100 on desktop</strong>, where the main content appears in <strong>1.3 seconds</strong>, but only <strong>81 on mobile</strong>, where that same content takes <strong>4.4 seconds</strong> — well into Google's 'poor' range. (That 4.4-second figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on the screen finishes loading.)</p>
+      <p>The site itself isn't the problem. It's built on Drupal and sits behind Cloudflare, and its own code is tiny — roughly 7 KB of theme styling and 7 KB of JavaScript. The slowness comes from everything that's been bolted on around it.</p>
+      <p>Two things make the mobile page slow:</p>
+      <ul class="bullets">
+        <li><strong>Styles and fonts hold up the first paint.</strong> A dozen separate, un-combined Drupal stylesheets plus the Adobe Typekit web fonts all have to download before the browser will show anything. On mobile, that delay costs about <strong>1.4 seconds</strong>.</li>
+        <li><strong>Third-party JavaScript dominates the page.</strong> Of the 1.33 MB the page weighs, 830 KB is script — and almost none of it is the site's own code.</li>
+      </ul>
+      <p>That third-party script breaks down roughly as:</p>
+      <ul class="bullets">
+        <li><strong>~550 KB</strong> of bot-management scripts, loaded from randomised paths</li>
+        <li><strong>157 KB</strong> of Google Tag Manager</li>
+        <li>a <strong>67 KB</strong> chat widget</li>
+        <li>visitor-tracking scripts</li>
+      </ul>
+      <p>On top of that, the largest feature image (121 KB) is sent to phones at its full desktop size.</p>
+      <p>A desktop machine on a fast connection shrugs all of this off; a mid-range phone on mobile data does not. The encouraging part: every fix here is a configuration or tag-management change, not a rebuild of the site.</p>
     </div>
     </section>
 
@@ -800,8 +813,18 @@ em { font-style: italic; }
     <section class="content-section" id="architecture">
       <h2 class="section-heading">Site architecture</h2>
     <div class="prose">
-      <p>Drupal, custom theme <code>good</code> (<code>/themes/custom/good/</code>), with the Paragraphs module and Drupal image styles (<code>feature_promo_large</code>, <code>feature_promo_medium</code>) producing image derivatives. The site is fronted by <strong>Cloudflare</strong> — <code>/cdn-cgi/scripts/.../rocket-loader.min.js</code> and the <code>/cdn-cgi/rum</code> beacon confirm it, with Rocket Loader enabled.</p>
-      <p>The page is server-rendered and the first-party footprint is small: the theme ships ~14 KB of CSS (<code>screen.css</code>) and ~7 KB of JS (<code>good.js</code>). The weight is almost entirely third-party. Adobe <strong>Typekit</strong> serves the fonts (render-blocking). <strong>Google Tag Manager</strong> (157 KB) is present, <strong>Snitcher</strong> (<code>radar.min.js</code>, B2B visitor de-anonymisation) tracks visitors, and a <strong>chat widget</strong> (<code>chat.goodai.works</code>, 67 KB) loads on every page. A further ~550 KB of script is served from randomised first-party paths (<code>/35z3/…</code>) — the signature of an injected bot-management or anti-fraud layer; confirm the vendor (likely Cloudflare) before acting. That the CSS arrives as a dozen separate <code>core/modules/system/…</code> files means Drupal's CSS <strong>aggregation is off or partial</strong> — a config switch, not a code change.</p>
+      <p>The site runs on <strong>Drupal</strong>, an open-source content management system. It uses a custom theme called <code>good</code> (<code>/themes/custom/good/</code>) for its look, the Paragraphs module to build flexible page layouts, and Drupal's image styles (<code>feature_promo_large</code>, <code>feature_promo_medium</code>) to generate resized copies of images automatically.</p>
+      <p>Sitting in front of the site is <strong>Cloudflare</strong>, a service that caches pages and delivers them from servers close to each visitor. Its <code>rocket-loader.min.js</code> script and <code>/cdn-cgi/rum</code> tracking beacon confirm it's in use, with the Rocket Loader feature switched on.</p>
+      <p>The page is <strong>server-rendered</strong> — the HTML arrives ready to display rather than being assembled in the browser — and the site's own code is light: the theme ships only ~14 KB of CSS (<code>screen.css</code>, the styling) and ~7 KB of JavaScript (<code>good.js</code>, the behaviour). Almost all of the page's weight comes from <strong>third-party scripts</strong>: code loaded from other companies' services rather than the site itself.</p>
+      <p>The main third-party scripts are:</p>
+      <ul class="bullets">
+        <li><strong>Adobe Typekit</strong> — serves the web fonts. These are *render-blocking*, meaning the browser holds off showing text until the fonts have downloaded, which delays the first thing the visitor sees.</li>
+        <li><strong>Google Tag Manager</strong> (157 KB) — a container that loads marketing and analytics tags.</li>
+        <li><strong>Snitcher</strong> (<code>radar.min.js</code>) — identifies which companies are visiting the site (B2B visitor de-anonymisation).</li>
+        <li><strong>Chat widget</strong> (<code>chat.goodai.works</code>, 67 KB) — loads on every page, whether or not anyone uses it.</li>
+        <li><strong>~550 KB of unlabelled script</strong> from randomised paths that look first-party (<code>/35z3/…</code>) — the fingerprint of an injected bot-management or anti-fraud layer. Confirm the vendor (most likely Cloudflare) before changing anything here.</li>
+      </ul>
+      <p>One quick win stands out. The site's CSS arrives as a dozen separate files (<code>core/modules/system/…</code>), which means Drupal's <strong>CSS aggregation</strong> — the setting that bundles those files into one download — is turned off or only partly on. Switching it on is a configuration change, not a code change.</p>
     </div>
     </section>
 
@@ -864,8 +887,14 @@ em { font-style: italic; }
     <section class="content-section" id="conclusions">
       <h2 class="section-heading">Conclusions</h2>
     <div class="prose">
-      <p>A well-built Drupal site let down by what's layered on top of it. Desktop is genuinely good (95, LCP 1.3 s). The mobile score of 81 — and its <strong>4.4 s LCP, in Google's 'poor' band</strong> — comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB CSS, ~7 KB JS).</p>
-      <p>The order of work is clear. Fixing render-blocking (CSS aggregation + non-blocking Typekit) is the biggest single win at ~1.4 s and is a Drupal config switch. Right-sizing the LCP feature image adds ~0.6 s. The harder, more political fix is the third-party load — 830 KB of GTM, chat, tracking and bot-management — which needs a tag audit and an owner's sign-off rather than an engineering change. None of it is re-architecture. As with any single lab run, confirm against field/CrUX data before treating 4.4 s as what every mobile user feels — but it's a real risk worth acting on now.</p>
+      <p>This is a well-built Drupal site let down by what's been layered on top of it. On desktop it's genuinely good — 95 out of 100, with the main content showing in 1.3 seconds. The mobile score of 81, and its <strong>4.4-second load that lands in Google's 'poor' range</strong>, comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB of styling, ~7 KB of JavaScript).</p>
+      <p>The order of work is clear:</p>
+      <ul class="bullets">
+        <li><strong>Fix the render-blocking styles and fonts first.</strong> Turn on Drupal's CSS aggregation (the setting that combines those stylesheets into one) and load the Typekit fonts so they don't block the page. This is the single biggest win at around <strong>1.4 seconds</strong>, and it's a configuration switch rather than a code change.</li>
+        <li><strong>Right-size the main feature image</strong> so phones aren't downloading the full desktop-sized version. Worth about <strong>0.6 seconds</strong>.</li>
+        <li><strong>Trim the third-party load</strong> — the 830 KB of Google Tag Manager, chat, tracking and bot-management scripts. This is the harder, more political fix: it needs a review of which tags still earn their place and a sign-off from whoever owns them, not an engineering change.</li>
+      </ul>
+      <p>None of this is a re-architecture. One caveat: these figures come from a single lab test, so before treating 4.4 seconds as what every mobile visitor actually feels, confirm it against real-world field data (Google's CrUX report). But it's a genuine risk, and worth acting on now.</p>
     </div>
     </section>
 

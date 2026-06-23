@@ -23,7 +23,7 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   // header shows the url as a button plus Date / By / Audience chips; the
   // sidebar shows the site name (no duplicated title/date).
 
-  "summary": "Executive summary prose. 3–5 sentences, plain language. Supports `code` and **bold**. Blank line separates paragraphs.",
+  "summary": "Executive summary prose. 3–5 sentences, plain language. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for any run of 3+ parallel items).",
 
   // ── Metrics (computed from Lighthouse/WPT). Grouped by target device; each
   //    device holds one or more audits. The script renders these as a load-
@@ -72,7 +72,7 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   // block per source) is still accepted — each becomes a one-audit group — but
   // `groups` is preferred.
 
-  "architecture": "1–2 paragraphs on CMS / framework / build approach and the code shape it produces. Omit the key (or null) if the notes had nothing.",
+  "architecture": "1–2 paragraphs on CMS / framework / build approach and the code shape it produces. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for any run of 3+ parallel items, e.g. third-party scripts). Omit the key (or null) if the notes had nothing.",
 
   "performance": {
     "tests": [
@@ -132,7 +132,7 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
 
   "ux": [ "Design / UX bullet.", "..." ],
 
-  "conclusions": "1–2 paragraphs of narrative. Name the trade-offs that produced the situation; distinguish quick wins from structural work.",
+  "conclusions": "1–2 paragraphs of narrative. Name the trade-offs that produced the situation; distinguish quick wins from structural work. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for the ordered fixes / quick wins).",
 
   "priorities": [ "First action, specific.", "Second action.", "..." ],
 
