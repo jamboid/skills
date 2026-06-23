@@ -30,6 +30,12 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   //    timeline: a device segmented control (shown only when >1 device), audit
   //    tabs, and per-audit threshold rails grouped into load phases. ──
   "metrics": {
+    // optional lead-in prose, rendered above the metrics component. State what
+    // tools were run, how (lab vs field, form factors, throttling) and that the
+    // full data exports were parsed for these numbers. Provenance, not verdict —
+    // leave the good/poor call to `summary` and the rails. Same markup as
+    // `summary` (code, **bold**, paragraphs, `- ` bullets). Omit if it adds nothing.
+    "intro": "The numbers below come from Google Lighthouse (v13.2.0), run in the lab...",
     "groups": [
       {
         "device": "Desktop",                  // Desktop | Mobile (tab + segmented control label)

@@ -19,6 +19,8 @@ That third-party weight, together with a dozen un-combined stylesheets and fonts
 
 ## Metrics
 
+The numbers below come from **Google Lighthouse** (v13.2.0), run in the lab — a controlled local test, not readings from real visitors. Two runs were captured: a simulated **desktop** on a fast connection, and a throttled mid-range **mobile** (Moto-class, processor 4× slower, network capped). Each run's full JSON export was parsed for the performance score and the **Core Web Vitals** — Google's standard loading and responsiveness measures — shown per device below.
+
 ### Desktop
 
 #### Lighthouse — performance score 95
