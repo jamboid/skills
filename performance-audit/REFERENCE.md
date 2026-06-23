@@ -94,16 +94,35 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
         "confirmed":      true,
         "body":           "Diagnostic prose: cause, not just symptom. Supports `code`, **bold**, blank-line paragraphs."
       }
-    ],
+    ]
+  },
 
-    // Asset breakdown table (resource-summary / WPT breakdown). Omit if absent.
-    "assets": {
-      "rows": [
-        { "type": "Images", "requests": 48, "bytes": 8200000, "display": "8.2 MB" },
-        { "type": "Script", "requests": 61, "bytes": 1400000, "display": "1.4 MB" }
-      ],
-      "total": { "requests": 150, "bytes": 10800000, "display": "10.3 MB" }
-    }
+  // Page-resources component — the per-category asset breakdown, rendered as an
+  // expandable table immediately under Metrics (replaces the old flat assets
+  // table). Top-level, not under `performance`. Omit the whole key if absent.
+  // Store RAW BYTES per device; the script formats sizes and computes bar widths.
+  // All count/byte arrays align to `devices` (length 1 or 2).
+  "resources": {
+    "devices": ["Desktop", "Mobile"],          // 1 or 2 column headers
+    "total":   { "requests": [22, 22], "bytes": [1165647, 744253] },
+    "categories": [
+      // `type` ∈ Images | Font | Document | Stylesheet | Script | Media | Other
+      // (drives the icon + colour; unknown types fall back to Other).
+      { "type": "Images", "requests": [16, 16], "bytes": [1031388, 588579],
+        "assets": [
+          // One row per asset; match the same file across devices by basename so
+          // the two `bytes` show the responsive-image saving (or its absence).
+          // `url` is optional: the full request URL. When present it renders as a
+          // small linked host line (with an outgoing-link icon) under the name,
+          // labelling each asset's origin — useful for opaque CDN/analytics files.
+          { "name": "hero.png.webp",    "bytes": [321779, 321779] },
+          { "name": "banner2.png.webp", "bytes": [304128,  89088],
+            "url": "https://cdn.example-images.com/banner2.png.webp" }
+          // Files whose larger device size is < 10 KB fold into a per-category
+          // "+N files under 10 KB" summary row (only when ≥2 collapse); the script
+          // does the folding — list every asset here, don't pre-collapse the tail.
+        ] }
+    ]
   },
 
   "accessibility": {
@@ -149,9 +168,11 @@ the script formats `display` (e.g. `4.8 s`, `10.3 MB`) when it is omitted.
 
 - **Always present:** Executive summary, Metrics dashboard, Conclusions,
   Priority actions, Glossary, Appendix.
-- **Conditional:** Architecture, Accessibility, Design & UX, and the
-  Performance findings / asset table — omit the section entirely when its key
-  is absent, null, or an empty array. Never pad to fill.
+- **Conditional:** Architecture, Accessibility, Design & UX, the Performance
+  section (Tests + Findings), and the Page resources component — omit the
+  section entirely when its key is absent, null, or an empty array. Page
+  resources renders only when `resources.categories` is non-empty; Performance
+  renders only for `tests` or `findings`. Never pad to fill.
 - Glossary renders only the keys in `meta.glossary`; keep it to metrics that
   actually appear.
 

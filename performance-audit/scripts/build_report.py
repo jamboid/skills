@@ -69,27 +69,18 @@ ACR = {"LCP": "LCP", "CLS": "CLS", "INP": "INP", "TBT": "TBT", "SI": "SI", "FCP"
 MOMENT = {
     "FCP": "First paint", "LCP": "Main content in", "SI": "Visually complete",
     "TBT": "Ready to respond", "INP": "Stays snappy", "CLS": "Layout settled",
-    "weight": "Page weight", "requests": "Requests",
 }
-RES_DESC = {"weight": "Total bytes downloaded", "requests": "HTTP requests made"}
 
-# Phases of the load, in narrative order; the last (resources) renders as cards.
+# Phases of the load, in narrative order. Page weight / request count are not
+# shown here — the Page resources component is their single source of truth.
 PHASES = [
     ("Painting the page", "How soon visitors see content", ["FCP", "LCP", "SI"]),
     ("Responding to input", "How quickly the page reacts", ["TBT", "INP"]),
     ("Visual stability", "Whether content stays put while loading", ["CLS"]),
-    ("Page resources", "What the browser had to download", ["weight", "requests"]),
 ]
-RES_KEYS = ("weight", "requests")
-METRIC_ORDER = ["FCP", "LCP", "SI", "TBT", "CLS", "INP", "weight", "requests"]
+METRIC_ORDER = ["FCP", "LCP", "SI", "TBT", "CLS", "INP"]
 SCORE_WORD = {"good": "Good", "needs-improvement": "Needs improvement", "poor": "Poor"}
 
-RES_ICON = {
-    "weight": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
-               'stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>'),
-    "requests": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
-                 'stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-3-3M20 16H5l3 3"/></svg>'),
-}
 DEV_ICON = {
     "Desktop": ('<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">'
                 '<rect x="1.5" y="2" width="13" height="9" rx="1"/><path d="M5.5 14h5M8 11v3"/></svg>'),
@@ -101,6 +92,36 @@ EXT_SVG = ('<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-wi
 GLOBE_SVG = ('<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" '
              'stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5'
              'c1.8 1.7 2.8 4.1 2.8 6.5S9.8 12.8 8 14.5C6.2 12.8 5.2 10.4 5.2 8S6.2 3.2 8 1.5z"/></svg>')
+
+# ── Page-resources component ───────────────────────────────────────────────────
+# Files whose larger device size is under SMALL_BYTES fold into a per-category
+# summary row, but only when at least MIN_FOLD of them collapse (no "1 file" rows).
+SMALL_BYTES = 10 * 1024
+MIN_FOLD = 2
+
+# Category identity: bars/icon-stroke use base; the icon chip uses the light tint.
+RES_CAT_ORDER = ["Images", "Font", "Document", "Stylesheet", "Script", "Media", "Other"]
+RES_CAT_ICON = {
+    "Images": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+               '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/>'
+               '<path d="M21 16l-5-5L5 20"/></svg>'),
+    "Font": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+             '<path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>'),
+    "Document": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+                 '<path d="M6 2h8l4 4v16H6zM14 2v4h4"/></svg>'),
+    "Stylesheet": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+                   '<path d="M4 3h16l-1.5 16L12 21l-6.5-2z"/><path d="M8 8h8M8 12h6"/></svg>'),
+    "Script": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+               '<path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13 6l-2 12"/></svg>'),
+    "Media": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+              '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>'),
+    "Other": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'
+              '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>'),
+}
+RES_CHEV = ('<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+            'stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>')
+RES_SCOPES = [("both", "Both"), ("0", "Desktop"), ("1", "Mobile")]
+RES_KEY = ["D", "M"]
 
 
 def rail_pos(key, value):
@@ -318,6 +339,59 @@ def used_glossary(data):
 
 # ── Markdown ─────────────────────────────────────────────────────────────────
 
+def _md_sizes(byts, ndev):
+    return " / ".join(humanize_bytes(byts[i]) for i in range(min(ndev, len(byts))))
+
+
+def build_resources_markdown(data):
+    res = data.get("resources") or {}
+    cats = res.get("categories") or []
+    if not cats:
+        return []
+    devices = res.get("devices") or ["Desktop"]
+    ndev = len(devices)
+    out = ["## Page resources", ""]
+    head = "| Category | Requests | " + " | ".join(devices[:ndev]) + " |"
+    out.append(head)
+    out.append("|---|---:|" + "|".join(["---:"] * ndev) + "|")
+    for c in cats:
+        byts = c.get("bytes", [0])
+        sizes = " | ".join(humanize_bytes(byts[i]) for i in range(min(ndev, len(byts))))
+        out.append("| {0} | {1} | {2} |".format(
+            c.get("type", ""), (c.get("requests") or [""])[0], sizes))
+    tot = res.get("total") or {}
+    if tot:
+        tb = tot.get("bytes", [0])
+        sizes = " | ".join(humanize_bytes(tb[i]) for i in range(min(ndev, len(tb))))
+        out.append("| **Total** | {0} | {1} |".format((tot.get("requests") or [""])[0], sizes))
+    out.append("")
+    for c in cats:
+        assets = c.get("assets") or []
+        big, small = _res_split(assets, ndev)
+        foldable = len(small) >= MIN_FOLD
+        shown = big if foldable else assets
+        if not shown and not foldable:
+            continue
+        out.append("**{0}**".format(c.get("type", "")))
+        out.append("")
+        for a in shown:
+            ahost = _res_host(a.get("url"))
+            au = a.get("url", "")
+            # CommonMark: bare link destinations can't hold spaces or unbalanced
+            # parens (tracking urls often do); angle-wrap those.
+            if any(ch in au for ch in " ()"):
+                au = "<" + au + ">"
+            host_md = " ([{0}]({1}))".format(ahost, au) if ahost else ""
+            out.append("- `{0}`{1} — {2}".format(
+                a.get("name", ""), host_md, _md_sizes(a.get("bytes", [0]), ndev)))
+        if foldable:
+            fk = [sum((a.get("bytes") or [0])[i] for a in small) for i in range(ndev)]
+            out.append("- _+{0} files under {1} KB — {2}_".format(
+                len(small), SMALL_BYTES // 1024, _md_sizes(fk, ndev)))
+        out.append("")
+    return out
+
+
 def build_markdown(data):
     meta = data["meta"]
     out = []
@@ -374,6 +448,11 @@ def build_markdown(data):
                     METRIC_LABEL.get(key, key), disp, RATING_LABEL.get(rating, rating)))
             out.append("")
 
+    # Page resources
+    res_md = build_resources_markdown(data)
+    if res_md:
+        out.extend(res_md)
+
     # Architecture
     if str(data.get("architecture") or "").strip():
         out.append("## Site architecture")
@@ -384,7 +463,7 @@ def build_markdown(data):
 
     # Performance
     perf = data.get("performance") or {}
-    if perf.get("tests") or perf.get("findings") or perf.get("assets"):
+    if perf.get("tests") or perf.get("findings"):
         out.append("## Performance")
         out.append("")
         if perf.get("tests"):
@@ -410,22 +489,6 @@ def build_markdown(data):
                 for para in paragraphs(f.get("body")):
                     out.append(para)
                     out.append("")
-        assets = perf.get("assets")
-        if assets and assets.get("rows"):
-            out.append("### Assets")
-            out.append("")
-            out.append("| Type | Requests | Size |")
-            out.append("|---|---:|---:|")
-            for r in assets["rows"]:
-                out.append("| {0} | {1} | {2} |".format(
-                    r.get("type", ""), r.get("requests", ""),
-                    r.get("display", humanize_bytes(r.get("bytes", 0)))))
-            if assets.get("total"):
-                tot = assets["total"]
-                out.append("| **Total** | {0} | {1} |".format(
-                    tot.get("requests", ""),
-                    tot.get("display", humanize_bytes(tot.get("bytes", 0)))))
-            out.append("")
 
     # Accessibility
     acc = data.get("accessibility") or {}
@@ -530,18 +593,6 @@ def _rail_row_html(item):
             + '<div class="rail-val ' + rating + '">' + html.escape(disp) + '</div></div>')
 
 
-def _res_cards_html(items):
-    cards = []
-    for item in items:
-        key = item.get("key")
-        disp = metric_display(key, item.get("value"), item.get("display"))
-        cards.append('<div class="res-card"><div class="rc-icon">' + RES_ICON.get(key, "")
-                     + '</div><div class="rc-body"><div class="rc-val">' + html.escape(disp) + '</div>'
-                     '<div class="rc-title">' + html.escape(MOMENT.get(key, key)) + '</div>'
-                     '<div class="rc-desc">' + html.escape(RES_DESC.get(key, "")) + '</div></div></div>')
-    return '            <div class="res-cards">' + "".join(cards) + '</div>'
-
-
 def _timeline_html(dataset):
     by_key = {it.get("key"): it for it in dataset["items"]}
     rows = ['          <div class="tl">']
@@ -549,14 +600,12 @@ def _timeline_html(dataset):
         present = [by_key[k] for k in keys if k in by_key]
         if not present:
             continue
-        is_res = set(keys) <= set(RES_KEYS)
         rows.append('            <div class="tl-phase"><div class="tl-spine">'
-                    '<span class="tl-node' + (' muted' if is_res else '') + '"></span></div>')
+                    '<span class="tl-node"></span></div>')
         rows.append('              <div class="tl-body"><div class="tl-head">'
                     '<div class="tl-title">' + html.escape(title) + '</div>'
                     '<div class="tl-blurb">' + html.escape(blurb) + '</div></div>')
-        rows.append(_res_cards_html(present) if is_res
-                    else "\n".join(_rail_row_html(it) for it in present))
+        rows.append("\n".join(_rail_row_html(it) for it in present))
         rows.append('              </div></div>')
     rows.append('          </div>')
     return "\n".join(rows)
@@ -626,6 +675,138 @@ def build_metrics_html(data):
     return "\n".join(out)
 
 
+def _res_cat_key(t):
+    """Map a category type to a palette/icon key, defaulting unknowns to Other."""
+    return t if t in RES_CAT_ICON else "Other"
+
+
+def _res_bars(byts, scale, t, ndev, multi):
+    key = _res_cat_key(t)
+    rows = []
+    for i in range(min(ndev, len(byts))):
+        w = max(1.5, 100 * byts[i] / scale) if scale else 1.5
+        cls = "d" if i == 0 else "m"
+        klab = RES_KEY[i] if (multi and i < len(RES_KEY)) else ""
+        rows.append('<div class="brow ' + cls + '"><span class="k">' + klab + '</span>'
+                    '<div class="track"><div class="fill ' + cls + '" '
+                    'style="width:{0:.1f}%;background:var(--cat-{1})"></div></div></div>'.format(w, key))
+    return '<div class="bars">' + "".join(rows) + '</div>'
+
+
+def _res_sizes(byts, ndev):
+    lines = []
+    for i in range(min(ndev, len(byts))):
+        cls = "d" if i == 0 else "m"
+        lines.append('<div class="sline ' + cls + '">' + html.escape(humanize_bytes(byts[i])) + '</div>')
+    return '<div class="szs">' + "".join(lines) + '</div>'
+
+
+def _res_split(assets, ndev):
+    """Return (big, small): assets whose larger measured size is < SMALL_BYTES are
+    'small'. Order within each bucket is preserved."""
+    big, small = [], []
+    for a in assets:
+        byts = a.get("bytes") or [0]
+        (small if max(byts[:ndev] or byts) < SMALL_BYTES else big).append(a)
+    return big, small
+
+
+def _res_host(url):
+    """Return the lowercased host of an asset url for display, or "" if none."""
+    if not url:
+        return ""
+    return (urlparse(url if "://" in url else "http://" + url).hostname or "").lower()
+
+
+def _split_name(name):
+    """Split a filename into (head, tail) for CSS middle-truncation: the tail is
+    pinned (kept whole) so the extension survives; the head ellipsises. Short
+    names get an empty tail (no truncation needed)."""
+    n = str(name)
+    return (n[:-12], n[-12:]) if len(n) > 16 else (n, "")
+
+
+def build_resources_html(data):
+    res = data.get("resources") or {}
+    cats = res.get("categories") or []
+    if not cats:
+        return '      <p class="empty-note">No resource breakdown provided.</p>'
+    devices = res.get("devices") or ["Desktop"]
+    ndev = len(devices)
+    multi = ndev > 1
+    cat_scale = max([c.get("bytes", [0])[0] for c in cats] or [0]) or 1
+
+    # header — device toggle (multi) or the single device's name in the bars column
+    if multi:
+        toggle = '<div class="scope">' + "".join(
+            '<button data-scope="' + v + '"' + (' class="active"' if v == "both" else '')
+            + '>' + html.escape(lbl) + '</button>' for v, lbl in RES_SCOPES) + '</div>'
+    else:
+        toggle = '<span class="dev1">' + html.escape(devices[0]) + '</span>'
+    out = ['      <div class="res" data-scope="both">',
+           '        <div class="res-head"><div>Category / file</div>'
+           '<div class="r reqh">Req</div><div class="bcol">' + toggle
+           + '</div><div class="r">Size</div></div>']
+
+    for c in cats:
+        t = str(c.get("type", "Other"))
+        key = _res_cat_key(t)
+        assets = c.get("assets") or []
+        big, small = _res_split(assets, ndev)
+        foldable = len(small) >= MIN_FOLD
+        shown = big if foldable else assets
+        item_scale = max([max(a.get("bytes", [0])) for a in assets] or [0]) or 1
+        req = (c.get("requests") or [""])[0]
+
+        cat_toggle = ''
+        if foldable:
+            cat_toggle = ('<div class="scope cat-scope">'
+                          '<button data-mode="all">All</button>'
+                          '<button data-mode="fewer" class="active">Fewer</button></div>')
+        det_attr = ' data-files="fewer"' if foldable else ''
+        out.append('        <details' + det_attr + '><summary class="cat-sum">'
+                   '<div class="cat-name">' + RES_CHEV
+                   + '<span class="cat-icon" style="background:var(--tint-' + key + ')">'
+                   + RES_CAT_ICON[key] + '</span>' + html.escape(t) + cat_toggle + '</div>'
+                   '<div class="req">' + html.escape(str(req)) + '</div>'
+                   '<div class="bcol">' + _res_bars(c.get("bytes", [0]), cat_scale, t, ndev, multi)
+                   + '</div>' + _res_sizes(c.get("bytes", [0]), ndev) + '</summary>')
+
+        def asset_row(a, extra=""):
+            ahost = _res_host(a.get("url"))
+            host_html = ('<a class="host" href="' + attr(a.get("url", "")) + '" '
+                         'target="_blank" rel="noopener"><span>' + html.escape(ahost)
+                         + '</span>' + EXT_SVG + '</a>') if ahost else ""
+            nm = str(a.get("name", ""))
+            head, tail = _split_name(nm)
+            name_html = ('<span class="nm" title="' + attr(nm) + '"><span class="nm-h">'
+                         + html.escape(head) + '</span><span class="nm-t">'
+                         + html.escape(tail) + '</span></span>')
+            return ('          <div class="asset-row' + extra + '">'
+                    '<div class="fname">' + name_html + host_html + '</div><div class="req"></div>'
+                    '<div class="bcol">' + _res_bars(a.get("bytes", [0]), item_scale, t, ndev, multi)
+                    + '</div>' + _res_sizes(a.get("bytes", [0]), ndev) + '</div>')
+
+        for a in shown:
+            out.append(asset_row(a))
+        if foldable:
+            for a in small:
+                out.append(asset_row(a, " small"))
+            fk = [sum((a.get("bytes") or [0])[i] for a in small) for i in range(ndev)]
+            out.append('          <div class="sum-row" style="--tint:var(--tint-' + key + ')">'
+                       '<div class="sum">+' + str(len(small)) + ' files under '
+                       + str(SMALL_BYTES // 1024) + ' KB</div><div class="req"></div>'
+                       '<div class="bcol"></div>' + _res_sizes(fk, ndev) + '</div>')
+        out.append('        </details>')
+
+    out.append('        <div class="res-foot"><div class="lbl">Total</div><div class="req">'
+               + html.escape(str((res.get("total", {}).get("requests") or [""])[0]))
+               + '</div><div class="bcol"></div>'
+               + _res_sizes((res.get("total", {}).get("bytes") or [0]), ndev) + '</div>')
+    out.append('      </div>')
+    return "\n".join(out)
+
+
 def build_findings_html(findings):
     rows = []
     for f in sorted_findings(findings):
@@ -664,26 +845,6 @@ def build_tests_html(tests, label):
     return "\n".join(rows)
 
 
-def build_assets_html(assets):
-    rows = ['      <div class="subhead">Assets</div>',
-            '      <table class="data-table">',
-            '        <thead><tr><th>Type</th><th>Requests</th><th>Size</th></tr></thead>',
-            '        <tbody>']
-    for r in assets.get("rows", []):
-        disp = r.get("display", humanize_bytes(r.get("bytes", 0)))
-        rows.append('          <tr><td>' + html.escape(str(r.get("type", "")))
-                    + '</td><td class="num">' + html.escape(str(r.get("requests", "")))
-                    + '</td><td class="num">' + html.escape(disp) + '</td></tr>')
-    if assets.get("total"):
-        tot = assets["total"]
-        disp = tot.get("display", humanize_bytes(tot.get("bytes", 0)))
-        rows.append('          <tr class="total"><td>Total</td><td class="num">'
-                    + html.escape(str(tot.get("requests", ""))) + '</td><td class="num">'
-                    + html.escape(disp) + '</td></tr>')
-    rows += ['        </tbody>', '      </table>']
-    return "\n".join(rows)
-
-
 def build_bullets_html(items):
     rows = ['      <ul class="bullets">']
     for b in items:
@@ -706,6 +867,11 @@ def build_html(data, template, slug):
     nav.append(nav_link("metrics", "Metrics"))
     body.append(section("metrics", "Metrics", build_metrics_html(data)))
 
+    # Page resources
+    if (data.get("resources") or {}).get("categories"):
+        nav.append(nav_link("resources", "Page resources"))
+        body.append(section("resources", "Page resources", build_resources_html(data)))
+
     # Architecture
     if str(data.get("architecture") or "").strip():
         nav.append(nav_link("architecture", "Site architecture"))
@@ -713,7 +879,7 @@ def build_html(data, template, slug):
 
     # Performance
     perf = data.get("performance") or {}
-    if perf.get("tests") or perf.get("findings") or perf.get("assets"):
+    if perf.get("tests") or perf.get("findings"):
         nav.append(nav_link("performance", "Performance"))
         parts = []
         if perf.get("tests"):
@@ -721,8 +887,6 @@ def build_html(data, template, slug):
         if perf.get("findings"):
             parts.append('      <div class="subhead">Findings</div>')
             parts.append(build_findings_html(perf["findings"]))
-        if perf.get("assets") and perf["assets"].get("rows"):
-            parts.append(build_assets_html(perf["assets"]))
         body.append(section("performance", "Performance", "\n".join(parts)))
 
     # Accessibility

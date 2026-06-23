@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page resources — v2 proportion + drill-down</title>
+<style>
+:root{
+  --c-good:#1f7a3a;--c-ni:#b45309;--c-ni-light:#fff7ed;--c-poor:#dc2626;
+  --c-bg:#fafaf9;--c-surface:#ffffff;--c-text:#1a1a18;--c-text-muted:#5a5a55;
+  --c-border:#e5e4e0;--c-accent:#3a5cff;--radius:8px;
+  --font-sans:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono','Fira Code',Consolas,'Courier New',monospace;
+  /* category palette */
+  --cat-Images:#3a5cff;--cat-Font:#7c3aed;--cat-Document:#0891b2;
+  --cat-Stylesheet:#db2777;--cat-Script:#ea580c;--cat-Other:#64748b;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--c-bg);color:var(--c-text);line-height:1.55;
+  padding:40px max(24px,calc((100vw - 940px)/2)) 120px;}
+h1.proto-title{font-size:26px;margin-bottom:4px;}
+p.proto-intro{color:var(--c-text-muted);margin-bottom:24px;max-width:720px;font-size:15px;}
+p.proto-intro b{color:var(--c-ni);}
+
+.panel{border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-surface);padding:22px 24px;}
+.dev-block{margin-bottom:20px;}
+.dev-block:last-of-type{margin-bottom:0;}
+.dev-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.dev-head .name{font-size:14px;font-weight:800;}
+.dev-head .tot{font-size:13px;color:var(--c-text-muted);font-variant-numeric:tabular-nums;}
+.stack{display:flex;height:34px;border-radius:7px;overflow:hidden;border:1px solid var(--c-border);}
+.seg-piece{position:relative;cursor:pointer;transition:filter .12s;min-width:2px;}
+.seg-piece:hover{filter:brightness(1.08);}
+.seg-piece.sel{outline:2px solid var(--c-text);outline-offset:-2px;z-index:2;}
+.seg-piece .lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-shadow:0 1px 1px rgba(0,0,0,.25);}
+
+.catlist{margin-top:22px;border-top:1px solid var(--c-border);}
+.cat{border-bottom:1px solid var(--c-border);}
+.cat-row{display:grid;grid-template-columns:18px minmax(150px,1fr) 60px 90px 64px;gap:12px;align-items:center;
+  padding:13px 4px;cursor:pointer;}
+.cat-row:hover{background:#faf9f7;}
+.cat.sel .cat-row{background:#f3f4ff;}
+.dot{width:12px;height:12px;border-radius:3px;}
+.cat-nm{font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;}
+.chev{width:13px;height:13px;color:var(--c-text-muted);transition:transform .15s;margin-left:auto;}
+.cat.open .chev{transform:rotate(90deg);}
+.cat-req{font-size:12.5px;color:var(--c-text-muted);text-align:right;}
+.cat-sz{font-weight:700;font-size:14px;text-align:right;font-variant-numeric:tabular-nums;}
+.cat-sz .m{color:var(--c-text-muted);font-weight:600;font-size:12px;}
+.cat-pct{font-size:12px;color:var(--c-text-muted);text-align:right;font-variant-numeric:tabular-nums;}
+.assets{display:none;padding:0 4px 12px 30px;}
+.cat.open .assets{display:block;}
+.a{display:grid;grid-template-columns:1fr 90px 64px;gap:12px;align-items:center;padding:7px 0;border-top:1px dashed var(--c-border);}
+.a-nm{font-family:var(--font-mono);font-size:12px;word-break:break-all;}
+.a-nm .note{display:block;font-family:var(--font-sans);font-size:11px;color:var(--c-text-muted);margin-top:2px;}
+.a.warn .a-nm{color:var(--c-ni);}
+.a-sz{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;}
+.a-sz.m{color:var(--c-text-muted);}
+.flag{font-size:10px;font-weight:800;color:#fff;background:var(--c-ni);padding:1px 7px;border-radius:9999px;margin-left:6px;}
+.muted .a-nm{font-style:italic;color:var(--c-text-muted);}
+.hint{font-size:12px;color:var(--c-text-muted);margin-top:6px;}
+.colhd{display:grid;grid-template-columns:18px minmax(150px,1fr) 60px 90px 64px;gap:12px;padding:0 4px 8px;
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--c-text-muted);}
+.colhd .r{text-align:right;}
+</style>
+</head>
+<body>
+<h1 class="proto-title">Page resources — v2 · proportion + drill-down</h1>
+<p class="proto-intro">Lead with the shape of the page: a stacked bar per device shows each category's
+share of weight — <b>images are ~88%</b> — and the desktop-vs-mobile bars expose where the savings are.
+Click any category (bar segment or row) to drill into its assets.</p>
+
+<div class="panel">
+  <div id="bars"></div>
+  <div class="catlist" id="catlist"></div>
+  <p class="hint">Tip: click a bar segment or a row to expand. Sizes are transfer bytes (Lighthouse log,
+  extensions excluded).</p>
+</div>
+
+<script>
+const DATA={
+ devices:['Desktop','Mobile'],
+ total:{req:[22,22],kb:[1136,698],disp:['1.11 MB','698 KB']},
+ categories:[
+  {type:'Images',req:[16,16],kb:[1005,546],disp:['1005 KB','546 KB'],assets:[
+    {name:'wattage_sample_banner4.png.webp',kb:[314,314],disp:['314 KB','314 KB'],note:'LCP hero — a CSS background, so no responsive derivative',flag:1},
+    {name:'wattage_sample_banner2.png.webp',kb:[297,87],disp:['297 KB','87 KB'],note:'width_scale_xl → _m on mobile (right-sized)'},
+    {name:'wattage_sample_banner3.png.webp',kb:[276,43],disp:['276 KB','43 KB'],note:'right-sized for mobile'},
+    {name:'wattage_sample_headshot.png.webp',kb:[61,61],disp:['61 KB','61 KB']},
+    {name:'sander-weeteling-…-unsplash.jpg.webp',kb:[26,9],disp:['26 KB','9 KB']},
+    {name:'11 SVG icons & logos',kb:[31,31],disp:['31 KB','31 KB'],muted:1},
+  ]},
+  {type:'Font',req:[1,1],kb:[76,76],disp:['76 KB','76 KB'],assets:[
+    {name:'PPNeueMontreal-Regular.woff2',kb:[76,76],disp:['76 KB','76 KB'],note:'self-hosted, already woff2'}]},
+  {type:'Document',req:[1,1],kb:[39,39],disp:['39 KB','39 KB'],assets:[
+    {name:'/ (HTML document)',kb:[39,39],disp:['39 KB','39 KB'],note:'served uncompressed'}]},
+  {type:'Stylesheet',req:[2,2],kb:[8,27],disp:['8 KB','27 KB'],assets:[
+    {name:'css_73b…aggregate.css',kb:[7,25],disp:['7 KB','25 KB']},
+    {name:'css_FEx1…aggregate.css',kb:[1,2],disp:['1 KB','2 KB']}]},
+  {type:'Script',req:[1,1],kb:[2,4],disp:['2 KB','4 KB'],assets:[
+    {name:'js_u2w…aggregate.js',kb:[2,4],disp:['2 KB','4 KB'],note:'the entire site JS — why TBT is 0'}]},
+  {type:'Other',req:[1,1],kb:[6,6],disp:['6 KB','6 KB'],assets:[
+    {name:'favicon.ico',kb:[6,6],disp:['6 KB','6 KB']}]},
+ ]
+};
+const col=t=>getComputedStyle(document.documentElement).getPropertyValue('--cat-'+t).trim();
+const CHEV='<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>';
+let sel=0;
+
+function renderBars(){
+ let h='';
+ DATA.devices.forEach((dev,di)=>{
+  const tot=DATA.total.kb[di];
+  let pieces='';
+  DATA.categories.forEach((c,ci)=>{
+    const pct=100*c.kb[di]/tot;
+    const show=pct>7?`<span class="lbl">${c.type} ${Math.round(pct)}%</span>`:'';
+    pieces+=`<div class="seg-piece${ci===sel?' sel':''}" data-ci="${ci}" title="${c.type}: ${c.disp[di]} (${pct.toFixed(1)}%)"
+      style="width:${pct}%;background:${col(c.type)}">${show}</div>`;
+  });
+  h+=`<div class="dev-block"><div class="dev-head"><span class="name">${dev}</span>
+    <span class="tot">${DATA.total.req[di]} requests · ${DATA.total.disp[di]}</span></div>
+    <div class="stack">${pieces}</div></div>`;
+ });
+ document.getElementById('bars').innerHTML=h;
+}
+function renderList(){
+ let h='<div class="colhd"><div></div><div>Category</div><div class="r">Req</div><div class="r">Desktop · Mobile</div><div class="r">Share</div></div>';
+ DATA.categories.forEach((c,ci)=>{
+  const pct=Math.round(100*c.kb[0]/DATA.total.kb[0]);
+  let assets='';
+  c.assets.forEach(a=>{
+    assets+=`<div class="a${a.flag?' warn':''}${a.muted?' muted':''}"><div class="a-nm">${a.name}${a.flag?'<span class="flag">mobile = desktop</span>':''}${a.note?`<span class="note">${a.note}</span>`:''}</div>
+      <div class="a-sz">${a.disp[0]}</div><div class="a-sz m">${a.disp[1]}</div></div>`;
+  });
+  h+=`<div class="cat${ci===sel?' sel open':''}" data-ci="${ci}">
+    <div class="cat-row"><span class="dot" style="background:${col(c.type)}"></span>
+      <span class="cat-nm">${c.type}</span>
+      <span class="cat-req">${c.req[0]}</span>
+      <span class="cat-sz">${c.disp[0]} <span class="m">· ${c.disp[1]}</span></span>
+      <span class="cat-pct">${pct}%${CHEV}</span></div>
+    <div class="assets">${assets}</div></div>`;
+ });
+ document.getElementById('catlist').innerHTML=h;
+}
+function selectCat(ci,toggle){
+ const cur=document.querySelector('.cat[data-ci="'+ci+'"]');
+ if(toggle&&ci===sel){cur.classList.toggle('open');renderBars();return;}
+ sel=ci;renderBars();renderList();
+}
+document.getElementById('bars').addEventListener('click',e=>{
+ const p=e.target.closest('.seg-piece');if(p)selectCat(+p.dataset.ci,false);
+});
+document.getElementById('catlist').addEventListener('click',e=>{
+ const r=e.target.closest('.cat');if(r)selectCat(+r.dataset.ci,true);
+});
+renderBars();renderList();
+</script>
+</body>
+</html>

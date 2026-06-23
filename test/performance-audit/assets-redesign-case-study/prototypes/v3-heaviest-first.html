@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page resources — v3 heaviest first</title>
+<style>
+:root{
+  --c-good:#1f7a3a;--c-ni:#b45309;--c-ni-light:#fff7ed;--c-ni-border:#fed7aa;--c-poor:#dc2626;
+  --c-bg:#fafaf9;--c-surface:#ffffff;--c-text:#1a1a18;--c-text-muted:#5a5a55;
+  --c-border:#e5e4e0;--c-accent:#3a5cff;--radius:8px;
+  --font-sans:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono','Fira Code',Consolas,'Courier New',monospace;
+  --cat-Images:#3a5cff;--cat-Font:#7c3aed;--cat-Document:#0891b2;
+  --cat-Stylesheet:#db2777;--cat-Script:#ea580c;--cat-Other:#64748b;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--c-bg);color:var(--c-text);line-height:1.5;
+  padding:40px max(24px,calc((100vw - 940px)/2)) 120px;}
+h1.proto-title{font-size:26px;margin-bottom:4px;}
+p.proto-intro{color:var(--c-text-muted);margin-bottom:22px;max-width:720px;font-size:15px;}
+p.proto-intro b{color:var(--c-ni);}
+.subhd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--c-text-muted);margin:0 0 10px;}
+
+/* category strip */
+.strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px;}
+.chip{display:flex;align-items:center;gap:8px;border:1px solid var(--c-border);border-radius:9px;background:var(--c-surface);
+  padding:8px 12px;font-size:13px;}
+.chip .dot{width:10px;height:10px;border-radius:3px;}
+.chip b{font-weight:700;}
+.chip .sz{color:var(--c-text-muted);font-variant-numeric:tabular-nums;}
+
+/* asset list */
+.list{border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-surface);overflow:hidden;}
+.row{display:grid;grid-template-columns:24px minmax(180px,1.4fr) 1fr auto;gap:14px;align-items:center;
+  padding:12px 18px;border-bottom:1px solid var(--c-border);}
+.row:last-child{border-bottom:none;}
+.row.warn{background:var(--c-ni-light);}
+.rank{font-size:12px;font-weight:800;color:var(--c-text-muted);text-align:center;font-variant-numeric:tabular-nums;}
+.nm{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.nm .f{font-family:var(--font-mono);font-size:12.5px;word-break:break-all;}
+.nm .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--c-text-muted);}
+.nm .tag .dot{width:8px;height:8px;border-radius:2px;}
+.row.warn .nm .f{color:var(--c-ni);}
+.flag{font-size:10px;font-weight:800;color:#fff;background:var(--c-ni);padding:1px 7px;border-radius:9999px;margin-left:8px;}
+
+/* dual bars */
+.bars{display:flex;flex-direction:column;gap:5px;min-width:120px;}
+.brow{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:center;}
+.brow .k{font-size:10px;font-weight:700;color:var(--c-text-muted);}
+.track{height:10px;background:#efeee9;border-radius:5px;overflow:hidden;}
+.fill{height:100%;border-radius:5px;}
+.fill.d{background:var(--cat-Images);}
+.fill.m{background:#9bb0ff;}
+.szs{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.szs .d{font-weight:700;font-size:14px;}
+.szs .m{font-size:12px;color:var(--c-text-muted);}
+.szs .save{display:block;font-size:11px;font-weight:700;color:var(--c-good);}
+.foot{padding:12px 18px;background:#faf9f7;border-top:1px solid var(--c-border);font-size:13px;color:var(--c-text-muted);}
+</style>
+</head>
+<body>
+<h1 class="proto-title">Page resources — v3 · heaviest assets first</h1>
+<p class="proto-intro">Inverts the hierarchy: rank every individual asset by weight so the <b>314 KB hero that
+never shrinks for mobile</b> sits at the top where it belongs. Dual bars compare Desktop vs Mobile per asset;
+the category strip gives the at-a-glance totals.</p>
+
+<p class="subhd">By category</p>
+<div class="strip" id="strip"></div>
+
+<p class="subhd">Heaviest individual assets</p>
+<div class="list" id="list"></div>
+
+<script>
+const DATA={
+ devices:['Desktop','Mobile'],
+ total:{req:[22,22],kb:[1136,698],disp:['1.11 MB','698 KB']},
+ categories:[
+  {type:'Images',req:[16,16],disp:['1005 KB','546 KB'],kb:[1005,546],assets:[
+    {name:'wattage_sample_banner4.png.webp',kb:[314,314],disp:['314 KB','314 KB'],note:'LCP hero — CSS background, no responsive derivative',flag:1},
+    {name:'wattage_sample_banner2.png.webp',kb:[297,87],disp:['297 KB','87 KB']},
+    {name:'wattage_sample_banner3.png.webp',kb:[276,43],disp:['276 KB','43 KB']},
+    {name:'wattage_sample_headshot.png.webp',kb:[61,61],disp:['61 KB','61 KB']},
+    {name:'sander-weeteling-…-unsplash.jpg.webp',kb:[26,9],disp:['26 KB','9 KB']},
+    {name:'11 SVG icons & logos',kb:[31,31],disp:['31 KB','31 KB'],muted:1},
+  ]},
+  {type:'Font',req:[1,1],disp:['76 KB','76 KB'],kb:[76,76],assets:[
+    {name:'PPNeueMontreal-Regular.woff2',kb:[76,76],disp:['76 KB','76 KB']}]},
+  {type:'Document',req:[1,1],disp:['39 KB','39 KB'],kb:[39,39],assets:[
+    {name:'/ (HTML document)',kb:[39,39],disp:['39 KB','39 KB']}]},
+  {type:'Stylesheet',req:[2,2],disp:['8 KB','27 KB'],kb:[8,27],assets:[
+    {name:'css_73b…aggregate.css',kb:[7,25],disp:['7 KB','25 KB']},
+    {name:'css_FEx1…aggregate.css',kb:[1,2],disp:['1 KB','2 KB']}]},
+  {type:'Script',req:[1,1],disp:['2 KB','4 KB'],kb:[2,4],assets:[
+    {name:'js_u2w…aggregate.js',kb:[2,4],disp:['2 KB','4 KB']}]},
+  {type:'Other',req:[1,1],disp:['6 KB','6 KB'],kb:[6,6],assets:[
+    {name:'favicon.ico',kb:[6,6],disp:['6 KB','6 KB']}]},
+ ]
+};
+const col=t=>getComputedStyle(document.documentElement).getPropertyValue('--cat-'+t).trim();
+
+// category strip
+document.getElementById('strip').innerHTML=DATA.categories.map(c=>
+ `<div class="chip"><span class="dot" style="background:${col(c.type)}"></span>
+   <b>${c.type}</b> <span class="sz">${c.req[0]} · ${c.disp[0]} → ${c.disp[1]}</span></div>`).join('');
+
+// flatten assets
+let flat=[];
+DATA.categories.forEach(c=>c.assets.forEach(a=>flat.push({...a,cat:c.type})));
+flat.sort((a,b)=>Math.max(...b.kb)-Math.max(...a.kb));
+const maxkb=Math.max(...flat.map(a=>Math.max(...a.kb)));
+const bar=(kb,cls)=>`<div class="brow"><span class="k">${cls.toUpperCase()}</span>
+  <div class="track"><div class="fill ${cls}" style="width:${Math.max(2,100*kb/maxkb)}%"></div></div></div>`;
+document.getElementById('list').innerHTML=flat.map((a,i)=>{
+  const save=a.kb[0]-a.kb[1];
+  const saveTxt=save>5?`<span class="save">−${save} KB on mobile</span>`:(a.flag?'<span class="save" style="color:var(--c-ni)">no mobile saving</span>':'');
+  return `<div class="row${a.flag?' warn':''}">
+    <div class="rank">${i+1}</div>
+    <div class="nm"><span class="f">${a.name}${a.flag?'<span class="flag">mobile = desktop</span>':''}</span>
+      <span class="tag"><span class="dot" style="background:${col(a.cat)}"></span>${a.cat}${a.note?' · '+a.note:''}</span></div>
+    <div class="bars">${bar(a.kb[0],'d')}${bar(a.kb[1],'m')}</div>
+    <div class="szs"><span class="d">${a.disp[0]}</span> <span class="m">/ ${a.disp[1]}</span>${saveTxt}</div>
+  </div>`;
+}).join('')+`<div class="foot">22 requests · ${DATA.total.disp[0]} on desktop, ${DATA.total.disp[1]} on mobile · <code>chrome-extension://</code> requests excluded</div>`;
+</script>
+</body>
+</html>

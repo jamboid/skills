@@ -40,6 +40,26 @@ Lighthouse flags a poor CLS of 0.59, but WebPageTest measures it at 0.02 — the
 | Page weight | 700 KB | — |
 | Requests | 22 | — |
 
+## Page resources
+
+| Category | Requests | Desktop |
+|---|---:|---:|
+| Images | 17 | 1007 KB |
+| Font | 1 | 76 KB |
+| Document | 1 | 39 KB |
+| Stylesheet | 2 | 8 KB |
+| Script | 1 | 2 KB |
+| **Total** | 22 | 1.1 MB |
+
+**Images**
+
+- `wattage_sample_banner4.png.webp` — 314 KB
+- `wattage_sample_banner2.png.webp` — 297 KB
+- `wattage_sample_banner3.png.webp` — 276 KB
+- `wattage_sample_headshot.png.webp` — 61 KB
+- `sander-weeteling-…-unsplash.jpg.webp` — 26 KB
+- _+11 files under 10 KB — 31 KB_
+
 ## Performance
 
 ### Findings (candidates — data-derived, awaiting ratification)
@@ -53,17 +73,6 @@ Lighthouse flags a poor CLS of 0.59, but WebPageTest measures it at 0.02 — the
 **Image elements without explicit `width`/`height`.** Images lack intrinsic dimensions, forcing reflow and feeding the CLS measurement above. Add them.
 
 **Render-blocking requests.** Stylesheets/scripts in the head delay first paint. Inline critical CSS and defer the rest.
-
-### Assets
-
-| Type | Requests | Size |
-|---|---:|---:|
-| Image | 17 | 1007 KB |
-| Font | 1 | 76 KB |
-| Document | 1 | 39 KB |
-| CSS | 2 | 8 KB |
-| Script | 1 | 2 KB |
-| **Total** | 22 | 1.1 MB |
 
 ## Conclusions
 
