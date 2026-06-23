@@ -4,25 +4,18 @@
 
 ## Summary
 
-`goodbrandconsultants.com` is **fast on a desktop** but **slow on a phone**. Google's Lighthouse tool scores it **95 out of 100 on desktop**, where the main content appears in **1.3 seconds**, but only **81 on mobile**, where that same content takes **4.4 seconds** — well into Google's 'poor' range. (That 4.4-second figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on the screen finishes loading.)
+`goodbrandconsultants.com` is a live Drupal site (fronted by Cloudflare), and this is a performance-focused review of its homepage — how quickly it loads and becomes usable for a visitor. We measured it in the lab with Google's **Lighthouse** tool, on both a desktop and a throttled mid-range phone, so the figures below are a controlled snapshot rather than live field data.
 
-The site itself isn't the problem. It's built on Drupal and sits behind Cloudflare, and its own code is tiny — roughly 7 KB of theme styling and 7 KB of JavaScript. The slowness comes from everything that's been bolted on around it.
+As it stands, **desktop performance is good but mobile is poor**. Lighthouse scores the page **95 out of 100 on desktop**, where the main content appears in **1.3 seconds**, but only **81 on mobile**, where that same content takes **4.4 seconds** — well into Google's 'poor' range. (That figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)
 
-Two things make the mobile page slow:
-
-- **Styles and fonts hold up the first paint.** A dozen separate, un-combined Drupal stylesheets plus the Adobe Typekit web fonts all have to download before the browser will show anything. On mobile, that delay costs about **1.4 seconds**.
-- **Third-party JavaScript dominates the page.** Of the 1.33 MB the page weighs, 830 KB is script — and almost none of it is the site's own code.
-
-That third-party script breaks down roughly as:
+The site's own code isn't the problem — it's tiny, roughly 7 KB of styling and 7 KB of JavaScript. Almost all of the page's weight is third-party code bolted on around it:
 
 - **~550 KB** of bot-management scripts, loaded from randomised paths
 - **157 KB** of Google Tag Manager
 - a **67 KB** chat widget
 - visitor-tracking scripts
 
-On top of that, the largest feature image (121 KB) is sent to phones at its full desktop size.
-
-A desktop machine on a fast connection shrugs all of this off; a mid-range phone on mobile data does not. The encouraging part: every fix here is a configuration or tag-management change, not a rebuild of the site.
+That third-party weight, together with a dozen un-combined stylesheets and fonts that hold up the first paint, is what a throttled phone struggles with — a fast desktop shrugs it all off. The findings and conclusions below break down each cause and what to do about it.
 
 ## Metrics
 

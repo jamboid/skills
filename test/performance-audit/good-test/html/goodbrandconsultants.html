@@ -655,22 +655,16 @@ em { font-style: italic; }
     <section class="content-section" id="summary">
       <h2 class="section-heading">Summary</h2>
     <div class="summary-text">
-      <p><code>goodbrandconsultants.com</code> is <strong>fast on a desktop</strong> but <strong>slow on a phone</strong>. Google's Lighthouse tool scores it <strong>95 out of 100 on desktop</strong>, where the main content appears in <strong>1.3 seconds</strong>, but only <strong>81 on mobile</strong>, where that same content takes <strong>4.4 seconds</strong> — well into Google's 'poor' range. (That 4.4-second figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on the screen finishes loading.)</p>
-      <p>The site itself isn't the problem. It's built on Drupal and sits behind Cloudflare, and its own code is tiny — roughly 7 KB of theme styling and 7 KB of JavaScript. The slowness comes from everything that's been bolted on around it.</p>
-      <p>Two things make the mobile page slow:</p>
-      <ul class="bullets">
-        <li><strong>Styles and fonts hold up the first paint.</strong> A dozen separate, un-combined Drupal stylesheets plus the Adobe Typekit web fonts all have to download before the browser will show anything. On mobile, that delay costs about <strong>1.4 seconds</strong>.</li>
-        <li><strong>Third-party JavaScript dominates the page.</strong> Of the 1.33 MB the page weighs, 830 KB is script — and almost none of it is the site's own code.</li>
-      </ul>
-      <p>That third-party script breaks down roughly as:</p>
+      <p><code>goodbrandconsultants.com</code> is a live Drupal site (fronted by Cloudflare), and this is a performance-focused review of its homepage — how quickly it loads and becomes usable for a visitor. We measured it in the lab with Google's <strong>Lighthouse</strong> tool, on both a desktop and a throttled mid-range phone, so the figures below are a controlled snapshot rather than live field data.</p>
+      <p>As it stands, <strong>desktop performance is good but mobile is poor</strong>. Lighthouse scores the page <strong>95 out of 100 on desktop</strong>, where the main content appears in <strong>1.3 seconds</strong>, but only <strong>81 on mobile</strong>, where that same content takes <strong>4.4 seconds</strong> — well into Google's 'poor' range. (That figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)</p>
+      <p>The site's own code isn't the problem — it's tiny, roughly 7 KB of styling and 7 KB of JavaScript. Almost all of the page's weight is third-party code bolted on around it:</p>
       <ul class="bullets">
         <li><strong>~550 KB</strong> of bot-management scripts, loaded from randomised paths</li>
         <li><strong>157 KB</strong> of Google Tag Manager</li>
         <li>a <strong>67 KB</strong> chat widget</li>
         <li>visitor-tracking scripts</li>
       </ul>
-      <p>On top of that, the largest feature image (121 KB) is sent to phones at its full desktop size.</p>
-      <p>A desktop machine on a fast connection shrugs all of this off; a mid-range phone on mobile data does not. The encouraging part: every fix here is a configuration or tag-management change, not a rebuild of the site.</p>
+      <p>That third-party weight, together with a dozen un-combined stylesheets and fonts that hold up the first paint, is what a throttled phone struggles with — a fast desktop shrugs it all off. The findings and conclusions below break down each cause and what to do about it.</p>
     </div>
     </section>
 

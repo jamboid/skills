@@ -655,17 +655,16 @@ em { font-style: italic; }
     <section class="content-section" id="summary">
       <h2 class="section-heading">Summary</h2>
     <div class="summary-text">
-      <p><code>wattage.staging.gd</code> is <strong>basically perfect on desktop</strong> and <strong>good, with room to improve, on mobile</strong>. Google's Lighthouse tool gives it <strong>100 out of 100 on desktop</strong> — the main content loads in 0.7 seconds, the page never freezes, and nothing jumps around as it loads — and <strong>91 on mobile</strong>, where that main content takes <strong>3.4 seconds</strong> in a deliberately harsh lab test. (That headline figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)</p>
-      <p>Underneath, it's a lean Drupal build, which is why it performs so well:</p>
+      <p><code>wattage.staging.gd</code> is the staging build of a Drupal site, and this is a performance-focused review of it — how quickly the page loads and becomes usable for a visitor. We measured it in the lab with two independent tools, Google's <strong>Lighthouse</strong> and <strong>WebPageTest</strong>, across both a desktop and a throttled mobile device, so the numbers below are controlled test results rather than live field data.</p>
+      <p>The headline: <strong>near-perfect on desktop, good but improvable on mobile</strong>. Lighthouse scores it <strong>100 out of 100 on desktop</strong> — the main image loads in 0.7 seconds, the page never freezes, and nothing shifts around as it loads — and <strong>91 on mobile</strong>, where that same main image takes <strong>3.4 seconds</strong> to appear. (That figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)</p>
+      <p>Desktop performance is excellent today, thanks to strong foundations. It's a lean Drupal build:</p>
       <ul class="bullets">
         <li><strong>server-rendered HTML</strong> — the page arrives ready to display rather than being assembled in the browser</li>
         <li><strong>CSS and JavaScript bundled</strong> into a few aggregated files instead of many</li>
         <li>only <strong>~2–4 KB of JavaScript</strong> in total</li>
         <li><strong>icons drawn as SVG</strong>, which weigh almost nothing</li>
       </ul>
-      <p>Together these keep the page's TBT (Total Blocking Time — how long the page sits frozen and unresponsive while scripts run) at <strong>0, even on a throttled mobile CPU</strong>. So the mobile problem isn't JavaScript; it's purely how fast that largest image paints.</p>
-      <p>Two things slow that down, both cheap to fix: the phone is served the <strong>314 KB desktop version of the hero image</strong> (its sibling banners right-size to 43–87 KB), and the staging server runs the older <strong>HTTP/1.1</strong> protocol, which makes requests queue up rather than load together — costing roughly <strong>850 ms</strong> of mobile load time.</p>
-      <p>Lab testing now covers both desktop and mobile. The one remaining gap is <strong>field data</strong> — real measurements from actual visitors (Google's CrUX report) — to confirm what mobile users genuinely experience.</p>
+      <p>Together these keep the page's TBT (Total Blocking Time — how long the page sits frozen and unresponsive while scripts run) at <strong>0, even on a throttled mobile CPU</strong>. So the mobile gap isn't JavaScript or the site's own code; it's a couple of specific, fixable things around the images and how the staging server delivers them. The findings and conclusions below lay those out, and what to do about them.</p>
     </div>
     </section>
 
@@ -956,7 +955,7 @@ em { font-style: italic; }
     <section class="content-section" id="conclusions">
       <h2 class="section-heading">Conclusions</h2>
     <div class="prose">
-      <p>A lean, competently built Drupal site — server-rendered, bundled assets, negligible JavaScript, SVG icons. Desktop is solved. The mobile data, now in hand, confirms the earlier desktop-only prediction: the page is <strong>held back on mobile by how fast its largest image paints (3.4 seconds in the harsh lab test)</strong> — driven by oversized images and an untuned HTTP/1.1 server, not by JavaScript (its blocking time is 0 on every run). Ignore Lighthouse's warning about 820 KB of "unused JavaScript": every byte of it is the auditor's own browser extensions, not the site's code.</p>
+      <p>A lean, competently built Drupal site — server-rendered, bundled assets, negligible JavaScript, SVG icons. Desktop performance is excellent as it stands. The mobile data, now in hand, confirms the earlier desktop-only prediction: the page is <strong>held back on mobile by how fast its largest image paints (3.4 seconds in the harsh lab test)</strong> — driven by oversized images and an untuned HTTP/1.1 server, not by JavaScript (its blocking time is 0 on every run). Ignore Lighthouse's warning about 820 KB of "unused JavaScript": every byte of it is the auditor's own browser extensions, not the site's code.</p>
       <p>The good news is that every lever is cheap and needs no re-architecture. The single highest-value change does double duty: promote the hero image from a CSS background to a normal responsive <code>&lt;img&gt;</code>, which both right-sizes it for mobile (314 KB → ~87 KB, the size its sibling images already use) and lets the browser preload it. Add <strong>HTTP/2 and text compression</strong> at the server on top of that, and you reclaim well over a second of mobile load time. The images are already in the efficient WebP format, so this is about sizing and delivery, not converting formats.</p>
       <p>One nuance: the two testing tools disagree on mobile LCP — Lighthouse says 3.4 seconds, WebPageTest says 1.4 — because Lighthouse's simulated mobile test is deliberately pessimistic and WebPageTest's throttling is gentler; real-world numbers sit between them. Lab coverage is now complete on both desktop and mobile. The one thing still missing is <strong>field data</strong> from real visitors (Google's CrUX report) to confirm what users actually feel.</p>
     </div>
