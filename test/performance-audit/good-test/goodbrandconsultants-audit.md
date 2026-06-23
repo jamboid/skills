@@ -4,11 +4,25 @@
 
 ## Summary
 
-`goodbrandconsultants.com` is **strong on desktop** (Lighthouse **95**, LCP 1.3 s) but **drops into the poor band on mobile** (Lighthouse **81**, LCP **4.4 s**). It's a Drupal site fronted by Cloudflare, and the mobile problem is not the site's own code — that's tiny (~7 KB of theme CSS, ~7 KB of JS). It's what's bolted on around it.
+`goodbrandconsultants.com` is **fast on a desktop** but **slow on a phone**. Google's Lighthouse tool scores it **95 out of 100 on desktop**, where the main content appears in **1.3 seconds**, but only **81 on mobile**, where that same content takes **4.4 seconds** — well into Google's 'poor' range. (That 4.4-second figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on the screen finishes loading.)
 
-Two things drive the 4.4 s mobile LCP. First, **render-blocking CSS and fonts**: a dozen un-aggregated Drupal component stylesheets plus Adobe Typekit block first paint, costing roughly **1.4 s** of FCP/LCP on mobile. Second, **third-party JavaScript dominates the page** — 830 KB of the 1.33 MB total is script, almost none of it first-party: ~550 KB of injected bot-management scripts on randomised paths, 157 KB of Google Tag Manager, a 67 KB chat widget, and visitor-tracking. The largest feature image (121 KB) is also shipped at full size to phones.
+The site itself isn't the problem. It's built on Drupal and sits behind Cloudflare, and its own code is tiny — roughly 7 KB of theme styling and 7 KB of JavaScript. The slowness comes from everything that's been bolted on around it.
 
-Desktop absorbs all of this; a throttled phone does not. Every fix here is configuration or tag governance, not re-architecture.
+Two things make the mobile page slow:
+
+- **Styles and fonts hold up the first paint.** A dozen separate, un-combined Drupal stylesheets plus the Adobe Typekit web fonts all have to download before the browser will show anything. On mobile, that delay costs about **1.4 seconds**.
+- **Third-party JavaScript dominates the page.** Of the 1.33 MB the page weighs, 830 KB is script — and almost none of it is the site's own code.
+
+That third-party script breaks down roughly as:
+
+- **~550 KB** of bot-management scripts, loaded from randomised paths
+- **157 KB** of Google Tag Manager
+- a **67 KB** chat widget
+- visitor-tracking scripts
+
+On top of that, the largest feature image (121 KB) is sent to phones at its full desktop size.
+
+A desktop machine on a fast connection shrugs all of this off; a mid-range phone on mobile data does not. The encouraging part: every fix here is a configuration or tag-management change, not a rebuild of the site.
 
 ## Metrics
 
@@ -93,9 +107,21 @@ _Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)_ · [full report]
 
 ## Site architecture
 
-Drupal, custom theme `good` (`/themes/custom/good/`), with the Paragraphs module and Drupal image styles (`feature_promo_large`, `feature_promo_medium`) producing image derivatives. The site is fronted by **Cloudflare** — `/cdn-cgi/scripts/.../rocket-loader.min.js` and the `/cdn-cgi/rum` beacon confirm it, with Rocket Loader enabled.
+The site runs on **Drupal**, an open-source content management system. It uses a custom theme called `good` (`/themes/custom/good/`) for its look, the Paragraphs module to build flexible page layouts, and Drupal's image styles (`feature_promo_large`, `feature_promo_medium`) to generate resized copies of images automatically.
 
-The page is server-rendered and the first-party footprint is small: the theme ships ~14 KB of CSS (`screen.css`) and ~7 KB of JS (`good.js`). The weight is almost entirely third-party. Adobe **Typekit** serves the fonts (render-blocking). **Google Tag Manager** (157 KB) is present, **Snitcher** (`radar.min.js`, B2B visitor de-anonymisation) tracks visitors, and a **chat widget** (`chat.goodai.works`, 67 KB) loads on every page. A further ~550 KB of script is served from randomised first-party paths (`/35z3/…`) — the signature of an injected bot-management or anti-fraud layer; confirm the vendor (likely Cloudflare) before acting. That the CSS arrives as a dozen separate `core/modules/system/…` files means Drupal's CSS **aggregation is off or partial** — a config switch, not a code change.
+Sitting in front of the site is **Cloudflare**, a service that caches pages and delivers them from servers close to each visitor. Its `rocket-loader.min.js` script and `/cdn-cgi/rum` tracking beacon confirm it's in use, with the Rocket Loader feature switched on.
+
+The page is **server-rendered** — the HTML arrives ready to display rather than being assembled in the browser — and the site's own code is light: the theme ships only ~14 KB of CSS (`screen.css`, the styling) and ~7 KB of JavaScript (`good.js`, the behaviour). Almost all of the page's weight comes from **third-party scripts**: code loaded from other companies' services rather than the site itself.
+
+The main third-party scripts are:
+
+- **Adobe Typekit** — serves the web fonts. These are *render-blocking*, meaning the browser holds off showing text until the fonts have downloaded, which delays the first thing the visitor sees.
+- **Google Tag Manager** (157 KB) — a container that loads marketing and analytics tags.
+- **Snitcher** (`radar.min.js`) — identifies which companies are visiting the site (B2B visitor de-anonymisation).
+- **Chat widget** (`chat.goodai.works`, 67 KB) — loads on every page, whether or not anyone uses it.
+- **~550 KB of unlabelled script** from randomised paths that look first-party (`/35z3/…`) — the fingerprint of an injected bot-management or anti-fraud layer. Confirm the vendor (most likely Cloudflare) before changing anything here.
+
+One quick win stands out. The site's CSS arrives as a dozen separate files (`core/modules/system/…`), which means Drupal's **CSS aggregation** — the setting that bundles those files into one download — is turned off or only partly on. Switching it on is a configuration change, not a code change.
 
 ## Performance
 
@@ -128,9 +154,15 @@ CLS is good on both runs (0.00 desktop, 0.03 mobile), but several images carry n
 
 ## Conclusions
 
-A well-built Drupal site let down by what's layered on top of it. Desktop is genuinely good (95, LCP 1.3 s). The mobile score of 81 — and its **4.4 s LCP, in Google's 'poor' band** — comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB CSS, ~7 KB JS).
+This is a well-built Drupal site let down by what's been layered on top of it. On desktop it's genuinely good — 95 out of 100, with the main content showing in 1.3 seconds. The mobile score of 81, and its **4.4-second load that lands in Google's 'poor' range**, comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB of styling, ~7 KB of JavaScript).
 
-The order of work is clear. Fixing render-blocking (CSS aggregation + non-blocking Typekit) is the biggest single win at ~1.4 s and is a Drupal config switch. Right-sizing the LCP feature image adds ~0.6 s. The harder, more political fix is the third-party load — 830 KB of GTM, chat, tracking and bot-management — which needs a tag audit and an owner's sign-off rather than an engineering change. None of it is re-architecture. As with any single lab run, confirm against field/CrUX data before treating 4.4 s as what every mobile user feels — but it's a real risk worth acting on now.
+The order of work is clear:
+
+- **Fix the render-blocking styles and fonts first.** Turn on Drupal's CSS aggregation (the setting that combines those stylesheets into one) and load the Typekit fonts so they don't block the page. This is the single biggest win at around **1.4 seconds**, and it's a configuration switch rather than a code change.
+- **Right-size the main feature image** so phones aren't downloading the full desktop-sized version. Worth about **0.6 seconds**.
+- **Trim the third-party load** — the 830 KB of Google Tag Manager, chat, tracking and bot-management scripts. This is the harder, more political fix: it needs a review of which tags still earn their place and a sign-off from whoever owns them, not an engineering change.
+
+None of this is a re-architecture. One caveat: these figures come from a single lab test, so before treating 4.4 seconds as what every mobile visitor actually feels, confirm it against real-world field data (Google's CrUX report). But it's a genuine risk, and worth acting on now.
 
 ### Priority actions
 

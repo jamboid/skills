@@ -561,11 +561,36 @@ def nav_link(target, label):
 
 
 def prose_block(text, cls="prose"):
-    paras = paragraphs(text)
-    if not paras:
+    if not str(text or "").strip():
         return ""
-    inner = "\n".join("      <p>" + inline_html(p) + "</p>" for p in paras)
-    return '    <div class="' + cls + '">\n' + inner + '\n    </div>'
+    out, para, bullets = [], [], []
+
+    def flush_para():
+        if para:
+            out.append("      <p>" + inline_html(" ".join(para)) + "</p>")
+            para.clear()
+
+    def flush_bullets():
+        if bullets:
+            out.append('      <ul class="bullets">')
+            out.extend("        <li>" + inline_html(b) + "</li>" for b in bullets)
+            out.append("      </ul>")
+            bullets.clear()
+
+    for raw in str(text).split("\n"):
+        line = raw.strip()
+        if not line:
+            flush_para(); flush_bullets()
+            continue
+        m = re.match(r"[-*]\s+(.*)", line)
+        if m:
+            flush_para()
+            bullets.append(m.group(1).strip())
+        else:
+            flush_bullets()
+            para.append(line)
+    flush_para(); flush_bullets()
+    return '    <div class="' + cls + '">\n' + "\n".join(out) + '\n    </div>'
 
 
 def section(sid, heading, body):

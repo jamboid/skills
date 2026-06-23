@@ -4,11 +4,20 @@
 
 ## Summary
 
-`wattage.staging.gd` performance is **optimal on desktop** (Lighthouse **100**, LCP 0.7 s, 0 ms blocking, no layout shift) and **good-but-improvable on mobile** (Lighthouse **91**, LCP **3.4 s** in the pessimistic lab). It's a lean Drupal build: server-rendered HTML, aggregated CSS/JS, only ~2–4 KB of script, all-SVG icons — so **TBT stays 0 even on mobile at 4× CPU throttle**. The mobile problem is not JavaScript; it's LCP.
+`wattage.staging.gd` is **basically perfect on desktop** and **good, with room to improve, on mobile**. Google's Lighthouse tool gives it **100 out of 100 on desktop** — the main content loads in 0.7 seconds, the page never freezes, and nothing jumps around as it loads — and **91 on mobile**, where that main content takes **3.4 seconds** in a deliberately harsh lab test. (That headline figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)
 
-Two causes drive it: an oversized hero image (a phone is served the **314 KB desktop derivative**, where its sibling banners right-size to 43–87 KB) and an untuned **HTTP/1.1** server (~850 ms of mobile LCP from head-of-line blocking). Both are cheap to fix.
+Underneath, it's a lean Drupal build, which is why it performs so well:
 
-Lab coverage is now complete on both form factors. The remaining gap is **field/CrUX data** to confirm what real mobile users feel.
+- **server-rendered HTML** — the page arrives ready to display rather than being assembled in the browser
+- **CSS and JavaScript bundled** into a few aggregated files instead of many
+- only **~2–4 KB of JavaScript** in total
+- **icons drawn as SVG**, which weigh almost nothing
+
+Together these keep the page's TBT (Total Blocking Time — how long the page sits frozen and unresponsive while scripts run) at **0, even on a throttled mobile CPU**. So the mobile problem isn't JavaScript; it's purely how fast that largest image paints.
+
+Two things slow that down, both cheap to fix: the phone is served the **314 KB desktop version of the hero image** (its sibling banners right-size to 43–87 KB), and the staging server runs the older **HTTP/1.1** protocol, which makes requests queue up rather than load together — costing roughly **850 ms** of mobile load time.
+
+Lab testing now covers both desktop and mobile. The one remaining gap is **field data** — real measurements from actual visitors (Google's CrUX report) — to confirm what mobile users genuinely experience.
 
 ## Metrics
 
@@ -136,9 +145,11 @@ _WebPageTest (Chrome 145, mobile, throttled link), median of 3 runs_
 
 ## Site architecture
 
-Drupal, served from a custom theme (`/themes/custom/wattage/`); stack-pack detection and the `/core/` and `/sites/default/files/` paths confirm it. CSS/JS aggregation is on — the whole page ships as 2 hashed CSS aggregates plus a single ~2–4 KB JS file. There is no SPA framework or hydration bundle, which is why the main thread is idle and **TBT is 0 on every run, including mobile at 4× CPU throttle**: this is a server-rendered HTML page, not a JavaScript app.
+The site runs on **Drupal** (an open-source content management system), served from a custom theme (`/themes/custom/wattage/`). Drupal's own `/core/` and `/sites/default/files/` paths, plus automatic stack detection, confirm the platform. Its CSS and JavaScript **aggregation is switched on** — the whole page ships as two bundled CSS files plus a single ~2–4 KB JavaScript file.
 
-The icon system is SVG (logo and `icon_*` glyphs), so it costs almost nothing. The page's byte budget is therefore almost entirely raster photography, delivered through Drupal image styles (`width_scale_xl`, `width_scale_m`) — and those derivatives aren't right-sized for mobile (see findings). The staging host runs plain HTTP/1.1 with text compression off; those are staging defaults, not code defects, but they cost real time on mobile. Confirm production fronting (CDN/edge) before acting.
+There's no single-page-app framework or hydration bundle — no heavy JavaScript layer that rebuilds the page in the browser — which is why the main thread stays idle and **TBT (Total Blocking Time) is 0 on every run, including mobile at 4× CPU throttling**. This is a server-rendered HTML page, not a JavaScript app.
+
+Icons are drawn as SVG (the logo and `icon_*` glyphs), so they cost almost nothing. That leaves the page's weight almost entirely **photography**, delivered through Drupal's image styles (`width_scale_xl`, `width_scale_m`) — and those resized copies aren't tuned for mobile (see findings). The staging server also runs plain **HTTP/1.1** with text compression turned off. Those are staging defaults rather than code faults, but they cost real time on mobile, so confirm how production is fronted (CDN or edge) before acting.
 
 ## Performance
 
@@ -179,9 +190,11 @@ Both runs report `usesCompression: false` — the HTML document and CSS ship unc
 
 ## Conclusions
 
-A lean, competently built Drupal site — server-rendered, aggregated assets, negligible JavaScript, SVG iconography. Desktop is solved. The mobile data, now in hand, turns the earlier desktop-only prediction into a fact: the page is **LCP-bound on mobile (3.4 s in the pessimistic lab), driven by oversized images and an untuned HTTP/1.1 server — not by JavaScript** (TBT is 0 on every run). It's worth ignoring Lighthouse's 820 KB of "unused JavaScript": every byte of it is the auditor's own browser extensions, not site code.
+A lean, competently built Drupal site — server-rendered, bundled assets, negligible JavaScript, SVG icons. Desktop is solved. The mobile data, now in hand, confirms the earlier desktop-only prediction: the page is **held back on mobile by how fast its largest image paints (3.4 seconds in the harsh lab test)** — driven by oversized images and an untuned HTTP/1.1 server, not by JavaScript (its blocking time is 0 on every run). Ignore Lighthouse's warning about 820 KB of "unused JavaScript": every byte of it is the auditor's own browser extensions, not the site's code.
 
-The good news is that every lever is cheap. The single highest-value change does double duty: promote the hero from a CSS background to a responsive `<img>` — that both right-sizes it for mobile (314 KB → ~87 KB, the size its siblings already use) and makes it preloadable. Add HTTP/2 + compression at the server and that's well over a second of mobile LCP reclaimed, with no re-architecture. The images are already WebP, so this is sizing and transport, not format. Note the two tools disagree on mobile LCP (Lighthouse 3.4 s vs WebPageTest 1.4 s): the simulated mobile lab is pessimistic, WebPageTest's throttle gentler, and real-world LCP sits between them. Lab coverage is now complete on both form factors; the one thing still missing is field/CrUX data to confirm what users actually feel.
+The good news is that every lever is cheap and needs no re-architecture. The single highest-value change does double duty: promote the hero image from a CSS background to a normal responsive `<img>`, which both right-sizes it for mobile (314 KB → ~87 KB, the size its sibling images already use) and lets the browser preload it. Add **HTTP/2 and text compression** at the server on top of that, and you reclaim well over a second of mobile load time. The images are already in the efficient WebP format, so this is about sizing and delivery, not converting formats.
+
+One nuance: the two testing tools disagree on mobile LCP — Lighthouse says 3.4 seconds, WebPageTest says 1.4 — because Lighthouse's simulated mobile test is deliberately pessimistic and WebPageTest's throttling is gentler; real-world numbers sit between them. Lab coverage is now complete on both desktop and mobile. The one thing still missing is **field data** from real visitors (Google's CrUX report) to confirm what users actually feel.
 
 ### Priority actions
 
