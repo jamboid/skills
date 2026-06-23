@@ -55,10 +55,10 @@ _Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)_
 
 The homepage pulls in **49 files totalling 1.33 MB** (desktop; mobile is near-identical), broken down by type as:
 
-- **Script — ~810 KB (62%)**
-- **Images — ~378 KB (29%)**
-- **Fonts — ~81 KB (6%)**
-- **Everything else — ~33 KB (3%)**: the HTML document, eleven stylesheets, and tracking beacons
+- **Script: ~810 KB (62%)**
+- **Images: ~378 KB (29%)**
+- **Fonts: ~81 KB (6%)**
+- **Everything else: ~33 KB (3%)** — the HTML document, eleven stylesheets, and tracking beacons
 
 The full per-file breakdown is below, grouped by type and sortable by device.
 
@@ -115,7 +115,7 @@ The site runs on **Drupal**, an open-source content management system. It uses a
 
 Sitting in front of the site is **Cloudflare**, a service that caches pages and delivers them from servers close to each visitor. Its `rocket-loader.min.js` script and `/cdn-cgi/rum` tracking beacon confirm it's in use, with the Rocket Loader feature switched on.
 
-The page is **server-rendered** — the HTML arrives ready to display rather than being assembled in the browser — and the site's own code is light: the theme ships only ~14 KB of CSS (`screen.css`, the styling) and ~7 KB of JavaScript (`good.js`, the behaviour). Almost all of the page's weight comes from **third-party scripts**: code loaded from other companies' services rather than the site itself.
+The page is **server-rendered** (the HTML arrives ready to display rather than being assembled in the browser), and the site's own code is light: the theme ships only ~14 KB of CSS (`screen.css`, the styling) and ~7 KB of JavaScript (`good.js`, the behaviour). Almost all of the page's weight comes from **third-party scripts**: code loaded from other companies' services rather than the site itself.
 
 The main third-party scripts are:
 
