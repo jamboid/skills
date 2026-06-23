@@ -747,10 +747,10 @@ em { font-style: italic; }
     <div class="section-intro">
       <p>The homepage pulls in <strong>49 files totalling 1.33 MB</strong> (desktop; mobile is near-identical), broken down by type as:</p>
       <ul class="bullets">
-        <li><strong>Script — ~810 KB (62%)</strong></li>
-        <li><strong>Images — ~378 KB (29%)</strong></li>
-        <li><strong>Fonts — ~81 KB (6%)</strong></li>
-        <li><strong>Everything else — ~33 KB (3%)</strong>: the HTML document, eleven stylesheets, and tracking beacons</li>
+        <li><strong>Script: ~810 KB (62%)</strong></li>
+        <li><strong>Images: ~378 KB (29%)</strong></li>
+        <li><strong>Fonts: ~81 KB (6%)</strong></li>
+        <li><strong>Everything else: ~33 KB (3%)</strong> — the HTML document, eleven stylesheets, and tracking beacons</li>
       </ul>
       <p>The full per-file breakdown is below, grouped by type and sortable by device.</p>
     </div>
@@ -826,7 +826,7 @@ em { font-style: italic; }
     <div class="prose">
       <p>The site runs on <strong>Drupal</strong>, an open-source content management system. It uses a custom theme called <code>good</code> (<code>/themes/custom/good/</code>) for its look, the Paragraphs module to build flexible page layouts, and Drupal's image styles (<code>feature_promo_large</code>, <code>feature_promo_medium</code>) to generate resized copies of images automatically.</p>
       <p>Sitting in front of the site is <strong>Cloudflare</strong>, a service that caches pages and delivers them from servers close to each visitor. Its <code>rocket-loader.min.js</code> script and <code>/cdn-cgi/rum</code> tracking beacon confirm it's in use, with the Rocket Loader feature switched on.</p>
-      <p>The page is <strong>server-rendered</strong> — the HTML arrives ready to display rather than being assembled in the browser — and the site's own code is light: the theme ships only ~14 KB of CSS (<code>screen.css</code>, the styling) and ~7 KB of JavaScript (<code>good.js</code>, the behaviour). Almost all of the page's weight comes from <strong>third-party scripts</strong>: code loaded from other companies' services rather than the site itself.</p>
+      <p>The page is <strong>server-rendered</strong> (the HTML arrives ready to display rather than being assembled in the browser), and the site's own code is light: the theme ships only ~14 KB of CSS (<code>screen.css</code>, the styling) and ~7 KB of JavaScript (<code>good.js</code>, the behaviour). Almost all of the page's weight comes from <strong>third-party scripts</strong>: code loaded from other companies' services rather than the site itself.</p>
       <p>The main third-party scripts are:</p>
       <ul class="bullets">
         <li><strong>Adobe Typekit</strong> — serves the web fonts. These are *render-blocking*, meaning the browser holds off showing text until the fonts have downloaded, which delays the first thing the visitor sees.</li>

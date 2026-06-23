@@ -103,11 +103,11 @@ _WebPageTest (Chrome 145, mobile, throttled link), median of 3 runs_
 
 ## Page resources
 
-The page pulls in **22 files — 1.11 MB on desktop, 727 KB on mobile**. By type (desktop):
+The page pulls in **22 files: 1.11 MB on desktop, 727 KB on mobile**. By type (desktop):
 
-- **Images — ~1.01 MB (88%)**
-- **Fonts — ~76 KB (7%)**
-- **Everything else — ~55 KB (5%)**: the HTML document, two stylesheets, one script, and tracking beacons
+- **Images: ~1.01 MB (88%)**
+- **Fonts: ~76 KB (7%)**
+- **Everything else: ~55 KB (5%)** — the HTML document, two stylesheets, one script, and tracking beacons
 
 The full per-file breakdown is below, grouped by type and sortable by device.
 
@@ -201,7 +201,7 @@ One nuance: the two testing tools disagree on mobile LCP — Lighthouse says 3.4
 
 1. Convert the LCP hero from a CSS background to a responsive `<img>` (`srcset` + `fetchpriority="high"`). One change, two fixes: it right-sizes the hero on mobile (314 KB → ~87 KB, matching its siblings) and makes it discoverable for preload. Highest-value action.
 2. Enable HTTP/2 (and text compression) on the server — Lighthouse estimates ~850 ms of mobile LCP from HTTP/1.1 head-of-line blocking alone.
-3. Trim render-blocking CSS/JS in the head (inline critical CSS, defer JS) — ~600 ms of mobile FCP.
+3. Trim render-blocking CSS/JS in the head (inline critical CSS, defer JS), saving ~600 ms of mobile FCP.
 4. Confirm the rest of the imagery is right-sized per breakpoint (the other banners already are). Images are already WebP; AVIF would shave a little more if needed.
 5. Add explicit `width`/`height` to images to lock in the good CLS, then collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off.
 

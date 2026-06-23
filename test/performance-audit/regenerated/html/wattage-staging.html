@@ -831,11 +831,11 @@ em { font-style: italic; }
     <section class="content-section" id="resources">
       <h2 class="section-heading">Page resources</h2>
     <div class="section-intro">
-      <p>The page pulls in <strong>22 files — 1.11 MB on desktop, 727 KB on mobile</strong>. By type (desktop):</p>
+      <p>The page pulls in <strong>22 files: 1.11 MB on desktop, 727 KB on mobile</strong>. By type (desktop):</p>
       <ul class="bullets">
-        <li><strong>Images — ~1.01 MB (88%)</strong></li>
-        <li><strong>Fonts — ~76 KB (7%)</strong></li>
-        <li><strong>Everything else — ~55 KB (5%)</strong>: the HTML document, two stylesheets, one script, and tracking beacons</li>
+        <li><strong>Images: ~1.01 MB (88%)</strong></li>
+        <li><strong>Fonts: ~76 KB (7%)</strong></li>
+        <li><strong>Everything else: ~55 KB (5%)</strong> — the HTML document, two stylesheets, one script, and tracking beacons</li>
       </ul>
       <p>The full per-file breakdown is below, grouped by type and sortable by device.</p>
     </div>
@@ -975,7 +975,7 @@ em { font-style: italic; }
     <ol class="priority-list">
       <li>Convert the LCP hero from a CSS background to a responsive <code>&lt;img&gt;</code> (<code>srcset</code> + <code>fetchpriority="high"</code>). One change, two fixes: it right-sizes the hero on mobile (314 KB → ~87 KB, matching its siblings) and makes it discoverable for preload. Highest-value action.</li>
       <li>Enable HTTP/2 (and text compression) on the server — Lighthouse estimates ~850 ms of mobile LCP from HTTP/1.1 head-of-line blocking alone.</li>
-      <li>Trim render-blocking CSS/JS in the head (inline critical CSS, defer JS) — ~600 ms of mobile FCP.</li>
+      <li>Trim render-blocking CSS/JS in the head (inline critical CSS, defer JS), saving ~600 ms of mobile FCP.</li>
       <li>Confirm the rest of the imagery is right-sized per breakpoint (the other banners already are). Images are already WebP; AVIF would shave a little more if needed.</li>
       <li>Add explicit <code>width</code>/<code>height</code> to images to lock in the good CLS, then collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off.</li>
     </ol>
