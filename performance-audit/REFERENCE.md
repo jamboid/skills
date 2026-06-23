@@ -23,7 +23,7 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   // header shows the url as a button plus Date / By / Audience chips; the
   // sidebar shows the site name (no duplicated title/date).
 
-  "summary": "Executive summary prose. 3–5 sentences, plain language. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for any run of 3+ parallel items).",
+  "summary": "Executive summary prose. Open by setting the scene (what the site/page is, that this is a performance audit, how it was measured) before the headline verdict; orient, don't duplicate `conclusions`. Plain language. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for any run of 3+ parallel items).",
 
   // ── Metrics (computed from Lighthouse/WPT). Grouped by target device; each
   //    device holds one or more audits. The script renders these as a load-
