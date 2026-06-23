@@ -103,6 +103,14 @@ _WebPageTest (Chrome 145, mobile, throttled link), median of 3 runs_
 
 ## Page resources
 
+The page pulls in **22 files — 1.11 MB on desktop, 727 KB on mobile**. By type (desktop):
+
+- **Images — ~1.01 MB (88%)**
+- **Fonts — ~76 KB (7%)**
+- **Everything else — ~55 KB (5%)**: the HTML document, two stylesheets, one script, and tracking beacons
+
+The full per-file breakdown is below, grouped by type and sortable by device.
+
 | Category | Requests | Desktop | Mobile |
 |---|---:|---:|---:|
 | Images | 16 | 1007 KB | 575 KB |

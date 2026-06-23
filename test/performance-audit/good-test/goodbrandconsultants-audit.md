@@ -53,6 +53,15 @@ _Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)_
 
 ## Page resources
 
+The homepage pulls in **49 files totalling 1.33 MB** (desktop; mobile is near-identical), broken down by type as:
+
+- **Script — ~810 KB (62%)**
+- **Images — ~378 KB (29%)**
+- **Fonts — ~81 KB (6%)**
+- **Everything else — ~33 KB (3%)**: the HTML document, eleven stylesheets, and tracking beacons
+
+The full per-file breakdown is below, grouped by type and sortable by device.
+
 | Category | Requests | Desktop | Mobile |
 |---|---:|---:|---:|
 | Images | 14 | 378 KB | 378 KB |

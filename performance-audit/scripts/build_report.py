@@ -351,6 +351,9 @@ def build_resources_markdown(data):
     devices = res.get("devices") or ["Desktop"]
     ndev = len(devices)
     out = ["## Page resources", ""]
+    for para in paragraphs(res.get("intro")):
+        out.append(para)
+        out.append("")
     head = "| Category | Requests | " + " | ".join(devices[:ndev]) + " |"
     out.append(head)
     out.append("|---|---:|" + "|".join(["---:"] * ndev) + "|")
@@ -900,7 +903,10 @@ def build_html(data, template, slug):
     # Page resources
     if (data.get("resources") or {}).get("categories"):
         nav.append(nav_link("resources", "Page resources"))
-        body.append(section("resources", "Page resources", build_resources_html(data)))
+        res_intro = prose_block((data.get("resources") or {}).get("intro"), "section-intro")
+        res_body = (res_intro + "\n" + build_resources_html(data)) if res_intro \
+            else build_resources_html(data)
+        body.append(section("resources", "Page resources", res_body))
 
     # Architecture
     if str(data.get("architecture") or "").strip():

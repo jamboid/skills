@@ -140,6 +140,7 @@
     "Collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off, and verify Cloudflare Rocket Loader is helping rather than hurting the third-party ordering."
   ],
   "resources": {
+    "intro": "The homepage pulls in **49 files totalling 1.33 MB** (desktop; mobile is near-identical), broken down by type as:\n\n- **Script — ~810 KB (62%)**\n- **Images — ~378 KB (29%)**\n- **Fonts — ~81 KB (6%)**\n- **Everything else — ~33 KB (3%)**: the HTML document, eleven stylesheets, and tracking beacons\n\nThe full per-file breakdown is below, grouped by type and sortable by device.",
     "devices": [
       "Desktop",
       "Mobile"

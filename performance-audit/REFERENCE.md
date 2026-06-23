@@ -109,6 +109,13 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   // Store RAW BYTES per device; the script formats sizes and computes bar widths.
   // All count/byte arrays align to `devices` (length 1 or 2).
   "resources": {
+    // optional lead-in prose, rendered above the breakdown. Summarise the
+    // totals (file count, overall size per device) and the category split as a
+    // proportion bullet list, biggest first. Neutral — state the numbers, don't
+    // interpret them (the third-party / images story belongs to architecture +
+    // findings). Same markup as `summary`. Match device phrasing to the audit:
+    // only say "sortable by device" when there are two devices. Omit if it adds nothing.
+    "intro": "The homepage pulls in 49 files totalling 1.33 MB...",
     "devices": ["Desktop", "Mobile"],          // 1 or 2 column headers
     "total":   { "requests": [22, 22], "bytes": [1165647, 744253] },
     "categories": [
