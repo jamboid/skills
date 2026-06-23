@@ -151,13 +151,6 @@ Icons are drawn as SVG (the logo and `icon_*` glyphs), so they cost almost nothi
 
 ## Performance
 
-### Tests
-
-- Lighthouse 13.2.0 — desktop lab: https://wattage.staging.gd/
-- Lighthouse 13.2.0 — mobile lab: https://wattage.staging.gd/
-- WebPageTest — desktop (3 runs): https://wattage.staging.gd/
-- WebPageTest — mobile (3 runs): https://wattage.staging.gd/
-
 ### Findings
 
 **P-1** — The LCP hero is the full desktop image, even on mobile _(~227 KB on mobile · LCP −0.3 s)_
@@ -212,10 +205,3 @@ One nuance: the two testing tools disagree on mobile LCP — Lighthouse says 3.4
 - **First Contentful Paint** — Time to the first text or image painted. Good < 1.8 s.
 - **Page weight** — Total bytes downloaded to render the page. More weight means longer load, more parsing, more mobile bandwidth.
 - **Request count** — Number of HTTP requests to render the page. High counts (> 100) usually signal concatenation/optimisation gaps.
-
-## Appendix — raw test runs
-
-- Lighthouse 13.2.0 — desktop lab: https://wattage.staging.gd/
-- Lighthouse 13.2.0 — mobile lab: https://wattage.staging.gd/
-- WebPageTest — desktop (3 runs): https://wattage.staging.gd/
-- WebPageTest — mobile (3 runs): https://wattage.staging.gd/

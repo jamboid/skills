@@ -85,12 +85,6 @@
   "architecture": "The site runs on **Drupal** (an open-source content management system), served from a custom theme (`/themes/custom/wattage/`). Drupal's own `/core/` and `/sites/default/files/` paths, plus automatic stack detection, confirm the platform. Its CSS and JavaScript **aggregation is switched on** — the whole page ships as two bundled CSS files plus a single ~2–4 KB JavaScript file.\n\nThere's no single-page-app framework or hydration bundle — no heavy JavaScript layer that rebuilds the page in the browser — which is why the main thread stays idle and **TBT (Total Blocking Time) is 0 on every run, including mobile at 4× CPU throttling**. This is a server-rendered HTML page, not a JavaScript app.\n\nIcons are drawn as SVG (the logo and `icon_*` glyphs), so they cost almost nothing. That leaves the page's weight almost entirely **photography**, delivered through Drupal's image styles (`width_scale_xl`, `width_scale_m`) — and those resized copies aren't tuned for mobile (see findings). The staging server also runs plain **HTTP/1.1** with text compression turned off. Those are staging defaults rather than code faults, but they cost real time on mobile, so confirm how production is fronted (CDN or edge) before acting.",
 
   "performance": {
-    "tests": [
-      { "label": "Lighthouse 13.2.0 — desktop lab", "url": "https://wattage.staging.gd/" },
-      { "label": "Lighthouse 13.2.0 — mobile lab", "url": "https://wattage.staging.gd/" },
-      { "label": "WebPageTest — desktop (3 runs)", "url": "https://wattage.staging.gd/" },
-      { "label": "WebPageTest — mobile (3 runs)", "url": "https://wattage.staging.gd/" }
-    ],
     "findings": [
       {
         "id": "P-1",

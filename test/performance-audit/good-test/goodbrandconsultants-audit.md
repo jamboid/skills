@@ -23,7 +23,7 @@ That third-party weight, together with a dozen un-combined stylesheets and fonts
 
 #### Lighthouse — performance score 95
 
-_Lighthouse 13.2.0 (lab, simulated desktop)_ · [full report](https://goodbrandconsultants.com/)
+_Lighthouse 13.2.0 (lab, simulated desktop)_
 
 | Metric | Value | Rating |
 |---|---|---|
@@ -38,7 +38,7 @@ _Lighthouse 13.2.0 (lab, simulated desktop)_ · [full report](https://goodbrandc
 
 #### Lighthouse — performance score 81
 
-_Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)_ · [full report](https://goodbrandconsultants.com/)
+_Lighthouse 13.2.0 (lab, Moto-class, 4× CPU + throttled link)_
 
 | Metric | Value | Rating |
 |---|---|---|
@@ -118,11 +118,6 @@ One quick win stands out. The site's CSS arrives as a dozen separate files (`cor
 
 ## Performance
 
-### Tests
-
-- Lighthouse 13.2.0 — desktop lab: https://goodbrandconsultants.com/
-- Lighthouse 13.2.0 — mobile lab: https://goodbrandconsultants.com/
-
 ### Findings
 
 **P-1** — Render-blocking CSS and fonts delay first paint on mobile _(est. mobile FCP/LCP −1.4 s)_
@@ -173,8 +168,3 @@ None of this is a re-architecture. One caveat: these figures come from a single 
 - **Total Blocking Time** — Lab proxy for INP: main-thread time blocked during load. Good < 200 ms.
 - **Speed Index** — How quickly content visually populates during load. Good < 3.4 s.
 - **First Contentful Paint** — Time to the first text or image painted. Good < 1.8 s.
-
-## Appendix — raw test runs
-
-- Lighthouse 13.2.0 — desktop lab: https://goodbrandconsultants.com/
-- Lighthouse 13.2.0 — mobile lab: https://goodbrandconsultants.com/
