@@ -1,12 +1,13 @@
 # Analysis: [Client/Site Name]
 
-Your considered take, written *after* reading the first generated report. On the
-next `/performance-audit draft`, this is folded into the report as the authoritative
-voice — it confirms or overrides the data-derived **candidate** findings and
-supplies the narrative the data can't.
+The first `/performance-audit draft` writes a first-pass analysis here — the
+machine's read of the notes and data. Review and amend it: correct the take,
+confirm or dismiss the **candidate** findings by id, add what it missed. On the
+next `draft`, your reviewed version is folded into the report as the authoritative
+voice — it ratifies or overrides the candidate findings and supplies the narrative
+the data can't.
 
-Fill only the sections you have something to say about; leave the rest blank and
-they're ignored. Prose supports `code` and **bold**.
+Anything you leave stands as written. Prose supports `code` and **bold**.
 
 ## Architecture take
 
