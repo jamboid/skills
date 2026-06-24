@@ -1,6 +1,6 @@
 ---
 name: performance-audit
-description: Drafts a structured performance-focused site audit from notes plus Lighthouse/WebPageTest data exports, producing a Markdown report and a static HTML report. Use when invoked as `/performance-audit init [client-slug]` or `/performance-audit draft`, or when the user wants to write a site audit.
+description: Drafts a structured performance-focused site audit from notes plus Lighthouse/WebPageTest exports, producing a Markdown report and a static HTML report.
 disable-model-invocation: true
 ---
 
@@ -9,12 +9,14 @@ disable-model-invocation: true
 Drafts a structured site audit (performance-focused) and builds it into a
 Markdown report **and** a static HTML report.
 
-Two sources feed it, with a clear division of authority. **Data exports**
-(Lighthouse / WebPageTest JSON) *propose*: they populate the metrics and seed
-**candidate** findings — measured, not invented. **Notes and analysis**
-*dispose*: the user's words remain the source of truth for judgment and ratify
-or override anything the data surfaced. The skill never fabricates a finding the
-data doesn't show or the user hasn't observed.
+Two layers feed it, and both only *propose*. **Data exports** (Lighthouse /
+WebPageTest JSON) and the user's **notes** supply the raw material — measured
+metrics, **candidate** findings, observations. From them the first `draft` writes
+a first-pass **analysis**: the machine's read of what the numbers and notes add
+up to. The user *disposes* — reviewing and amending that analysis — and on the
+next `draft` the reviewed version is the source of truth for judgment, ratifying
+or overriding every candidate. The skill proposes nothing the data doesn't show
+or the notes don't raise; it never invents a finding.
 
 `audit.json` is the single generated source of truth; `build_report.py` turns it
 into both reports. The human-editable inputs are `notes.md`, `analysis.md`, and
@@ -32,7 +34,7 @@ Two commands: `init` scaffolds, `draft` analyses and builds.
    - fill in `notes.md`;
    - drop **Lighthouse JSON exports** (DevTools → Lighthouse → Save as JSON, one
      per form factor) and any **WebPageTest JSON export** into this directory;
-   - leave `analysis.md` until after the first draft;
+   - leave `analysis.md` alone — the first `draft` writes a first-pass analysis there to review;
    - run `/performance-audit draft` from this directory.
 
 ## `/performance-audit draft`
@@ -43,10 +45,15 @@ Two commands: `init` scaffolds, `draft` analyses and builds.
    [reading-audit-data.md](reading-audit-data.md) to classify (Lighthouse vs
    WebPageTest) and extract metrics, the per-asset `resources` breakdown, and
    candidate findings. Note any unrecognised file to the user.
-3. **Incorporate analysis (rebuild).** If `analysis.md` exists and is filled in,
-   read it: its prose is the authoritative voice. It confirms/overrides candidate
-   findings (drop unratified ones it dismisses) and supplies architecture,
-   conclusions, and priorities.
+3. **Analysis.** Check `analysis.md`:
+   - **Still the empty template (first pass):** *you* write the first-pass
+     analysis into it — the machine's read of what the data and notes add up to,
+     grounded strictly in them (architecture, performance diagnosis, conclusions,
+     priorities; sections per `analysis-template.md`). Propose, don't ratify:
+     leave every data-derived finding **candidate** for the user to confirm.
+   - **Filled in (rebuild):** read it as the authoritative voice — the user's
+     reviewed take. It confirms/overrides candidate findings (drop unratified ones
+     it dismisses) and supplies architecture, conclusions, and priorities.
 4. Read [reference-audit.md](reference-audit.md) — the tonal exemplar.
 5. Scan for gaps: missing tests/links, empty notes sections, missing audience or
    scope. Ask **at most 3** clarifying questions — only the most important. Skip
@@ -60,8 +67,10 @@ Two commands: `init` scaffolds, `draft` analyses and builds.
    python3 scripts/build_report.py audit.json --out-dir .
    ```
    It writes `<slug>-audit.md` and `html/<slug>.html`.
-8. Tell the user the two output paths. On a first draft, remind them they can now
-   fill in `analysis.md` and re-run `draft` to fold their take in.
+8. Tell the user the two output paths. On the first pass, tell them you've written
+   a first-pass `analysis.md` — they should review and amend it (correct the take,
+   confirm or dismiss findings by id, add what you missed) and re-run `draft` to
+   fold the reviewed version in.
 
 ## Tone rules
 
@@ -74,9 +83,9 @@ page-resources intro, architecture, finding bodies, conclusions).
 4. **Diagnostic.** Explain *why* a finding is a problem and name the choice that produced it — cause, not just symptom. "Large CSS because the framework is utility-class-heavy" beats "Large CSS file."
 5. **No hedging.** Replace "could potentially be improved" with "fix this" or "consider replacing." (Exception: an unconfirmed **candidate** finding may say "likely" and is tagged as such until ratified.)
 6. **List the enumerations.** When a sentence runs through three or more parallel items (third-party scripts, ordered fixes, causes), break them out as a Markdown bullet list with a short lead-in line, not a comma-run buried in prose. One item per line, the key term and its number bolded. `summary`, `architecture`, and `conclusions` all render Markdown `- ` bullets — use them. Keep genuinely one- or two-item points inline.
-7. **Summary orients; conclusions judge.** Open the `summary` by setting the scene — what the site/page is, that this is a performance audit, and how it was measured (which tools, lab vs. field, which form factors) — *before* the headline verdict. It should read like the way into the report, not its verdict, and hand off to the rest ("the findings below lay this out") rather than pre-empting it. Leave the fix detail, priorities, and the considered judgement to `conclusions`. Litmus test: if `summary` and `conclusions` could be swapped without anyone noticing, the summary isn't doing its own job — rewrite it to orient.
+7. **Orient, then hand off — the verdict comes later.** A field *orients* when it sets the scene and hands off ("the findings below lay this out"); it *judges* when it delivers the good/poor verdict. The `summary` orients: what the site/page is, that this is a performance audit, and how it was measured (which tools, lab vs. field, which form factors) — *before* any headline verdict. Leave the fix detail, priorities, and the considered judgement to `conclusions`. Litmus test: if `summary` and `conclusions` could be swapped without anyone noticing, the summary isn't orienting — rewrite it.
 8. **State, don't finish.** Performance is a point-in-time reading, not a finished task — a site that's fast today can be tanked next week by what gets added. Describe it as a current state ("desktop performance is excellent", "poor as it stands") that future changes could move. Avoid finality: no "solved", "done", "fixed for good", "sorted."
-9. **Section intros orient, they don't judge.** The optional `metrics.intro` and `resources.intro` set their data up before it appears, then hand off — neither pre-empts the good/poor call (the summary's and the components' job). `metrics.intro`: which tools ran and how (lab vs. field, form factors, throttling), and that the full exports were parsed. `resources.intro`: the totals (files, size per device) and the category split as a proportion list, biggest first — state the numbers, leave the *why* (third-party weight, oversized images) to architecture and findings. Keep each short, match any device phrasing to the audit (don't say "sortable by device" on a single-device run), and omit either if it only restates the captions or table.
+9. **Section intros orient too.** The optional `metrics.intro` and `resources.intro` set their data up and hand off — the same move as the summary (rule 7), never pre-empting the good/poor call that belongs to the summary and the components. Keep each short, and omit either if it only restates the captions or table. What each intro states, and the device-phrasing rule, live with the schema fields in [REFERENCE.md](REFERENCE.md).
 10. **Em dashes sparingly; colons for label–value.** An em dash is fine for a genuine aside in flowing prose, but in a `term: figure` bullet use a colon, not a dash (`Script: ~810 KB (62%)`, not `Script — ~810 KB (62%)`). Never butt an em dash against a `~` or the number it modifies — `— ~600 ms` reads badly; recast (`saving ~600 ms`) or spell it out (`about 600 ms`). Don't stack two em dashes in one sentence; if the aside is long, use parentheses.
 
 Don't let plainness inflate the word count — looser sentences and lists are for clarity, not padding. A short clean report beats a padded one.
@@ -84,7 +93,7 @@ Don't let plainness inflate the word count — looser sentences and lists are fo
 ## Bundled files
 
 - `notes-template.md` — copied to `notes.md` by `init` (initial observations).
-- `analysis-template.md` — copied to `analysis.md` by `init` (the user's considered take, added after the first draft).
+- `analysis-template.md` — copied to `analysis.md` by `init`; the first `draft` writes a first-pass analysis into it for the user to review.
 - `reading-audit-data.md` — Lighthouse/WPT JSON classification + extraction maps; read during `draft` when data files are present.
 - `reference-audit.md` — tonal exemplar, read during `draft`.
 - `REFERENCE.md` — `audit.json` schema, metric thresholds, section-omission rules, canonical glossary.
