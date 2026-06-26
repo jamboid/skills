@@ -310,6 +310,27 @@ def sorted_findings(findings):
     return sorted(findings or [], key=lambda f: SEV_RANK.get(f.get("severity"), 3))
 
 
+# Priorities sort by impact (high→low) then effort (low→high), so the order is a
+# visible consequence of the chips rather than a hidden hand-ranking.
+IMPACT_RANK = {"high": 0, "medium": 1, "low": 2}
+EFFORT_RANK = {"low": 0, "medium": 1, "high": 2}
+
+
+def sorted_priorities(priorities):
+    def key(p):
+        if not isinstance(p, dict):
+            return (1, 1)
+        return (IMPACT_RANK.get(str(p.get("impact") or "").lower(), 1),
+                EFFORT_RANK.get(str(p.get("effort") or "").lower(), 1))
+    return sorted(priorities or [], key=key)
+
+
+def finding_title_map(data):
+    """id → title for findings, so a priority can link by id and show the title."""
+    findings = (data.get("performance") or {}).get("findings") or []
+    return {str(f["id"]): f.get("title", "") for f in findings if f.get("id")}
+
+
 # ── Load & validate ──────────────────────────────────────────────────────────
 
 def load_audit(path):
@@ -533,9 +554,30 @@ def build_markdown(data):
     if data.get("priorities"):
         out.append("### Priority actions")
         out.append("")
-        for i, p in enumerate(data["priorities"], 1):
-            out.append("{0}. {1}".format(i, p))
-        out.append("")
+        for i, p in enumerate(sorted_priorities(data["priorities"]), 1):
+            if not isinstance(p, dict):
+                out.append("{0}. {1}".format(i, plain_text(p)))
+                out.append("")
+                continue
+            chips = []
+            if p.get("impact"):
+                chips.append("Impact: " + str(p["impact"]).capitalize())
+            if p.get("effort"):
+                chips.append("Effort: " + str(p["effort"]).capitalize())
+            line = "{0}. **{1}**".format(i, plain_text(p.get("title", "")))
+            if chips:
+                line += "  _(" + " · ".join(chips) + ")_"
+            out.append(line)
+            out.append("")
+            if str(p.get("rationale") or "").strip():
+                out.append("   " + plain_text(p["rationale"]))
+                out.append("")
+            fids = [str(x) for x in (p.get("findings") or [])]
+            if fids:
+                out.append("   Related findings: " + ", ".join(fids))
+            else:
+                out.append("   _Strategic priority_")
+            out.append("")
 
     # Glossary
     gkeys = used_glossary(data)
@@ -842,7 +884,8 @@ def build_findings_html(findings):
     rows = []
     for f in sorted_findings(findings):
         sev = str(f.get("severity", "low"))
-        rows.append('      <article class="finding ' + sev + '">')
+        anchor = ' id="finding-' + attr(str(f["id"])) + '"' if f.get("id") else ''
+        rows.append('      <article class="finding ' + sev + '"' + anchor + '>')
         rows.append('        <div class="finding-header">')
         if f.get("id"):
             rows.append('          <span class="finding-id">' + html.escape(str(f["id"])) + '</span>')
@@ -859,6 +902,56 @@ def build_findings_html(findings):
             rows.append('          <div class="finding-source">' + html.escape(f["source"]) + '</div>')
         rows.append('        </div>')
         rows.append('      </article>')
+    return "\n".join(rows)
+
+
+PRI_ARROW_SVG = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'
+                 '<path d="M7 17L17 7M17 7H8M17 7v9"/></svg>')
+
+
+def priority_card_html(p, titles):
+    """One priority card: plain-language title + impact/effort chip, rationale,
+    and a footer of related-finding links (or a 'Strategic priority' tag)."""
+    if not isinstance(p, dict):                       # tolerate a bare string
+        p = {"title": str(p)}
+    impact = str(p.get("impact") or "").lower()
+    effort = str(p.get("effort") or "").lower()
+    lead = " lead-" + impact if impact in IMPACT_RANK else ""
+    rows = ['      <div class="priority' + lead + '">']
+
+    # Top row: title + split chip
+    rows.append('        <div class="pri-top">')
+    rows.append('          <div class="pri-title">' + inline_html(p.get("title", "")) + '</div>')
+    if impact or effort:
+        chip = ['          <span class="metric-chip impact-' + attr(impact or "na") + '">']
+        if impact:
+            chip.append('<span class="seg seg-impact"><span class="val">'
+                        + html.escape(impact.capitalize()) + '</span><span class="lab">Impact</span></span>')
+        if effort:
+            chip.append('<span class="seg seg-effort"><span class="val">'
+                        + html.escape(effort.capitalize()) + '</span><span class="lab">Effort</span></span>')
+        chip.append('</span>')
+        rows.append("".join(chip))
+    rows.append('        </div>')
+
+    # Rationale
+    if str(p.get("rationale") or "").strip():
+        rows.append('        <div class="pri-rationale">' + inline_html(p["rationale"]) + '</div>')
+
+    # Footer: related findings, or the strategic tag when none back this item.
+    # A bare string (legacy format) has no impact/effort — render it title-only.
+    fids = [str(x) for x in (p.get("findings") or [])]
+    if fids:
+        foot = ['          <span class="pri-foot-label">Related findings</span>']
+        for fid in fids:
+            tip = ' title="' + attr(titles[fid]) + '"' if titles.get(fid) else ''
+            foot.append('          <a class="pri-link" href="#finding-' + attr(fid) + '"' + tip
+                        + '>' + html.escape(fid) + ' ' + PRI_ARROW_SVG + '</a>')
+        rows.append('        <div class="pri-foot">\n' + "\n".join(foot) + '\n        </div>')
+    elif impact or effort:
+        rows.append('        <div class="pri-foot"><span class="pri-strategic">Strategic priority</span></div>')
+
+    rows.append('      </div>')
     return "\n".join(rows)
 
 
@@ -951,9 +1044,11 @@ def build_html(data, template, slug):
     # Priorities
     if data.get("priorities"):
         nav.append(nav_link("priorities", "Priority actions"))
-        items = "\n".join('      <li>' + inline_html(p) + '</li>' for p in data["priorities"])
+        titles = finding_title_map(data)
+        cards = "\n".join(priority_card_html(p, titles)
+                          for p in sorted_priorities(data["priorities"]))
         body.append(section("priorities", "Priority actions",
-                            '    <ol class="priority-list">\n' + items + '\n    </ol>'))
+                            '    <div class="priority-list">\n' + cards + '\n    </div>'))
 
     # Glossary
     gkeys = used_glossary(data)

@@ -90,9 +90,16 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
     // seed these; notes/analysis confirm or add. Ordered by severity then
     // savings. confirmed:false marks an unratified candidate (rendered with a
     // "candidate" tag) — drop or confirm on rebuild.
+    //
+    // ID CONVENTION: give every finding a stable `id` of the form `F<n>` — F1,
+    // F2, F3… (the "F" is for Finding; it is NOT a Lighthouse id — those slugs
+    // live in `source`). Number them in render order (severity, then savings).
+    // The id renders as the card's badge, is the anchor a priority links to, and
+    // is how `analysis.md` refers to a finding — so it must be present and unique
+    // on any finding that a priority cites.
     "findings": [
       {
-        "id":             "P-1",
+        "id":             "F1",
         "title":          "Eliminate render-blocking resources",
         "severity":       "high",            // high | medium | low
         "savingsDisplay": "est. 1.2 s · 240 KB",  // optional
@@ -147,7 +154,29 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
 
   "conclusions": "1–2 paragraphs of narrative. Name the trade-offs that produced the situation; distinguish quick wins from structural work. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for the ordered fixes / quick wins).",
 
-  "priorities": [ "First action, specific.", "Second action.", "..." ],
+  // Priority actions — the commissioner-facing worklist. Each is an object, not
+  // a bare string. `title` is a plain-language action (no jargon); `rationale`
+  // carries the business consequence — what it costs the visitor/business, not
+  // just the technical symptom. `impact` and `effort` are each high|medium|low
+  // and render as a split chip. A priority usually bundles one-or-more findings:
+  // list their `id`s in `findings` and the script renders a compact link to each
+  // (labelled with the id, e.g. F1, with the finding's title on hover) that
+  // jumps to the finding card. Omit `findings` (or leave empty) for a strategic /
+  // structural recommendation with no single finding behind it — it renders a
+  // "Strategic priority" tag instead. The script SORTS the list by impact
+  // (high→low) then effort (low→high), so author order doesn't matter; there are
+  // no rank numbers. Both `title` and `rationale` support `code` / **bold**.
+  "priorities": [
+    { "title":     "Turn on Drupal CSS aggregation",
+      "rationale": "A dozen stylesheets ship as separate render-blocking files; aggregating them is a config switch worth ~1.4 s of mobile FCP.",
+      "impact":    "high",
+      "effort":    "low",
+      "findings":  [ "F1" ] },
+    { "title":     "Reconsider the third-party script stack",
+      "rationale": "830 KB of tag-manager and tracking JS runs on every page; deciding what still earns its place is an organisational call, not a one-line fix.",
+      "impact":    "low",
+      "effort":    "high" }
+  ],
 
   // Glossary keys to render (canonical definitions live in the script).
   // Auto-populate from the metric/finding keys that actually appear.

@@ -509,36 +509,62 @@ body {
 .bullets li { font-size: 16px; margin-bottom: 8px; }
 
 /* ── Priorities ── */
-.priority-list {
+.priority-list { display: flex; flex-direction: column; gap: 12px; }
+.priority {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
+  border-left: 4px solid var(--c-border);
   border-radius: var(--radius);
-  overflow: hidden;
-  list-style: none;
-  counter-reset: pri;
+  border-top-left-radius: 0; border-bottom-left-radius: 0;   /* square the railed edge */
+  padding: 16px 18px;
 }
-.priority-list li {
-  display: flex;
-  gap: 14px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--c-border);
-  font-size: 16px;
-  counter-increment: pri;
+.priority.lead-high   { border-left-color: var(--c-high); }
+.priority.lead-medium { border-left-color: var(--c-medium); }
+.priority.lead-low    { border-left-color: var(--c-low); }
+.pri-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.pri-title { font-weight: 700; line-height: 1.3; font-size: 17px; }
+.pri-rationale { color: var(--c-text-muted); font-size: 15px; margin-top: 20px;}
+.pri-foot {
+  margin-top: 14px; padding-top: 13px;
+  border-top: 1px solid var(--c-border);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
-.priority-list li:last-child { border-bottom: none; }
-.priority-list li::before {
-  content: counter(pri);
-  flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  background: var(--c-accent);
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.pri-foot-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--c-text-muted); margin-right: 2px;
 }
+.pri-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; text-decoration: none;
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid #c7d2fe; background: #eef2ff; color: var(--c-accent);
+}
+.pri-link:hover { background: #e0e7ff; border-color: #a5b4fc; }
+.pri-link svg { width: 12px; height: 12px; }
+.pri-strategic {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 7px 12px; border-radius: 6px;
+  border: 1px solid var(--c-border); background: #f4f4f2; color: var(--c-neutral);
+}
+/* impact/effort split chip: coloured impact half, neutral effort half.
+   Rounding lives on the two segments (not an overflow-hidden parent) so the
+   centre divider stays a crisp straight line with no clipped/rounded ends. */
+.metric-chip {
+  display: inline-flex; align-items: stretch; flex-shrink: 0;
+  font-size: 12px; line-height: 1; white-space: nowrap;
+}
+.metric-chip .seg {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px;
+  border: 1px solid var(--c-border);
+}
+.metric-chip .seg .val { font-weight: 700; }
+.metric-chip .seg .lab { font-weight: 600; }
+.metric-chip .seg-impact { border-right: none; border-radius: 999px 0 0 999px; }
+.metric-chip .seg-effort { border-radius: 0 999px 999px 0; background: #f4f4f2; color: var(--c-text); }
+.metric-chip .seg-effort .lab { color: var(--c-text-muted); }
+.metric-chip.impact-high   .seg-impact { background: var(--c-poor-light); color: var(--c-high); }
+.metric-chip.impact-medium .seg-impact { background: var(--c-ni-light);   color: var(--c-medium); }
+.metric-chip.impact-low    .seg-impact { background: #eef2ff;             color: var(--c-low); }
 
 /* ── Glossary ── */
 .glossary { display: flex; flex-direction: column; gap: 10px; }
@@ -580,6 +606,9 @@ em { font-style: italic; }
 @media (max-width: 500px) {
   .content-inner { padding: 64px 16px 60px; }
   .page-title { font-size: 22px; }
+  /* stack the priority chip under the title rather than squeezing it */
+  .pri-top { flex-direction: column; gap: 12px; }
+  .pri-rationale { margin-top: 0; }
 }
 @media (max-width: 640px) {
   .tl-phase { grid-template-columns: 26px 1fr; }
@@ -597,7 +626,7 @@ em { font-style: italic; }
   .sidebar, .mob-toggle { display: none; }
   .content { margin-left: 0; }
   .content-inner { padding: 24px; max-width: 100%; }
-  .finding, .panel, .tl-phase, .res-card { break-inside: avoid; }
+  .finding, .panel, .tl-phase, .res-card, .priority { break-inside: avoid; }
   .dev-group { display: block !important; }
   .panel { display: block !important; }
   .tabrow, .devbar { display: none; }
@@ -842,9 +871,9 @@ em { font-style: italic; }
     <section class="content-section" id="performance">
       <h2 class="section-heading">Performance</h2>
       <div class="subhead">Findings</div>
-      <article class="finding high">
+      <article class="finding high" id="finding-F1">
         <div class="finding-header">
-          <span class="finding-id">P-1</span>
+          <span class="finding-id">F1</span>
           <span class="finding-title">Render-blocking CSS and fonts delay first paint on mobile</span>
           <span class="savings-chip">est. mobile FCP/LCP −1.4 s</span>
         </div>
@@ -854,9 +883,9 @@ em { font-style: italic; }
           <div class="finding-source">lighthouse:render-blocking-insight</div>
         </div>
       </article>
-      <article class="finding high">
+      <article class="finding high" id="finding-F2">
         <div class="finding-header">
-          <span class="finding-id">P-2</span>
+          <span class="finding-id">F2</span>
           <span class="finding-title">Third-party scripts are 62% of the page; the site's own code is ~7 KB</span>
           <span class="savings-chip">830 KB of 1.33 MB is script</span>
         </div>
@@ -866,9 +895,9 @@ em { font-style: italic; }
           <div class="finding-source">lighthouse:network-requests</div>
         </div>
       </article>
-      <article class="finding medium">
+      <article class="finding medium" id="finding-F3">
         <div class="finding-header">
-          <span class="finding-id">P-3</span>
+          <span class="finding-id">F3</span>
           <span class="finding-title">The LCP feature image ships at full size to phones</span>
           <span class="savings-chip">est. mobile LCP −0.6 s</span>
         </div>
@@ -877,9 +906,9 @@ em { font-style: italic; }
           <div class="finding-source">lighthouse:image-delivery-insight</div>
         </div>
       </article>
-      <article class="finding low">
+      <article class="finding low" id="finding-F4">
         <div class="finding-header">
-          <span class="finding-id">P-4</span>
+          <span class="finding-id">F4</span>
           <span class="finding-title">Some images lack explicit width and height</span>
           <span class="savings-chip">CLS insurance</span>
         </div>
@@ -906,13 +935,60 @@ em { font-style: italic; }
 
     <section class="content-section" id="priorities">
       <h2 class="section-heading">Priority actions</h2>
-    <ol class="priority-list">
-      <li>Turn on Drupal CSS aggregation so the dozen core/theme stylesheets stop shipping separately; inline critical CSS and load Adobe Typekit without blocking render. ~1.4 s of mobile FCP/LCP — the highest-value change, and a config switch.</li>
-      <li>Right-size the LCP feature image for mobile (the <code>feature_promo</code> derivatives already exist; fix the breakpoint mapping). ~0.6 s of mobile LCP. Already WebP, so sizing not format.</li>
-      <li>Audit the third-party script load — 830 KB of GTM, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JS. Defer or load-on-interaction whatever isn't needed for first paint; confirm the bot-management vendor and whether it must run site-wide.</li>
-      <li>Add explicit width/height (or <code>aspect-ratio</code>) to images to lock in the currently-good CLS.</li>
-      <li>Collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off, and verify Cloudflare Rocket Loader is helping rather than hurting the third-party ordering.</li>
-    </ol>
+    <div class="priority-list">
+      <div class="priority lead-high">
+        <div class="pri-top">
+          <div class="pri-title">Aggregate and unblock the page's CSS and fonts</div>
+          <span class="metric-chip impact-high"><span class="seg seg-impact"><span class="val">High</span><span class="lab">Impact</span></span><span class="seg seg-effort"><span class="val">Low</span><span class="lab">Effort</span></span></span>
+        </div>
+        <div class="pri-rationale">A dozen Drupal core and theme stylesheets ship as separate files that block the first paint, and Adobe Typekit loads the same blocking way. Turning on aggregation, inlining the critical CSS and loading the fonts asynchronously is a configuration switch — no redesign — worth about 1.4 s of mobile load time. It's the single highest-value change here.</div>
+        <div class="pri-foot">
+          <span class="pri-foot-label">Related findings</span>
+          <a class="pri-link" href="#finding-F1" title="Render-blocking CSS and fonts delay first paint on mobile">F1 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9"/></svg></a>
+        </div>
+      </div>
+      <div class="priority lead-high">
+        <div class="pri-top">
+          <div class="pri-title">Right-size the hero image for phones</div>
+          <span class="metric-chip impact-high"><span class="seg seg-impact"><span class="val">High</span><span class="lab">Impact</span></span><span class="seg seg-effort"><span class="val">Medium</span><span class="lab">Effort</span></span></span>
+        </div>
+        <div class="pri-rationale">The main feature image is sent to phones at its full desktop size. The correctly-sized <code>feature_promo</code> derivatives already exist; the breakpoint mapping just isn't pointing mobile at them. It's already WebP, so this is about dimensions, not format — roughly 0.6 s of mobile LCP.</div>
+        <div class="pri-foot">
+          <span class="pri-foot-label">Related findings</span>
+          <a class="pri-link" href="#finding-F3" title="The LCP feature image ships at full size to phones">F3 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9"/></svg></a>
+        </div>
+      </div>
+      <div class="priority lead-high">
+        <div class="pri-top">
+          <div class="pri-title">Reconsider the third-party script load</div>
+          <span class="metric-chip impact-high"><span class="seg seg-impact"><span class="val">High</span><span class="lab">Impact</span></span><span class="seg seg-effort"><span class="val">High</span><span class="lab">Effort</span></span></span>
+        </div>
+        <div class="pri-rationale">Third-party tags account for 62% of the page — 830 KB of Google Tag Manager, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JavaScript — against roughly 7 KB of the site's own code. Deferring or loading-on-interaction whatever isn't needed for first paint, and confirming whether the bot-management vendor must run site-wide, is part judgement call and part engineering.</div>
+        <div class="pri-foot">
+          <span class="pri-foot-label">Related findings</span>
+          <a class="pri-link" href="#finding-F2" title="Third-party scripts are 62% of the page; the site&#x27;s own code is ~7 KB">F2 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9"/></svg></a>
+        </div>
+      </div>
+      <div class="priority lead-low">
+        <div class="pri-top">
+          <div class="pri-title">Lock in layout stability with image dimensions</div>
+          <span class="metric-chip impact-low"><span class="seg seg-impact"><span class="val">Low</span><span class="lab">Impact</span></span><span class="seg seg-effort"><span class="val">Low</span><span class="lab">Effort</span></span></span>
+        </div>
+        <div class="pri-rationale">Layout shift is currently good, but it isn't guaranteed — several images load without reserved space. Adding explicit width/height (or <code>aspect-ratio</code>) keeps the page from jumping around as it loads, even as content changes.</div>
+        <div class="pri-foot">
+          <span class="pri-foot-label">Related findings</span>
+          <a class="pri-link" href="#finding-F4" title="Some images lack explicit width and height">F4 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9"/></svg></a>
+        </div>
+      </div>
+      <div class="priority lead-low">
+        <div class="pri-top">
+          <div class="pri-title">Confirm the mobile picture with field data before sign-off</div>
+          <span class="metric-chip impact-low"><span class="seg seg-impact"><span class="val">Low</span><span class="lab">Impact</span></span><span class="seg seg-effort"><span class="val">Low</span><span class="lab">Effort</span></span></span>
+        </div>
+        <div class="pri-rationale">The mobile-LCP story here comes from lab tests. Collecting real-world field/CrUX data confirms it against actual visitors, and it's worth checking that Cloudflare Rocket Loader is helping rather than reshuffling the third-party script order unhelpfully.</div>
+        <div class="pri-foot"><span class="pri-strategic">Strategic priority</span></div>
+      </div>
+    </div>
     </section>
 
     <section class="content-section" id="glossary">

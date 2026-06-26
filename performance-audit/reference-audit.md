@@ -80,6 +80,20 @@ This is a healthy staging build, not a problem site — load timings are strong 
 
 ### Priority actions
 
-1. Reproduce the CLS discrepancy (Lighthouse 0.59 vs WPT 0.02); if real, add image/embed dimensions to fix it.
-2. Serve responsive, next-gen images to cut the ~1 MB image payload.
-3. Trim unused JavaScript and enable minification.
+1. **Confirm and fix the layout shift**  _(Impact: High · Effort: Low)_
+
+   Lighthouse and WebPageTest disagree on CLS (0.59 vs 0.02), so reproduce it before committing effort — but if it's real, content jumping under visitors as they read is both frustrating and a Google ranking signal. The fix is cheap: reserve space by adding explicit dimensions to images and embeds.
+
+   Related findings: Layout shift culprits, Image elements without explicit `width`/`height`
+
+2. **Serve responsive, next-gen images**  _(Impact: Medium · Effort: Medium)_
+
+   Images are ~1 MB of the 1.14 MB page — effectively all of its weight. Shipping responsive sizes in WebP/AVIF, and making the hero image discoverable early, cuts what mobile visitors download before the page settles.
+
+   Related findings: Improve image delivery, LCP request discovery
+
+3. **Defer render-blocking head resources**  _(Impact: Medium · Effort: Low)_
+
+   Stylesheets and scripts in the document head hold back first paint. Inlining the critical CSS and deferring the rest shortens the blank-screen window at the start of every visit.
+
+   Related findings: Render-blocking requests

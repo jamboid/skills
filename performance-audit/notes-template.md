@@ -53,8 +53,11 @@
 
 ## Priorities
 
-<!-- Your ordered list of what to fix first. 3-5 specific actions. -->
+<!-- 3-5 specific actions. For each: a plain-language title, the business
+     reason it matters, an impact + effort rating (high/medium/low each), and the
+     finding id(s) it addresses (or none, for a strategic call). Order doesn't
+     matter — the build sorts by impact then effort. -->
 
-1.
-2.
-3.
+- Title — impact / effort — why it matters — finding id(s)
+-
+-
