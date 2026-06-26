@@ -131,23 +131,23 @@ One quick win stands out. The site's CSS arrives as a dozen separate files (`cor
 
 ### Findings
 
-**P-1** — Render-blocking CSS and fonts delay first paint on mobile _(est. mobile FCP/LCP −1.4 s)_
+**F1** — Render-blocking CSS and fonts delay first paint on mobile _(est. mobile FCP/LCP −1.4 s)_
 
 Lighthouse counts a dozen render-blocking stylesheets in the head — the theme's `screen.css`, the cookie-banner and Paragraphs CSS, **Adobe Typekit** (`use.typekit.net`), and six separate Drupal `core/modules/system` component files (`clearfix`, `align`, `hidden`, …). That last group is the tell: those core files should be concatenated, so **CSS aggregation is off or incomplete**. On desktop the cost is minor; on mobile Lighthouse estimates **FCP and LCP −1.4 s** — the single biggest lever on the 4.4 s mobile LCP.
 
 Turn on Drupal CSS aggregation, inline the critical CSS, and load Typekit without blocking render (async or `preload`). The web fonts also lack `font-display: swap`, holding first paint a further ~50 ms.
 
-**P-2** — Third-party scripts are 62% of the page; the site's own code is ~7 KB _(830 KB of 1.33 MB is script)_
+**F2** — Third-party scripts are 62% of the page; the site's own code is ~7 KB _(830 KB of 1.33 MB is script)_
 
 Script is **830 KB of the 1.33 MB page**, and almost none of it is the site's — the first-party JS is ~7 KB (`good.js`). The rest is bolted on: roughly **550 KB of injected scripts on randomised first-party paths** (`/35z3/…`, the signature of a Cloudflare-style bot-management / anti-fraud layer — confirm the vendor), **157 KB of Google Tag Manager**, a **67 KB chat widget**, and Snitcher visitor-tracking. Ignore Lighthouse's headline '755 KB unused JavaScript' — that figure is the auditor's own browser extensions, not site code. But the *real* third-party scripts still ship ~250 KB of unused code (GTM alone wastes 112 KB) and push mobile blocking time to 133 ms.
 
 This is tag governance, not engineering. Audit what GTM loads, question whether the chat widget and Snitcher must load before first paint (defer or load on interaction), and confirm the bot-management layer needs to run site-wide. Rocket Loader is also on — verify it's helping rather than reordering this load badly.
 
-**P-3** — The LCP feature image ships at full size to phones _(est. mobile LCP −0.6 s)_
+**F3** — The LCP feature image ships at full size to phones _(est. mobile LCP −0.6 s)_
 
 The largest above-the-fold image — a `feature_promo` cover (`jfais_web_cover`, ~121 KB) — reaches mobile at essentially its desktop size, and Lighthouse's image-delivery insight estimates **LCP −0.6 s** from right-sizing it and its sibling feature images. They're **already WebP**, so this is sizing, not format. The Drupal image styles exist (`feature_promo_large` vs `_medium`); the fix is making the mobile breakpoint actually request the smaller derivative — a `srcset`/`sizes` or image-style mapping gap.
 
-**P-4** — Some images lack explicit width and height _(CLS insurance)_
+**F4** — Some images lack explicit width and height _(CLS insurance)_
 
 CLS is good on both runs (0.00 desktop, 0.03 mobile), but several images carry no intrinsic `width`/`height`, so the browser reserves no space before they load — fragile as content grows. Add dimensions (or CSS `aspect-ratio`) to lock the good score in.
 
@@ -165,11 +165,35 @@ None of this is a re-architecture. One caveat: these figures come from a single 
 
 ### Priority actions
 
-1. Turn on Drupal CSS aggregation so the dozen core/theme stylesheets stop shipping separately; inline critical CSS and load Adobe Typekit without blocking render. ~1.4 s of mobile FCP/LCP — the highest-value change, and a config switch.
-2. Right-size the LCP feature image for mobile (the `feature_promo` derivatives already exist; fix the breakpoint mapping). ~0.6 s of mobile LCP. Already WebP, so sizing not format.
-3. Audit the third-party script load — 830 KB of GTM, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JS. Defer or load-on-interaction whatever isn't needed for first paint; confirm the bot-management vendor and whether it must run site-wide.
-4. Add explicit width/height (or `aspect-ratio`) to images to lock in the currently-good CLS.
-5. Collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off, and verify Cloudflare Rocket Loader is helping rather than hurting the third-party ordering.
+1. **Aggregate and unblock the page's CSS and fonts**  _(Impact: High · Effort: Low)_
+
+   A dozen Drupal core and theme stylesheets ship as separate files that block the first paint, and Adobe Typekit loads the same blocking way. Turning on aggregation, inlining the critical CSS and loading the fonts asynchronously is a configuration switch — no redesign — worth about 1.4 s of mobile load time. It's the single highest-value change here.
+
+   Related findings: F1
+
+2. **Right-size the hero image for phones**  _(Impact: High · Effort: Medium)_
+
+   The main feature image is sent to phones at its full desktop size. The correctly-sized feature_promo derivatives already exist; the breakpoint mapping just isn't pointing mobile at them. It's already WebP, so this is about dimensions, not format — roughly 0.6 s of mobile LCP.
+
+   Related findings: F3
+
+3. **Reconsider the third-party script load**  _(Impact: High · Effort: High)_
+
+   Third-party tags account for 62% of the page — 830 KB of Google Tag Manager, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JavaScript — against roughly 7 KB of the site's own code. Deferring or loading-on-interaction whatever isn't needed for first paint, and confirming whether the bot-management vendor must run site-wide, is part judgement call and part engineering.
+
+   Related findings: F2
+
+4. **Lock in layout stability with image dimensions**  _(Impact: Low · Effort: Low)_
+
+   Layout shift is currently good, but it isn't guaranteed — several images load without reserved space. Adding explicit width/height (or aspect-ratio) keeps the page from jumping around as it loads, even as content changes.
+
+   Related findings: F4
+
+5. **Confirm the mobile picture with field data before sign-off**  _(Impact: Low · Effort: Low)_
+
+   The mobile-LCP story here comes from lab tests. Collecting real-world field/CrUX data confirms it against actual visitors, and it's worth checking that Cloudflare Rocket Loader is helping rather than reshuffling the third-party script order unhelpfully.
+
+   _Strategic priority_
 
 ## Glossary
 

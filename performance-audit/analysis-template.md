@@ -16,8 +16,8 @@ Anything you leave stands as written. Prose supports `code` and **bold**.
 ## Performance diagnosis
 
 <!-- Your read on the numbers. Confirm, reframe, or dismiss specific candidate
-     findings by id (e.g. "P-1 confirmed — it's the Fusion stylesheet";
-     "P-3 ignore — third-party, out of scope"). Add findings the data missed. -->
+     findings by id (e.g. "F1 confirmed — it's the Fusion stylesheet";
+     "F3 ignore — third-party, out of scope"). Add findings the data missed. -->
 
 ## Accessibility
 
@@ -34,8 +34,20 @@ Anything you leave stands as written. Prose supports `code` and **bold**.
 
 ## Priorities
 
-<!-- Your ordered list of what to fix first. Overrides any auto-derived ordering. -->
+<!-- The commissioner-facing worklist. One entry per action. For each:
+     - Title: plain-language action, no jargon.
+     - Rationale: the business consequence (what it costs visitors/the business).
+     - Impact / Effort: each high | medium | low.
+     - Findings: the finding id(s) it addresses, or leave blank for a strategic
+       recommendation with no single finding behind it.
+     Don't worry about ordering — the build sorts by impact then effort. -->
 
-1.
-2.
-3.
+- **Title:**
+  - Rationale:
+  - Impact / Effort:  /
+  - Findings:
+
+- **Title:**
+  - Rationale:
+  - Impact / Effort:  /
+  - Findings:

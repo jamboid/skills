@@ -509,36 +509,62 @@ body {
 .bullets li { font-size: 16px; margin-bottom: 8px; }
 
 /* ── Priorities ── */
-.priority-list {
+.priority-list { display: flex; flex-direction: column; gap: 12px; }
+.priority {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
+  border-left: 4px solid var(--c-border);
   border-radius: var(--radius);
-  overflow: hidden;
-  list-style: none;
-  counter-reset: pri;
+  border-top-left-radius: 0; border-bottom-left-radius: 0;   /* square the railed edge */
+  padding: 16px 18px;
 }
-.priority-list li {
-  display: flex;
-  gap: 14px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--c-border);
-  font-size: 16px;
-  counter-increment: pri;
+.priority.lead-high   { border-left-color: var(--c-high); }
+.priority.lead-medium { border-left-color: var(--c-medium); }
+.priority.lead-low    { border-left-color: var(--c-low); }
+.pri-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.pri-title { font-weight: 700; line-height: 1.3; font-size: 17px; }
+.pri-rationale { color: var(--c-text-muted); font-size: 15px; margin-top: 20px;}
+.pri-foot {
+  margin-top: 14px; padding-top: 13px;
+  border-top: 1px solid var(--c-border);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
-.priority-list li:last-child { border-bottom: none; }
-.priority-list li::before {
-  content: counter(pri);
-  flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  background: var(--c-accent);
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.pri-foot-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--c-text-muted); margin-right: 2px;
 }
+.pri-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; text-decoration: none;
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid #c7d2fe; background: #eef2ff; color: var(--c-accent);
+}
+.pri-link:hover { background: #e0e7ff; border-color: #a5b4fc; }
+.pri-link svg { width: 12px; height: 12px; }
+.pri-strategic {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 7px 12px; border-radius: 6px;
+  border: 1px solid var(--c-border); background: #f4f4f2; color: var(--c-neutral);
+}
+/* impact/effort split chip: coloured impact half, neutral effort half.
+   Rounding lives on the two segments (not an overflow-hidden parent) so the
+   centre divider stays a crisp straight line with no clipped/rounded ends. */
+.metric-chip {
+  display: inline-flex; align-items: stretch; flex-shrink: 0;
+  font-size: 12px; line-height: 1; white-space: nowrap;
+}
+.metric-chip .seg {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px;
+  border: 1px solid var(--c-border);
+}
+.metric-chip .seg .val { font-weight: 700; }
+.metric-chip .seg .lab { font-weight: 600; }
+.metric-chip .seg-impact { border-right: none; border-radius: 999px 0 0 999px; }
+.metric-chip .seg-effort { border-radius: 0 999px 999px 0; background: #f4f4f2; color: var(--c-text); }
+.metric-chip .seg-effort .lab { color: var(--c-text-muted); }
+.metric-chip.impact-high   .seg-impact { background: var(--c-poor-light); color: var(--c-high); }
+.metric-chip.impact-medium .seg-impact { background: var(--c-ni-light);   color: var(--c-medium); }
+.metric-chip.impact-low    .seg-impact { background: #eef2ff;             color: var(--c-low); }
 
 /* ── Glossary ── */
 .glossary { display: flex; flex-direction: column; gap: 10px; }
@@ -580,6 +606,9 @@ em { font-style: italic; }
 @media (max-width: 500px) {
   .content-inner { padding: 64px 16px 60px; }
   .page-title { font-size: 22px; }
+  /* stack the priority chip under the title rather than squeezing it */
+  .pri-top { flex-direction: column; gap: 12px; }
+  .pri-rationale { margin-top: 0; }
 }
 @media (max-width: 640px) {
   .tl-phase { grid-template-columns: 26px 1fr; }
@@ -597,7 +626,7 @@ em { font-style: italic; }
   .sidebar, .mob-toggle { display: none; }
   .content { margin-left: 0; }
   .content-inner { padding: 24px; max-width: 100%; }
-  .finding, .panel, .tl-phase, .res-card { break-inside: avoid; }
+  .finding, .panel, .tl-phase, .res-card, .priority { break-inside: avoid; }
   .dev-group { display: block !important; }
   .panel { display: block !important; }
   .tabrow, .devbar { display: none; }

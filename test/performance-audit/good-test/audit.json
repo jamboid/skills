@@ -94,7 +94,7 @@
   "performance": {
     "findings": [
       {
-        "id": "P-1",
+        "id": "F1",
         "title": "Render-blocking CSS and fonts delay first paint on mobile",
         "severity": "high",
         "savingsDisplay": "est. mobile FCP/LCP −1.4 s",
@@ -103,7 +103,7 @@
         "body": "Lighthouse counts a dozen render-blocking stylesheets in the head — the theme's `screen.css`, the cookie-banner and Paragraphs CSS, **Adobe Typekit** (`use.typekit.net`), and six separate Drupal `core/modules/system` component files (`clearfix`, `align`, `hidden`, …). That last group is the tell: those core files should be concatenated, so **CSS aggregation is off or incomplete**. On desktop the cost is minor; on mobile Lighthouse estimates **FCP and LCP −1.4 s** — the single biggest lever on the 4.4 s mobile LCP.\n\nTurn on Drupal CSS aggregation, inline the critical CSS, and load Typekit without blocking render (async or `preload`). The web fonts also lack `font-display: swap`, holding first paint a further ~50 ms."
       },
       {
-        "id": "P-2",
+        "id": "F2",
         "title": "Third-party scripts are 62% of the page; the site's own code is ~7 KB",
         "severity": "high",
         "savingsDisplay": "830 KB of 1.33 MB is script",
@@ -112,7 +112,7 @@
         "body": "Script is **830 KB of the 1.33 MB page**, and almost none of it is the site's — the first-party JS is ~7 KB (`good.js`). The rest is bolted on: roughly **550 KB of injected scripts on randomised first-party paths** (`/35z3/…`, the signature of a Cloudflare-style bot-management / anti-fraud layer — confirm the vendor), **157 KB of Google Tag Manager**, a **67 KB chat widget**, and Snitcher visitor-tracking. Ignore Lighthouse's headline '755 KB unused JavaScript' — that figure is the auditor's own browser extensions, not site code. But the *real* third-party scripts still ship ~250 KB of unused code (GTM alone wastes 112 KB) and push mobile blocking time to 133 ms.\n\nThis is tag governance, not engineering. Audit what GTM loads, question whether the chat widget and Snitcher must load before first paint (defer or load on interaction), and confirm the bot-management layer needs to run site-wide. Rocket Loader is also on — verify it's helping rather than reordering this load badly."
       },
       {
-        "id": "P-3",
+        "id": "F3",
         "title": "The LCP feature image ships at full size to phones",
         "severity": "medium",
         "savingsDisplay": "est. mobile LCP −0.6 s",
@@ -121,7 +121,7 @@
         "body": "The largest above-the-fold image — a `feature_promo` cover (`jfais_web_cover`, ~121 KB) — reaches mobile at essentially its desktop size, and Lighthouse's image-delivery insight estimates **LCP −0.6 s** from right-sizing it and its sibling feature images. They're **already WebP**, so this is sizing, not format. The Drupal image styles exist (`feature_promo_large` vs `_medium`); the fix is making the mobile breakpoint actually request the smaller derivative — a `srcset`/`sizes` or image-style mapping gap."
       },
       {
-        "id": "P-4",
+        "id": "F4",
         "title": "Some images lack explicit width and height",
         "severity": "low",
         "savingsDisplay": "CLS insurance",
@@ -133,11 +133,40 @@
   },
   "conclusions": "This is a well-built Drupal site let down by what's been layered on top of it. On desktop it's genuinely good — 95 out of 100, with the main content showing in 1.3 seconds. The mobile score of 81, and its **4.4-second load that lands in Google's 'poor' range**, comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB of styling, ~7 KB of JavaScript).\n\nThe order of work is clear:\n\n- **Fix the render-blocking styles and fonts first.** Turn on Drupal's CSS aggregation (the setting that combines those stylesheets into one) and load the Typekit fonts so they don't block the page. This is the single biggest win at around **1.4 seconds**, and it's a configuration switch rather than a code change.\n- **Right-size the main feature image** so phones aren't downloading the full desktop-sized version. Worth about **0.6 seconds**.\n- **Trim the third-party load** — the 830 KB of Google Tag Manager, chat, tracking and bot-management scripts. This is the harder, more political fix: it needs a review of which tags still earn their place and a sign-off from whoever owns them, not an engineering change.\n\nNone of this is a re-architecture. One caveat: these figures come from a single lab test, so before treating 4.4 seconds as what every mobile visitor actually feels, confirm it against real-world field data (Google's CrUX report). But it's a genuine risk, and worth acting on now.",
   "priorities": [
-    "Turn on Drupal CSS aggregation so the dozen core/theme stylesheets stop shipping separately; inline critical CSS and load Adobe Typekit without blocking render. ~1.4 s of mobile FCP/LCP — the highest-value change, and a config switch.",
-    "Right-size the LCP feature image for mobile (the `feature_promo` derivatives already exist; fix the breakpoint mapping). ~0.6 s of mobile LCP. Already WebP, so sizing not format.",
-    "Audit the third-party script load — 830 KB of GTM, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JS. Defer or load-on-interaction whatever isn't needed for first paint; confirm the bot-management vendor and whether it must run site-wide.",
-    "Add explicit width/height (or `aspect-ratio`) to images to lock in the currently-good CLS.",
-    "Collect field/CrUX data to confirm the lab mobile-LCP picture before sign-off, and verify Cloudflare Rocket Loader is helping rather than hurting the third-party ordering."
+    {
+      "title": "Aggregate and unblock the page's CSS and fonts",
+      "rationale": "A dozen Drupal core and theme stylesheets ship as separate files that block the first paint, and Adobe Typekit loads the same blocking way. Turning on aggregation, inlining the critical CSS and loading the fonts asynchronously is a configuration switch — no redesign — worth about 1.4 s of mobile load time. It's the single highest-value change here.",
+      "impact": "high",
+      "effort": "low",
+      "findings": ["F1"]
+    },
+    {
+      "title": "Right-size the hero image for phones",
+      "rationale": "The main feature image is sent to phones at its full desktop size. The correctly-sized `feature_promo` derivatives already exist; the breakpoint mapping just isn't pointing mobile at them. It's already WebP, so this is about dimensions, not format — roughly 0.6 s of mobile LCP.",
+      "impact": "high",
+      "effort": "medium",
+      "findings": ["F3"]
+    },
+    {
+      "title": "Reconsider the third-party script load",
+      "rationale": "Third-party tags account for 62% of the page — 830 KB of Google Tag Manager, a chat widget, Snitcher tracking and ~550 KB of injected bot-management JavaScript — against roughly 7 KB of the site's own code. Deferring or loading-on-interaction whatever isn't needed for first paint, and confirming whether the bot-management vendor must run site-wide, is part judgement call and part engineering.",
+      "impact": "high",
+      "effort": "high",
+      "findings": ["F2"]
+    },
+    {
+      "title": "Lock in layout stability with image dimensions",
+      "rationale": "Layout shift is currently good, but it isn't guaranteed — several images load without reserved space. Adding explicit width/height (or `aspect-ratio`) keeps the page from jumping around as it loads, even as content changes.",
+      "impact": "low",
+      "effort": "low",
+      "findings": ["F4"]
+    },
+    {
+      "title": "Confirm the mobile picture with field data before sign-off",
+      "rationale": "The mobile-LCP story here comes from lab tests. Collecting real-world field/CrUX data confirms it against actual visitors, and it's worth checking that Cloudflare Rocket Loader is helping rather than reshuffling the third-party script order unhelpfully.",
+      "impact": "low",
+      "effort": "low"
+    }
   ],
   "resources": {
     "intro": "The homepage pulls in **49 files totalling 1.33 MB** (desktop; mobile is near-identical), broken down by type as:\n\n- **Script: ~810 KB (62%)**\n- **Images: ~378 KB (29%)**\n- **Fonts: ~81 KB (6%)**\n- **Everything else: ~33 KB (3%)** — the HTML document, eleven stylesheets, and tracking beacons\n\nThe full per-file breakdown is below, grouped by type and sortable by device.",
