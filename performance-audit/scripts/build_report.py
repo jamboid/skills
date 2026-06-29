@@ -514,7 +514,8 @@ def build_markdown(data):
             out.append("### Tests")
             out.append("")
             for t in perf["tests"]:
-                out.append("- " + t.get("label", "") + ": " + t.get("url", ""))
+                url = t.get("url", "")
+                out.append("- " + t.get("label", "") + (": " + url if url else ""))
             out.append("")
         if perf.get("findings"):
             for para in paragraphs(perf.get("findingsIntro")):
@@ -544,7 +545,8 @@ def build_markdown(data):
             out.append("### Tests")
             out.append("")
             for t in acc["tests"]:
-                out.append("- " + t.get("label", "") + ": " + t.get("url", ""))
+                url = t.get("url", "")
+                out.append("- " + t.get("label", "") + (": " + url if url else ""))
             out.append("")
         if acc.get("findings"):
             out.append("### Findings")
@@ -610,8 +612,9 @@ def build_markdown(data):
             out.append("- **{0}** — {1}".format(name, desc))
         out.append("")
 
-    # Appendix
-    runs = list(perf.get("tests") or []) + list(acc.get("tests") or [])
+    # Appendix — only when raw runs actually link somewhere
+    runs = [t for t in (list(perf.get("tests") or []) + list(acc.get("tests") or []))
+            if t.get("url")]
     if runs:
         out.append("## Appendix — raw test runs")
         out.append("")
@@ -1107,8 +1110,9 @@ def build_html(data, template, slug):
         body.append(section("glossary", "Glossary", '    <dl class="glossary">\n'
                             + "\n".join(defs) + '\n    </dl>'))
 
-    # Appendix
-    runs = list(perf.get("tests") or []) + list(acc.get("tests") or [])
+    # Appendix — only when raw runs actually link somewhere
+    runs = [t for t in (list(perf.get("tests") or []) + list(acc.get("tests") or []))
+            if t.get("url")]
     if runs:
         nav.append(nav_link("appendix", "Appendix"))
         body.append(section("appendix", "Appendix — raw test runs",
