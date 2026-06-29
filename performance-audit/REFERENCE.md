@@ -86,15 +86,24 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
       { "label": "WebPageTest",        "url": "https://..." }
     ],
 
-    // Candidate findings: each is a diagnostic card. Lighthouse opportunities
-    // seed these; notes/analysis confirm or add. Ordered by severity then
-    // savings. confirmed:false marks an unratified candidate (rendered with a
-    // "candidate" tag) — drop or confirm on rebuild.
+    // Optional 1–2 sentence lead-in, rendered under the "Audit findings" section
+    // heading, above the findings list (mirrors metrics.intro / resources.intro). ORIENT,
+    // don't judge (Tone rule 9): set up what the findings are and how they're
+    // ordered, then hand off to the list — never pre-empt the good/poor verdict
+    // that belongs to the summary and conclusions (no "solved/fixed", rule 8).
+    // Supports **bold**, `code`, blank-line paragraphs. Omit (or null) for none.
+    "findingsIntro": "Each finding below is one diagnostic — the cause, not just the symptom — ordered by severity, highest-impact first.",
+
+    // Candidate findings: each is a diagnostic entry in a quiet, borderless
+    // evidence log (distinct from the boxed Priority cards). Lighthouse
+    // opportunities seed these; notes/analysis confirm or add. Ordered by
+    // severity then savings. confirmed:false marks an unratified candidate
+    // (rendered with a "candidate" tag) — drop or confirm on rebuild.
     //
     // ID CONVENTION: give every finding a stable `id` of the form `F<n>` — F1,
     // F2, F3… (the "F" is for Finding; it is NOT a Lighthouse id — those slugs
     // live in `source`). Number them in render order (severity, then savings).
-    // The id renders as the card's badge, is the anchor a priority links to, and
+    // The id renders as the entry's badge, is the anchor a priority links to, and
     // is how `analysis.md` refers to a finding — so it must be present and unique
     // on any finding that a priority cites.
     "findings": [
@@ -102,8 +111,8 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
         "id":             "F1",
         "title":          "Eliminate render-blocking resources",
         "severity":       "high",            // high | medium | low
-        "savingsDisplay": "est. 1.2 s · 240 KB",  // optional
-        "source":         "lighthouse:render-blocking-resources", // optional provenance
+        "savingsDisplay": "est. 1.2 s · 240 KB",  // optional; renders verbatim as the savings half of the severity pill
+        "source":         "lighthouse:render-blocking-resources", // optional provenance; renders in the footer under a "Source:" label (don't prefix it yourself)
         "confirmed":      true,
         "body":           "Diagnostic prose: cause, not just symptom. Supports `code`, **bold**, blank-line paragraphs."
       }
@@ -161,7 +170,7 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   // and render as a split chip. A priority usually bundles one-or-more findings:
   // list their `id`s in `findings` and the script renders a compact link to each
   // (labelled with the id, e.g. F1, with the finding's title on hover) that
-  // jumps to the finding card. Omit `findings` (or leave empty) for a strategic /
+  // jumps to the finding entry. Omit `findings` (or leave empty) for a strategic /
   // structural recommendation with no single finding behind it — it renders a
   // "Strategic priority" tag instead. The script SORTS the list by impact
   // (high→low) then effort (low→high), so author order doesn't matter; there are

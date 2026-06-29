@@ -105,7 +105,7 @@ Instead, surface **failing performance audits**:
    `{ "CLS": 0.591, "LCP": 0, "TBT": 0 }` — falling back to
    `details.overallSavingsBytes` / `details.overallSavingsMs` when present.
 
-Each kept audit becomes a `performance.findings` card:
+Each kept audit becomes a `performance.findings` entry:
 
 - `title` ← audit `title`
 - `severity` ← `high` if `score === 0` or a `metricSavings` value pushes a metric

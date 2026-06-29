@@ -34,7 +34,7 @@ bites on a throttled phone." The mobile run bears that out:
 | TBT | 0 | 0 |
 | CLS | 0.00 / 0.015 | 0.00 / 0.044 |
 
-The desktop story is unchanged — effectively solved. The work is all on mobile,
+The desktop story is unchanged — still strong as it stands. The work is all on mobile,
 and it's **LCP-shaped, not CPU-shaped** (TBT stays 0, so JavaScript is not the
 problem). Ratifying the candidates with the new mobile savings:
 
@@ -82,7 +82,7 @@ actually feel.
 ## Conclusions
 
 A lean, competently built Drupal site — server-rendered, aggregated assets,
-negligible JavaScript, SVG iconography. Desktop is solved. The mobile data, now
+negligible JavaScript, SVG iconography. Desktop is in good shape as it stands. The mobile data, now
 in hand, turns the earlier prediction into a fact: the page is **LCP-bound on
 mobile (3.4 s in the pessimistic lab), driven by oversized images and an untuned
 HTTP/1.1 server — not by JavaScript** (TBT is 0 everywhere).

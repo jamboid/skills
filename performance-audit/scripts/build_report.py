@@ -491,7 +491,7 @@ def build_markdown(data):
     # Performance
     perf = data.get("performance") or {}
     if perf.get("tests") or perf.get("findings"):
-        out.append("## Performance")
+        out.append("## Audit findings")
         out.append("")
         if perf.get("tests"):
             out.append("### Tests")
@@ -500,8 +500,9 @@ def build_markdown(data):
                 out.append("- " + t.get("label", "") + ": " + t.get("url", ""))
             out.append("")
         if perf.get("findings"):
-            out.append("### Findings")
-            out.append("")
+            for para in paragraphs(perf.get("findingsIntro")):
+                out.append(para)
+                out.append("")
             for f in sorted_findings(perf["findings"]):
                 title = "**{0}** — {1}".format(f.get("id", ""), f.get("title", ""))
                 tags = []
@@ -881,27 +882,45 @@ def build_resources_html(data):
 
 
 def build_findings_html(findings):
-    rows = []
+    rows = ['      <div class="findings">']
     for f in sorted_findings(findings):
         sev = str(f.get("severity", "low"))
         anchor = ' id="finding-' + attr(str(f["id"])) + '"' if f.get("id") else ''
-        rows.append('      <article class="finding ' + sev + '"' + anchor + '>')
-        rows.append('        <div class="finding-header">')
+        rows.append('        <article class="finding ' + sev + '"' + anchor + '>')
+
+        # Header: id badge + title (+ candidate tag)
+        rows.append('          <div class="finding-header">')
         if f.get("id"):
-            rows.append('          <span class="finding-id">' + html.escape(str(f["id"])) + '</span>')
-        rows.append('          <span class="finding-title">' + inline_html(f.get("title", "")) + '</span>')
-        if f.get("savingsDisplay"):
-            rows.append('          <span class="savings-chip">' + html.escape(f["savingsDisplay"]) + '</span>')
+            rows.append('            <span class="finding-id">' + html.escape(str(f["id"])) + '</span>')
+        rows.append('            <span class="finding-title">' + inline_html(f.get("title", "")) + '</span>')
         if f.get("confirmed") is False:
-            rows.append('          <span class="candidate-tag">Candidate</span>')
-        rows.append('        </div>')
-        rows.append('        <div class="finding-body">')
+            rows.append('            <span class="candidate-tag">Candidate</span>')
+        rows.append('          </div>')
+
+        # Body: diagnostic prose
+        rows.append('          <div class="finding-body">')
         for para in paragraphs(f.get("body")):
-            rows.append('          <p>' + inline_html(para) + '</p>')
+            rows.append('            <p>' + inline_html(para) + '</p>')
+        rows.append('          </div>')
+
+        # Footer: severity + savings split pill, then source provenance
+        rows.append('          <div class="finding-foot">')
+        chip = ['            <span class="finding-chip">'
+                '<span class="seg seg-sev"><span class="val">'
+                + html.escape(sev.capitalize()) + '</span><span class="lab">severity</span></span>']
+        if f.get("savingsDisplay"):
+            chip.append('<span class="seg seg-save"><span class="val">'
+                        + html.escape(f["savingsDisplay"]) + '</span></span>')
+        chip.append('</span>')
+        rows.append(''.join(chip))
         if f.get("source"):
-            rows.append('          <div class="finding-source">' + html.escape(f["source"]) + '</div>')
-        rows.append('        </div>')
-        rows.append('      </article>')
+            rows.append('            <span class="finding-source">'
+                        '<span class="finding-source-lab">Source:</span> '
+                        + html.escape(f["source"]) + '</span>')
+        rows.append('          </div>')
+
+        rows.append('        </article>')
+    rows.append('      </div>')
     return "\n".join(rows)
 
 
@@ -1009,14 +1028,16 @@ def build_html(data, template, slug):
     # Performance
     perf = data.get("performance") or {}
     if perf.get("tests") or perf.get("findings"):
-        nav.append(nav_link("performance", "Performance"))
+        nav.append(nav_link("performance", "Audit findings"))
         parts = []
         if perf.get("tests"):
             parts.append(build_tests_html(perf["tests"], "Tests"))
         if perf.get("findings"):
-            parts.append('      <div class="subhead">Findings</div>')
+            intro = prose_block(perf.get("findingsIntro"), "section-intro")
+            if intro:
+                parts.append(intro)
             parts.append(build_findings_html(perf["findings"]))
-        body.append(section("performance", "Performance", "\n".join(parts)))
+        body.append(section("performance", "Audit findings", "\n".join(parts)))
 
     # Accessibility
     acc = data.get("accessibility") or {}
