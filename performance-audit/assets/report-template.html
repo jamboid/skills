@@ -401,52 +401,29 @@ body {
 .res details[data-files="fewer"] .asset-row.small { display: none; }
 .res details[data-files="all"]   .sum-row { display: none; }
 
-/* ── Findings cards ── */
+/* ── Findings: borderless evidence log (kept visually quiet, distinct from the
+   boxed Priority cards). Rows separated by whitespace, aligned to the page gutter. */
+.findings { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .finding {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius);
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-left: 4px solid var(--c-neutral);
-  margin-bottom: 16px;
-  overflow: hidden;
+  --finding-indent: 42px;   /* badge width + header gap, so body/footer align with title text */
+  padding: 24px 0;          /* no horizontal padding — content aligns to the page gutter */
 }
-.finding.high   { border-left-color: var(--c-high); }
-.finding.medium { border-left-color: var(--c-medium); }
-.finding.low    { border-left-color: var(--c-low); }
-.finding-header {
-  padding: 16px 20px 12px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+.finding-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .finding-id {
   flex-shrink: 0;
+  width: 32px;
+  text-align: center;
   font-size: 11px;
   font-weight: 800;
-  padding: 3px 8px;
+  padding: 3px 0;
   border-radius: 5px;
   color: #fff;
   letter-spacing: 0.04em;
-  margin-top: 1px;
 }
 .finding.high   .finding-id { background: var(--c-high); }
 .finding.medium .finding-id { background: var(--c-medium); }
 .finding.low    .finding-id { background: var(--c-low); }
-.finding-title { font-size: 17px; font-weight: 700; line-height: 1.3; flex: 1; min-width: 200px; }
-.savings-chip {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  padding: 3px 9px;
-  border-radius: 5px;
-  background: #f4f4f2;
-  border: 1px solid var(--c-border);
-  color: var(--c-text-muted);
-  align-self: center;
-}
+.finding-title { min-width: 0; font-size: 16px; font-weight: 700; line-height: 1.3; }
 .candidate-tag {
   font-size: 10px;
   font-weight: 700;
@@ -457,17 +434,26 @@ body {
   background: var(--c-ni-light);
   color: var(--c-ni);
   border: 1px solid var(--c-ni-border);
-  align-self: center;
 }
-.finding-body { padding: 0 20px 16px; }
-.finding-body p { font-size: 16px; margin-bottom: 8px; }
+.finding-body { margin-top: 11px; margin-left: var(--finding-indent); max-width: 68ch; }
+.finding-body p { font-size: 15px; margin-bottom: 8px; line-height: 1.65; }
 .finding-body p:last-child { margin-bottom: 0; }
-.finding-source {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--c-text-muted);
-  margin-top: 8px;
-}
+
+/* footer: severity + savings combined pill (left), then source */
+.finding-foot { display: flex; align-items: center; gap: 16px; margin-top: 16px; margin-left: var(--finding-indent); }
+/* split pill mirroring .metric-chip: coloured severity segment + neutral savings segment */
+.finding-chip { display: inline-flex; align-items: stretch; flex-shrink: 0; font-size: 12px; line-height: 1; white-space: nowrap; }
+.finding-chip .seg { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--c-border); }
+.finding-chip .seg .val { font-weight: 700; }
+.finding-chip .seg .lab { font-weight: 600; }
+.finding-chip .seg-sev { border-right: none; border-radius: 999px 0 0 999px; }
+.finding-chip .seg-save { border-radius: 0 999px 999px 0; background: #f4f4f2; color: var(--c-text); }
+.finding-chip .seg-sev:only-child { border-right: 1px solid var(--c-border); border-radius: 999px; }
+.finding.high   .finding-chip .seg-sev { background: var(--c-poor-light); color: var(--c-high); }
+.finding.medium .finding-chip .seg-sev { background: var(--c-ni-light);   color: var(--c-medium); }
+.finding.low    .finding-chip .seg-sev { background: #eef2ff;             color: var(--c-low); }
+.finding-source { font-family: var(--font-mono); font-size: 11px; color: var(--c-text); }
+.finding-source-lab { font-family: var(--font-sans); font-weight: 600; }
 
 /* ── Tables ── */
 .data-table {

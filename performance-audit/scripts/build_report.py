@@ -881,27 +881,45 @@ def build_resources_html(data):
 
 
 def build_findings_html(findings):
-    rows = []
+    rows = ['      <div class="findings">']
     for f in sorted_findings(findings):
         sev = str(f.get("severity", "low"))
         anchor = ' id="finding-' + attr(str(f["id"])) + '"' if f.get("id") else ''
-        rows.append('      <article class="finding ' + sev + '"' + anchor + '>')
-        rows.append('        <div class="finding-header">')
+        rows.append('        <article class="finding ' + sev + '"' + anchor + '>')
+
+        # Header: id badge + title (+ candidate tag)
+        rows.append('          <div class="finding-header">')
         if f.get("id"):
-            rows.append('          <span class="finding-id">' + html.escape(str(f["id"])) + '</span>')
-        rows.append('          <span class="finding-title">' + inline_html(f.get("title", "")) + '</span>')
-        if f.get("savingsDisplay"):
-            rows.append('          <span class="savings-chip">' + html.escape(f["savingsDisplay"]) + '</span>')
+            rows.append('            <span class="finding-id">' + html.escape(str(f["id"])) + '</span>')
+        rows.append('            <span class="finding-title">' + inline_html(f.get("title", "")) + '</span>')
         if f.get("confirmed") is False:
-            rows.append('          <span class="candidate-tag">Candidate</span>')
-        rows.append('        </div>')
-        rows.append('        <div class="finding-body">')
+            rows.append('            <span class="candidate-tag">Candidate</span>')
+        rows.append('          </div>')
+
+        # Body: diagnostic prose
+        rows.append('          <div class="finding-body">')
         for para in paragraphs(f.get("body")):
-            rows.append('          <p>' + inline_html(para) + '</p>')
+            rows.append('            <p>' + inline_html(para) + '</p>')
+        rows.append('          </div>')
+
+        # Footer: severity + savings split pill, then source provenance
+        rows.append('          <div class="finding-foot">')
+        chip = ['            <span class="finding-chip">'
+                '<span class="seg seg-sev"><span class="val">'
+                + html.escape(sev.capitalize()) + '</span><span class="lab">severity</span></span>']
+        if f.get("savingsDisplay"):
+            chip.append('<span class="seg seg-save"><span class="val">'
+                        + html.escape(f["savingsDisplay"]) + '</span></span>')
+        chip.append('</span>')
+        rows.append(''.join(chip))
         if f.get("source"):
-            rows.append('          <div class="finding-source">' + html.escape(f["source"]) + '</div>')
-        rows.append('        </div>')
-        rows.append('      </article>')
+            rows.append('            <span class="finding-source">'
+                        '<span class="finding-source-lab">Source:</span> '
+                        + html.escape(f["source"]) + '</span>')
+        rows.append('          </div>')
+
+        rows.append('        </article>')
+    rows.append('      </div>')
     return "\n".join(rows)
 
 
