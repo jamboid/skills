@@ -505,36 +505,28 @@ def build_markdown(data):
             out.append(para)
             out.append("")
 
-    # Performance
+    # Performance — tools live in the Appendix and each finding's source line.
     perf = data.get("performance") or {}
-    if perf.get("tests") or perf.get("findings"):
+    if perf.get("findings"):
         out.append("## Audit findings")
         out.append("")
-        if perf.get("tests"):
-            out.append("### Tests")
+        for para in paragraphs(perf.get("findingsIntro")):
+            out.append(para)
             out.append("")
-            for t in perf["tests"]:
-                url = t.get("url", "")
-                out.append("- " + t.get("label", "") + (": " + url if url else ""))
+        for f in sorted_findings(perf["findings"]):
+            title = "**{0}** — {1}".format(f.get("id", ""), f.get("title", ""))
+            tags = []
+            if f.get("savingsDisplay"):
+                tags.append(f["savingsDisplay"])
+            if f.get("confirmed") is False:
+                tags.append("candidate")
+            if tags:
+                title += " _(" + ", ".join(tags) + ")_"
+            out.append(title)
             out.append("")
-        if perf.get("findings"):
-            for para in paragraphs(perf.get("findingsIntro")):
+            for para in paragraphs(f.get("body")):
                 out.append(para)
                 out.append("")
-            for f in sorted_findings(perf["findings"]):
-                title = "**{0}** — {1}".format(f.get("id", ""), f.get("title", ""))
-                tags = []
-                if f.get("savingsDisplay"):
-                    tags.append(f["savingsDisplay"])
-                if f.get("confirmed") is False:
-                    tags.append("candidate")
-                if tags:
-                    title += " _(" + ", ".join(tags) + ")_"
-                out.append(title)
-                out.append("")
-                for para in paragraphs(f.get("body")):
-                    out.append(para)
-                    out.append("")
 
     # Accessibility
     acc = data.get("accessibility") or {}
@@ -1050,18 +1042,16 @@ def build_html(data, template, slug):
         nav.append(nav_link("architecture", "Site architecture"))
         body.append(section("architecture", "Site architecture", prose_block(data["architecture"])))
 
-    # Performance
+    # Performance — tools are covered by the Appendix and each finding's source,
+    # so the findings section lists findings only.
     perf = data.get("performance") or {}
-    if perf.get("tests") or perf.get("findings"):
+    if perf.get("findings"):
         nav.append(nav_link("performance", "Audit findings"))
         parts = []
-        if perf.get("tests"):
-            parts.append(build_tests_html(perf["tests"], "Tests"))
-        if perf.get("findings"):
-            intro = prose_block(perf.get("findingsIntro"), "section-intro")
-            if intro:
-                parts.append(intro)
-            parts.append(build_findings_html(perf["findings"]))
+        intro = prose_block(perf.get("findingsIntro"), "section-intro")
+        if intro:
+            parts.append(intro)
+        parts.append(build_findings_html(perf["findings"]))
         body.append(section("performance", "Audit findings", "\n".join(parts)))
 
     # Accessibility
