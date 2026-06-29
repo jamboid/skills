@@ -401,52 +401,29 @@ body {
 .res details[data-files="fewer"] .asset-row.small { display: none; }
 .res details[data-files="all"]   .sum-row { display: none; }
 
-/* ── Findings cards ── */
+/* ── Findings: borderless evidence log (kept visually quiet, distinct from the
+   boxed Priority cards). Rows separated by whitespace, aligned to the page gutter. */
+.findings { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .finding {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius);
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-left: 4px solid var(--c-neutral);
-  margin-bottom: 16px;
-  overflow: hidden;
+  --finding-indent: 42px;   /* badge width + header gap, so body/footer align with title text */
+  padding: 24px 0;          /* no horizontal padding — content aligns to the page gutter */
 }
-.finding.high   { border-left-color: var(--c-high); }
-.finding.medium { border-left-color: var(--c-medium); }
-.finding.low    { border-left-color: var(--c-low); }
-.finding-header {
-  padding: 16px 20px 12px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+.finding-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .finding-id {
   flex-shrink: 0;
+  width: 32px;
+  text-align: center;
   font-size: 11px;
   font-weight: 800;
-  padding: 3px 8px;
+  padding: 3px 0;
   border-radius: 5px;
   color: #fff;
   letter-spacing: 0.04em;
-  margin-top: 1px;
 }
 .finding.high   .finding-id { background: var(--c-high); }
 .finding.medium .finding-id { background: var(--c-medium); }
 .finding.low    .finding-id { background: var(--c-low); }
-.finding-title { font-size: 17px; font-weight: 700; line-height: 1.3; flex: 1; min-width: 200px; }
-.savings-chip {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  padding: 3px 9px;
-  border-radius: 5px;
-  background: #f4f4f2;
-  border: 1px solid var(--c-border);
-  color: var(--c-text-muted);
-  align-self: center;
-}
+.finding-title { min-width: 0; font-size: 16px; font-weight: 700; line-height: 1.3; }
 .candidate-tag {
   font-size: 10px;
   font-weight: 700;
@@ -457,17 +434,26 @@ body {
   background: var(--c-ni-light);
   color: var(--c-ni);
   border: 1px solid var(--c-ni-border);
-  align-self: center;
 }
-.finding-body { padding: 0 20px 16px; }
-.finding-body p { font-size: 16px; margin-bottom: 8px; }
+.finding-body { margin-top: 11px; margin-left: var(--finding-indent); max-width: 68ch; }
+.finding-body p { font-size: 15px; margin-bottom: 8px; line-height: 1.65; }
 .finding-body p:last-child { margin-bottom: 0; }
-.finding-source {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--c-text-muted);
-  margin-top: 8px;
-}
+
+/* footer: severity + savings combined pill (left), then source */
+.finding-foot { display: flex; align-items: center; gap: 16px; margin-top: 16px; margin-left: var(--finding-indent); }
+/* split pill mirroring .metric-chip: coloured severity segment + neutral savings segment */
+.finding-chip { display: inline-flex; align-items: stretch; flex-shrink: 0; font-size: 12px; line-height: 1; white-space: nowrap; }
+.finding-chip .seg { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--c-border); }
+.finding-chip .seg .val { font-weight: 700; }
+.finding-chip .seg .lab { font-weight: 600; }
+.finding-chip .seg-sev { border-right: none; border-radius: 999px 0 0 999px; }
+.finding-chip .seg-save { border-radius: 0 999px 999px 0; background: #f4f4f2; color: var(--c-text); }
+.finding-chip .seg-sev:only-child { border-right: 1px solid var(--c-border); border-radius: 999px; }
+.finding.high   .finding-chip .seg-sev { background: var(--c-poor-light); color: var(--c-high); }
+.finding.medium .finding-chip .seg-sev { background: var(--c-ni-light);   color: var(--c-medium); }
+.finding.low    .finding-chip .seg-sev { background: #eef2ff;             color: var(--c-low); }
+.finding-source { font-family: var(--font-mono); font-size: 11px; color: var(--c-text); }
+.finding-source-lab { font-family: var(--font-sans); font-weight: 600; }
 
 /* ── Tables ── */
 .data-table {
@@ -871,52 +857,62 @@ em { font-style: italic; }
     <section class="content-section" id="performance">
       <h2 class="section-heading">Performance</h2>
       <div class="subhead">Findings</div>
-      <article class="finding high" id="finding-F1">
-        <div class="finding-header">
-          <span class="finding-id">F1</span>
-          <span class="finding-title">Render-blocking CSS and fonts delay first paint on mobile</span>
-          <span class="savings-chip">est. mobile FCP/LCP −1.4 s</span>
-        </div>
-        <div class="finding-body">
-          <p>Lighthouse counts a dozen render-blocking stylesheets in the head — the theme's <code>screen.css</code>, the cookie-banner and Paragraphs CSS, <strong>Adobe Typekit</strong> (<code>use.typekit.net</code>), and six separate Drupal <code>core/modules/system</code> component files (<code>clearfix</code>, <code>align</code>, <code>hidden</code>, …). That last group is the tell: those core files should be concatenated, so <strong>CSS aggregation is off or incomplete</strong>. On desktop the cost is minor; on mobile Lighthouse estimates <strong>FCP and LCP −1.4 s</strong> — the single biggest lever on the 4.4 s mobile LCP.</p>
-          <p>Turn on Drupal CSS aggregation, inline the critical CSS, and load Typekit without blocking render (async or <code>preload</code>). The web fonts also lack <code>font-display: swap</code>, holding first paint a further ~50 ms.</p>
-          <div class="finding-source">lighthouse:render-blocking-insight</div>
-        </div>
-      </article>
-      <article class="finding high" id="finding-F2">
-        <div class="finding-header">
-          <span class="finding-id">F2</span>
-          <span class="finding-title">Third-party scripts are 62% of the page; the site's own code is ~7 KB</span>
-          <span class="savings-chip">830 KB of 1.33 MB is script</span>
-        </div>
-        <div class="finding-body">
-          <p>Script is <strong>830 KB of the 1.33 MB page</strong>, and almost none of it is the site's — the first-party JS is ~7 KB (<code>good.js</code>). The rest is bolted on: roughly <strong>550 KB of injected scripts on randomised first-party paths</strong> (<code>/35z3/…</code>, the signature of a Cloudflare-style bot-management / anti-fraud layer — confirm the vendor), <strong>157 KB of Google Tag Manager</strong>, a <strong>67 KB chat widget</strong>, and Snitcher visitor-tracking. Ignore Lighthouse's headline '755 KB unused JavaScript' — that figure is the auditor's own browser extensions, not site code. But the *real* third-party scripts still ship ~250 KB of unused code (GTM alone wastes 112 KB) and push mobile blocking time to 133 ms.</p>
-          <p>This is tag governance, not engineering. Audit what GTM loads, question whether the chat widget and Snitcher must load before first paint (defer or load on interaction), and confirm the bot-management layer needs to run site-wide. Rocket Loader is also on — verify it's helping rather than reordering this load badly.</p>
-          <div class="finding-source">lighthouse:network-requests</div>
-        </div>
-      </article>
-      <article class="finding medium" id="finding-F3">
-        <div class="finding-header">
-          <span class="finding-id">F3</span>
-          <span class="finding-title">The LCP feature image ships at full size to phones</span>
-          <span class="savings-chip">est. mobile LCP −0.6 s</span>
-        </div>
-        <div class="finding-body">
-          <p>The largest above-the-fold image — a <code>feature_promo</code> cover (<code>jfais_web_cover</code>, ~121 KB) — reaches mobile at essentially its desktop size, and Lighthouse's image-delivery insight estimates <strong>LCP −0.6 s</strong> from right-sizing it and its sibling feature images. They're <strong>already WebP</strong>, so this is sizing, not format. The Drupal image styles exist (<code>feature_promo_large</code> vs <code>_medium</code>); the fix is making the mobile breakpoint actually request the smaller derivative — a <code>srcset</code>/<code>sizes</code> or image-style mapping gap.</p>
-          <div class="finding-source">lighthouse:image-delivery-insight</div>
-        </div>
-      </article>
-      <article class="finding low" id="finding-F4">
-        <div class="finding-header">
-          <span class="finding-id">F4</span>
-          <span class="finding-title">Some images lack explicit width and height</span>
-          <span class="savings-chip">CLS insurance</span>
-        </div>
-        <div class="finding-body">
-          <p>CLS is good on both runs (0.00 desktop, 0.03 mobile), but several images carry no intrinsic <code>width</code>/<code>height</code>, so the browser reserves no space before they load — fragile as content grows. Add dimensions (or CSS <code>aspect-ratio</code>) to lock the good score in.</p>
-          <div class="finding-source">lighthouse:unsized-images</div>
-        </div>
-      </article>
+      <div class="findings">
+        <article class="finding high" id="finding-F1">
+          <div class="finding-header">
+            <span class="finding-id">F1</span>
+            <span class="finding-title">Render-blocking CSS and fonts delay first paint on mobile</span>
+          </div>
+          <div class="finding-body">
+            <p>Lighthouse counts a dozen render-blocking stylesheets in the head — the theme's <code>screen.css</code>, the cookie-banner and Paragraphs CSS, <strong>Adobe Typekit</strong> (<code>use.typekit.net</code>), and six separate Drupal <code>core/modules/system</code> component files (<code>clearfix</code>, <code>align</code>, <code>hidden</code>, …). That last group is the tell: those core files should be concatenated, so <strong>CSS aggregation is off or incomplete</strong>. On desktop the cost is minor; on mobile Lighthouse estimates <strong>FCP and LCP −1.4 s</strong> — the single biggest lever on the 4.4 s mobile LCP.</p>
+            <p>Turn on Drupal CSS aggregation, inline the critical CSS, and load Typekit without blocking render (async or <code>preload</code>). The web fonts also lack <code>font-display: swap</code>, holding first paint a further ~50 ms.</p>
+          </div>
+          <div class="finding-foot">
+            <span class="finding-chip"><span class="seg seg-sev"><span class="val">High</span><span class="lab">severity</span></span><span class="seg seg-save"><span class="val">est. mobile FCP/LCP −1.4 s</span></span></span>
+            <span class="finding-source"><span class="finding-source-lab">Source:</span> lighthouse:render-blocking-insight</span>
+          </div>
+        </article>
+        <article class="finding high" id="finding-F2">
+          <div class="finding-header">
+            <span class="finding-id">F2</span>
+            <span class="finding-title">Third-party scripts are 62% of the page; the site's own code is ~7 KB</span>
+          </div>
+          <div class="finding-body">
+            <p>Script is <strong>830 KB of the 1.33 MB page</strong>, and almost none of it is the site's — the first-party JS is ~7 KB (<code>good.js</code>). The rest is bolted on: roughly <strong>550 KB of injected scripts on randomised first-party paths</strong> (<code>/35z3/…</code>, the signature of a Cloudflare-style bot-management / anti-fraud layer — confirm the vendor), <strong>157 KB of Google Tag Manager</strong>, a <strong>67 KB chat widget</strong>, and Snitcher visitor-tracking. Ignore Lighthouse's headline '755 KB unused JavaScript' — that figure is the auditor's own browser extensions, not site code. But the *real* third-party scripts still ship ~250 KB of unused code (GTM alone wastes 112 KB) and push mobile blocking time to 133 ms.</p>
+            <p>This is tag governance, not engineering. Audit what GTM loads, question whether the chat widget and Snitcher must load before first paint (defer or load on interaction), and confirm the bot-management layer needs to run site-wide. Rocket Loader is also on — verify it's helping rather than reordering this load badly.</p>
+          </div>
+          <div class="finding-foot">
+            <span class="finding-chip"><span class="seg seg-sev"><span class="val">High</span><span class="lab">severity</span></span><span class="seg seg-save"><span class="val">830 KB of 1.33 MB is script</span></span></span>
+            <span class="finding-source"><span class="finding-source-lab">Source:</span> lighthouse:network-requests</span>
+          </div>
+        </article>
+        <article class="finding medium" id="finding-F3">
+          <div class="finding-header">
+            <span class="finding-id">F3</span>
+            <span class="finding-title">The LCP feature image ships at full size to phones</span>
+          </div>
+          <div class="finding-body">
+            <p>The largest above-the-fold image — a <code>feature_promo</code> cover (<code>jfais_web_cover</code>, ~121 KB) — reaches mobile at essentially its desktop size, and Lighthouse's image-delivery insight estimates <strong>LCP −0.6 s</strong> from right-sizing it and its sibling feature images. They're <strong>already WebP</strong>, so this is sizing, not format. The Drupal image styles exist (<code>feature_promo_large</code> vs <code>_medium</code>); the fix is making the mobile breakpoint actually request the smaller derivative — a <code>srcset</code>/<code>sizes</code> or image-style mapping gap.</p>
+          </div>
+          <div class="finding-foot">
+            <span class="finding-chip"><span class="seg seg-sev"><span class="val">Medium</span><span class="lab">severity</span></span><span class="seg seg-save"><span class="val">est. mobile LCP −0.6 s</span></span></span>
+            <span class="finding-source"><span class="finding-source-lab">Source:</span> lighthouse:image-delivery-insight</span>
+          </div>
+        </article>
+        <article class="finding low" id="finding-F4">
+          <div class="finding-header">
+            <span class="finding-id">F4</span>
+            <span class="finding-title">Some images lack explicit width and height</span>
+          </div>
+          <div class="finding-body">
+            <p>CLS is good on both runs (0.00 desktop, 0.03 mobile), but several images carry no intrinsic <code>width</code>/<code>height</code>, so the browser reserves no space before they load — fragile as content grows. Add dimensions (or CSS <code>aspect-ratio</code>) to lock the good score in.</p>
+          </div>
+          <div class="finding-foot">
+            <span class="finding-chip"><span class="seg seg-sev"><span class="val">Low</span><span class="lab">severity</span></span><span class="seg seg-save"><span class="val">CLS insurance</span></span></span>
+            <span class="finding-source"><span class="finding-source-lab">Source:</span> lighthouse:unsized-images</span>
+          </div>
+        </article>
+      </div>
     </section>
 
     <section class="content-section" id="conclusions">
