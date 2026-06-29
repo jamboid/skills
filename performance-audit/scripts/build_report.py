@@ -120,6 +120,23 @@ RES_CAT_ICON = {
 }
 RES_CHEV = ('<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" '
             'stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>')
+
+# Section heading icons — scroll signposts, keyed by section slug. Same recipe as
+# RES_CAT_ICON (24×24, 1.9 stroke, dark ink) shown a notch bigger in a neutral chip.
+_SI = 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"'
+SECTION_ICON = {
+    "summary":       '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+    "metrics":       '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M3.5 18a8.5 8.5 0 0 1 17 0"/><path d="M12 18l3.5-4.5"/></svg>',
+    "resources":     '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/></svg>',
+    "architecture":  '<svg viewBox="0 0 24 24" ' + _SI + '><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v3M6 16v-2.5h12V16"/></svg>',
+    "performance":   '<svg viewBox="0 0 24 24" ' + _SI + '><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5L16 16"/></svg>',
+    "accessibility": '<svg viewBox="0 0 24 24" ' + _SI + '><circle cx="12" cy="4.5" r="1.8"/><path d="M4.5 8.5h15M12 8.5v6m0 0l-3.2 6m3.2-6l3.2 6"/></svg>',
+    "ux":            '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M5 3v4M3 5h4M6 16v4M4 18h4"/><path d="M14 4l2.2 5.8L22 12l-5.8 2.2L14 20l-2.2-5.8L6 12l5.8-2.2z"/></svg>',
+    "conclusions":   '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M5 21V4M5 4.5h12l-2.2 4 2.2 4H5"/></svg>',
+    "priorities":    '<svg viewBox="0 0 24 24" ' + _SI + '><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>',
+    "glossary":      '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 1 6.5 18H19v3H6.5A1.5 1.5 0 0 1 5 19.5z"/></svg>',
+    "appendix":      '<svg viewBox="0 0 24 24" ' + _SI + '><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13.5 15H17"/></svg>',
+}
 RES_SCOPES = [("both", "Both"), ("0", "Desktop"), ("1", "Mobile")]
 RES_KEY = ["D", "M"]
 
@@ -643,8 +660,10 @@ def prose_block(text, cls="prose"):
 
 
 def section(sid, heading, body):
+    icon = SECTION_ICON.get(sid, "")
+    chip = ('<span class="heading-icon">' + icon + '</span>') if icon else ""
     return ('    <section class="content-section" id="' + attr(sid) + '">\n'
-            '      <h2 class="section-heading">' + html.escape(heading) + '</h2>\n'
+            '      <h2 class="section-heading">' + chip + html.escape(heading) + '</h2>\n'
             + body + '\n    </section>')
 
 
