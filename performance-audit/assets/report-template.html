@@ -101,7 +101,7 @@ body {
 .mob-toggle {
   display: none;
   position: fixed;
-  top: 14px; left: 14px;
+  top: 14px; right: 14px;
   z-index: 200;
   background: var(--c-sidebar-bg);
   color: var(--c-text);
@@ -175,11 +175,32 @@ body {
 /* ── Section headings ── */
 .content-section { margin-bottom: 56px; scroll-margin-top: 24px; }
 .section-heading {
+  --hi-w: 40px; --hi-gap: 14px;
+  display: flex;
+  align-items: center;
+  gap: var(--hi-gap);
   font-size: 23px;
   font-weight: 700;
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 2px solid var(--c-border);
+}
+/* leading icon chip — scroll signpost. Same recipe as .cat-icon, a notch bigger,
+   neutral chip. Inline by default; on wide viewports it hangs into the left margin
+   (see media query below) so the heading TEXT sits flush with the body content. */
+.heading-icon {
+  width: var(--hi-w); height: var(--hi-w);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: #eceae5; color: var(--icon-ink);
+  flex-shrink: 0;
+}
+.heading-icon svg { width: 22px; height: 22px; }
+/* Hang the chip in the gutter only when the content column is centred with room to
+   spare (sidebar 268 + content-max 960 + clearance) — otherwise it would slide
+   under the fixed sidebar. Below this it stays inline. */
+@media (min-width: 1280px) {
+  .heading-icon { margin-left: calc(-1 * (var(--hi-w) + var(--hi-gap))); }
 }
 .subhead {
   font-size: 12px;
