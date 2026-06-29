@@ -199,6 +199,8 @@ One nuance: the two testing tools disagree on mobile LCP — Lighthouse says 3.4
 
 ### Priority actions
 
+The worklist that follows turns the findings into actions, ordered by impact against effort — the quickest, highest-value wins sit at the top, with the larger structural calls below.
+
 1. **Make the hero image a responsive, preloadable <img>**  _(Impact: High · Effort: Low)_
 
    The main hero is currently a CSS background image at full desktop size, even on phones — so the browser can't preload it and it's far heavier than it needs to be. Switching it to a responsive <img> with srcset and fetchpriority="high" fixes both at once: it drops the mobile hero from 314 KB to about 87 KB and lets the browser discover and prioritise it early. The single highest-value action.
