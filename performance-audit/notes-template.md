@@ -33,16 +33,6 @@
 <!-- Optional. Notes the breakdown table won't capture: optimisation status,
      format (jpg/webp/avif), lazy loading, a specific oversized asset. -->
 
-## Accessibility
-
-### Tests
-
-<!-- Optional. Tools used (axe, contrast checker, manual screen reader pass), links to results. -->
-
-### Findings
-
-<!-- Contrast issues, link text, keyboard navigation, ARIA, anything failing or weak. -->
-
 ## Design & UX
 
 <!-- Qualitative observations: dark patterns, broken affordances, navigation issues, content hierarchy problems. -->

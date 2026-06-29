@@ -110,4 +110,4 @@ The glossary definitions and metric thresholds live canonically in
 | audits root | `~/Github/audits/`                                                           |
 | audience    | internal Strategy Director / Account Director, occasional client passthrough |
 | length      | short report — concise bullets in body, narrative only in conclusions        |
-| scope       | site audit, performance-focused (covers arch / perf / a11y / UX)             |
+| scope       | site audit, speed/performance-focused (covers arch / perf / UX; a11y is out of scope — use the dedicated accessibility-audit skill) |

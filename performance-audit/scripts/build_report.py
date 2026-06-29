@@ -130,7 +130,6 @@ SECTION_ICON = {
     "resources":     '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/></svg>',
     "architecture":  '<svg viewBox="0 0 24 24" ' + _SI + '><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v3M6 16v-2.5h12V16"/></svg>',
     "performance":   '<svg viewBox="0 0 24 24" ' + _SI + '><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5L16 16"/></svg>',
-    "accessibility": '<svg viewBox="0 0 24 24" ' + _SI + '><circle cx="12" cy="4.5" r="1.8"/><path d="M4.5 8.5h15M12 8.5v6m0 0l-3.2 6m3.2-6l3.2 6"/></svg>',
     "ux":            '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M5 3v4M3 5h4M6 16v4M4 18h4"/><path d="M14 4l2.2 5.8L22 12l-5.8 2.2L14 20l-2.2-5.8L6 12l5.8-2.2z"/></svg>',
     "conclusions":   '<svg viewBox="0 0 24 24" ' + _SI + '><path d="M5 21V4M5 4.5h12l-2.2 4 2.2 4H5"/></svg>',
     "priorities":    '<svg viewBox="0 0 24 24" ' + _SI + '><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>',
@@ -528,15 +527,6 @@ def build_markdown(data):
                 out.append(para)
                 out.append("")
 
-    # Accessibility — tools live in the Appendix; section lists findings only.
-    acc = data.get("accessibility") or {}
-    if acc.get("findings"):
-        out.append("## Accessibility")
-        out.append("")
-        for b in acc["findings"]:
-            out.append("- " + str(b))
-        out.append("")
-
     # Design & UX
     if data.get("ux"):
         out.append("## Design and user experience")
@@ -595,8 +585,7 @@ def build_markdown(data):
         out.append("")
 
     # Appendix — only when raw runs actually link somewhere
-    runs = [t for t in (list(perf.get("tests") or []) + list(acc.get("tests") or []))
-            if t.get("url")]
+    runs = [t for t in (perf.get("tests") or []) if t.get("url")]
     if runs:
         out.append("## Appendix — raw test runs")
         out.append("")
@@ -1044,13 +1033,6 @@ def build_html(data, template, slug):
         parts.append(build_findings_html(perf["findings"]))
         body.append(section("performance", "Audit findings", "\n".join(parts)))
 
-    # Accessibility
-    acc = data.get("accessibility") or {}
-    if acc.get("findings"):
-        nav.append(nav_link("accessibility", "Accessibility"))
-        body.append(section("accessibility", "Accessibility",
-                            build_bullets_html(acc["findings"])))
-
     # Design & UX
     if data.get("ux"):
         nav.append(nav_link("ux", "Design & UX"))
@@ -1086,8 +1068,7 @@ def build_html(data, template, slug):
                             + "\n".join(defs) + '\n    </dl>'))
 
     # Appendix — only when raw runs actually link somewhere
-    runs = [t for t in (list(perf.get("tests") or []) + list(acc.get("tests") or []))
-            if t.get("url")]
+    runs = [t for t in (perf.get("tests") or []) if t.get("url")]
     if runs:
         nav.append(nav_link("appendix", "Appendix"))
         body.append(section("appendix", "Appendix — raw test runs",

@@ -154,11 +154,6 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
     ]
   },
 
-  "accessibility": {
-    "tests":    [ { "label": "Contrast check", "url": "https://..." } ],
-    "findings": [ "Bullet. Supports `code` / **bold**.", "..." ]
-  },
-
   "ux": [ "Design / UX bullet.", "..." ],
 
   "conclusions": "1–2 paragraphs of narrative. Name the trade-offs that produced the situation; distinguish quick wins from structural work. Supports `code`, **bold**, blank-line paragraphs, and `- ` bullet lists (use a list for the ordered fixes / quick wins).",
@@ -226,7 +221,7 @@ the script formats `display` (e.g. `4.8 s`, `10.3 MB`) when it is omitted.
 
 - **Always present:** Executive summary, Metrics dashboard, Conclusions,
   Priority actions, Glossary, Appendix.
-- **Conditional:** Architecture, Accessibility, Design & UX, the Performance
+- **Conditional:** Architecture, Design & UX, the Performance
   section (Tests + Findings), and the Page resources component — omit the
   section entirely when its key is absent, null, or an empty array. Page
   resources renders only when `resources.categories` is non-empty; Performance

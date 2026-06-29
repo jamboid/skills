@@ -19,10 +19,6 @@ Anything you leave stands as written. Prose supports `code` and **bold**.
      findings by id (e.g. "F1 confirmed — it's the Fusion stylesheet";
      "F3 ignore — third-party, out of scope"). Add findings the data missed. -->
 
-## Accessibility
-
-<!-- Your observations beyond the automated checks. -->
-
 ## Design & UX
 
 <!-- Qualitative observations: dark patterns, broken affordances, navigation. -->
