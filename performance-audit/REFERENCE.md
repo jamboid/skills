@@ -175,6 +175,13 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
   // "Strategic priority" tag instead. The script SORTS the list by impact
   // (high→low) then effort (low→high), so author order doesn't matter; there are
   // no rank numbers. Both `title` and `rationale` support `code` / **bold**.
+  //
+  // Optional 1–2 sentence lead-in, rendered under the "Priority actions" heading,
+  // above the list (mirrors metrics.intro / resources.intro / findingsIntro). ORIENT,
+  // don't judge (Tone rule 9): explain how the list is ordered (impact then effort)
+  // and that it's the commissioner-facing worklist — don't re-state verdicts. Supports
+  // **bold**, `code`, blank-line paragraphs. Omit (or null) for none.
+  "prioritiesIntro": "Ordered by impact against effort — the quick, high-value wins sit at the top.",
   "priorities": [
     { "title":     "Turn on Drupal CSS aggregation",
       "rationale": "A dozen stylesheets ship as separate render-blocking files; aggregating them is a config switch worth ~1.4 s of mobile FCP.",

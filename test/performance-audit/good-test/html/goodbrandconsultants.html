@@ -101,7 +101,7 @@ body {
 .mob-toggle {
   display: none;
   position: fixed;
-  top: 14px; left: 14px;
+  top: 14px; right: 14px;
   z-index: 200;
   background: var(--c-sidebar-bg);
   color: var(--c-text);
@@ -175,11 +175,32 @@ body {
 /* ── Section headings ── */
 .content-section { margin-bottom: 56px; scroll-margin-top: 24px; }
 .section-heading {
+  --hi-w: 40px; --hi-gap: 14px;
+  display: flex;
+  align-items: center;
+  gap: var(--hi-gap);
   font-size: 23px;
   font-weight: 700;
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 2px solid var(--c-border);
+}
+/* leading icon chip — scroll signpost. Same recipe as .cat-icon, a notch bigger,
+   neutral chip. Inline by default; on wide viewports it hangs into the left margin
+   (see media query below) so the heading TEXT sits flush with the body content. */
+.heading-icon {
+  width: var(--hi-w); height: var(--hi-w);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: #eceae5; color: var(--icon-ink);
+  flex-shrink: 0;
+}
+.heading-icon svg { width: 22px; height: 22px; }
+/* Hang the chip in the gutter only when the content column is centred with room to
+   spare (sidebar 268 + content-max 960 + clearance) — otherwise it would slide
+   under the fixed sidebar. Below this it stays inline. */
+@media (min-width: 1280px) {
+  .heading-icon { margin-left: calc(-1 * (var(--hi-w) + var(--hi-gap))); }
 }
 .subhead {
   font-size: 12px;
@@ -672,7 +693,7 @@ em { font-style: italic; }
     </header>
 
     <section class="content-section" id="summary">
-      <h2 class="section-heading">Summary</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>Summary</h2>
     <div class="summary-text">
       <p><code>goodbrandconsultants.com</code> is a live Drupal site (fronted by Cloudflare), and this is a performance-focused review of its homepage — how quickly it loads and becomes usable for a visitor. We measured it in the lab with Google's <strong>Lighthouse</strong> tool, on both a desktop and a throttled mid-range phone, so the figures below are a controlled snapshot rather than live field data.</p>
       <p>As it stands, <strong>desktop performance is good but mobile is poor</strong>. Lighthouse scores the page <strong>95 out of 100 on desktop</strong>, where the main content appears in <strong>1.3 seconds</strong>, but only <strong>81 on mobile</strong>, where that same content takes <strong>4.4 seconds</strong> — well into Google's 'poor' range. (That figure is the LCP, or Largest Contentful Paint: the moment the biggest thing on screen finishes loading.)</p>
@@ -688,7 +709,7 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="metrics">
-      <h2 class="section-heading">Metrics</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 18a8.5 8.5 0 0 1 17 0"/><path d="M12 18l3.5-4.5"/></svg></span>Metrics</h2>
     <div class="section-intro">
       <p>The numbers below come from <strong>Google Lighthouse</strong> (v13.2.0), run in the lab — a controlled local test, not readings from real visitors. Two runs were captured: a simulated <strong>desktop</strong> on a fast connection, and a throttled mid-range <strong>mobile</strong> (Moto-class, processor 4× slower, network capped). Each run's full JSON export was parsed for the performance score and the <strong>Core Web Vitals</strong> — Google's standard loading and responsiveness measures — shown per device below.</p>
     </div>
@@ -758,7 +779,7 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="resources">
-      <h2 class="section-heading">Page resources</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/></svg></span>Page resources</h2>
     <div class="section-intro">
       <p>The homepage pulls in <strong>49 files totalling 1.33 MB</strong> (desktop; mobile is near-identical), broken down by type as:</p>
       <ul class="bullets">
@@ -837,7 +858,7 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="architecture">
-      <h2 class="section-heading">Site architecture</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v3M6 16v-2.5h12V16"/></svg></span>Site architecture</h2>
     <div class="prose">
       <p>The site runs on <strong>Drupal</strong>, an open-source content management system. It uses a custom theme called <code>good</code> (<code>/themes/custom/good/</code>) for its look, the Paragraphs module to build flexible page layouts, and Drupal's image styles (<code>feature_promo_large</code>, <code>feature_promo_medium</code>) to generate resized copies of images automatically.</p>
       <p>Sitting in front of the site is <strong>Cloudflare</strong>, a service that caches pages and delivers them from servers close to each visitor. Its <code>rocket-loader.min.js</code> script and <code>/cdn-cgi/rum</code> tracking beacon confirm it's in use, with the Rocket Loader feature switched on.</p>
@@ -855,7 +876,7 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="performance">
-      <h2 class="section-heading">Audit findings</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5L16 16"/></svg></span>Audit findings</h2>
     <div class="section-intro">
       <p>Each finding below isolates one cause behind the numbers above — what it is, why it happens, and how to address it — ordered by severity, highest-impact first.</p>
     </div>
@@ -918,7 +939,7 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="conclusions">
-      <h2 class="section-heading">Conclusions</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4.5h12l-2.2 4 2.2 4H5"/></svg></span>Conclusions</h2>
     <div class="prose">
       <p>This is a well-built Drupal site let down by what's been layered on top of it. On desktop it's genuinely good — 95 out of 100, with the main content showing in 1.3 seconds. The mobile score of 81, and its <strong>4.4-second load that lands in Google's 'poor' range</strong>, comes almost entirely from configuration and third-party choices, not the site's own code, which is lean (~7 KB of styling, ~7 KB of JavaScript).</p>
       <p>The order of work is clear:</p>
@@ -932,7 +953,10 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="priorities">
-      <h2 class="section-heading">Priority actions</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg></span>Priority actions</h2>
+    <div class="section-intro">
+      <p>The worklist that follows turns the findings into actions, ordered by impact against effort — the quickest, highest-value wins sit at the top, with the larger structural calls below.</p>
+    </div>
     <div class="priority-list">
       <div class="priority lead-high">
         <div class="pri-top">
@@ -990,7 +1014,7 @@ em { font-style: italic; }
     </section>
 
     <section class="content-section" id="glossary">
-      <h2 class="section-heading">Glossary</h2>
+      <h2 class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 1 6.5 18H19v3H6.5A1.5 1.5 0 0 1 5 19.5z"/></svg></span>Glossary</h2>
     <dl class="glossary">
       <dt>Largest Contentful Paint</dt>
       <dd>Time to render the largest visible content above the fold. Good &lt; 2.5 s, poor &gt; 4 s.</dd>

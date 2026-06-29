@@ -165,6 +165,8 @@ None of this is a re-architecture. One caveat: these figures come from a single 
 
 ### Priority actions
 
+The worklist that follows turns the findings into actions, ordered by impact against effort — the quickest, highest-value wins sit at the top, with the larger structural calls below.
+
 1. **Aggregate and unblock the page's CSS and fonts**  _(Impact: High · Effort: Low)_
 
    A dozen Drupal core and theme stylesheets ship as separate files that block the first paint, and Adobe Typekit loads the same blocking way. Turning on aggregation, inlining the critical CSS and loading the fonts asynchronously is a configuration switch — no redesign — worth about 1.4 s of mobile load time. It's the single highest-value change here.

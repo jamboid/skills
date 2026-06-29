@@ -572,6 +572,9 @@ def build_markdown(data):
     if data.get("priorities"):
         out.append("### Priority actions")
         out.append("")
+        for para in paragraphs(data.get("prioritiesIntro")):
+            out.append(para)
+            out.append("")
         for i, p in enumerate(sorted_priorities(data["priorities"]), 1):
             if not isinstance(p, dict):
                 out.append("{0}. {1}".format(i, plain_text(p)))
@@ -1087,8 +1090,10 @@ def build_html(data, template, slug):
         titles = finding_title_map(data)
         cards = "\n".join(priority_card_html(p, titles)
                           for p in sorted_priorities(data["priorities"]))
+        pri_intro = prose_block(data.get("prioritiesIntro"), "section-intro")
+        pri_list = '    <div class="priority-list">\n' + cards + '\n    </div>'
         body.append(section("priorities", "Priority actions",
-                            '    <div class="priority-list">\n' + cards + '\n    </div>'))
+                            (pri_intro + "\n" + pri_list) if pri_intro else pri_list))
 
     # Glossary
     gkeys = used_glossary(data)
