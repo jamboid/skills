@@ -491,7 +491,7 @@ def build_markdown(data):
     # Performance
     perf = data.get("performance") or {}
     if perf.get("tests") or perf.get("findings"):
-        out.append("## Performance")
+        out.append("## Audit findings")
         out.append("")
         if perf.get("tests"):
             out.append("### Tests")
@@ -500,8 +500,9 @@ def build_markdown(data):
                 out.append("- " + t.get("label", "") + ": " + t.get("url", ""))
             out.append("")
         if perf.get("findings"):
-            out.append("### Findings")
-            out.append("")
+            for para in paragraphs(perf.get("findingsIntro")):
+                out.append(para)
+                out.append("")
             for f in sorted_findings(perf["findings"]):
                 title = "**{0}** — {1}".format(f.get("id", ""), f.get("title", ""))
                 tags = []
@@ -1027,14 +1028,16 @@ def build_html(data, template, slug):
     # Performance
     perf = data.get("performance") or {}
     if perf.get("tests") or perf.get("findings"):
-        nav.append(nav_link("performance", "Performance"))
+        nav.append(nav_link("performance", "Audit findings"))
         parts = []
         if perf.get("tests"):
             parts.append(build_tests_html(perf["tests"], "Tests"))
         if perf.get("findings"):
-            parts.append('      <div class="subhead">Findings</div>')
+            intro = prose_block(perf.get("findingsIntro"), "section-intro")
+            if intro:
+                parts.append(intro)
             parts.append(build_findings_html(perf["findings"]))
-        body.append(section("performance", "Performance", "\n".join(parts)))
+        body.append(section("performance", "Audit findings", "\n".join(parts)))
 
     # Accessibility
     acc = data.get("accessibility") or {}

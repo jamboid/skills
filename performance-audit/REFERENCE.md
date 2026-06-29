@@ -86,6 +86,14 @@ human-editable inputs are `notes.md`, `analysis.md`, and the data exports.
       { "label": "WebPageTest",        "url": "https://..." }
     ],
 
+    // Optional 1–2 sentence lead-in, rendered under the "Audit findings" section
+    // heading, above the findings list (mirrors metrics.intro / resources.intro). ORIENT,
+    // don't judge (Tone rule 9): set up what the findings are and how they're
+    // ordered, then hand off to the list — never pre-empt the good/poor verdict
+    // that belongs to the summary and conclusions (no "solved/fixed", rule 8).
+    // Supports **bold**, `code`, blank-line paragraphs. Omit (or null) for none.
+    "findingsIntro": "Each finding below is one diagnostic — the cause, not just the symptom — ordered by severity, highest-impact first.",
+
     // Candidate findings: each is a diagnostic entry in a quiet, borderless
     // evidence log (distinct from the boxed Priority cards). Lighthouse
     // opportunities seed these; notes/analysis confirm or add. Ordered by

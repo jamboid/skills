@@ -159,9 +159,9 @@ There's no single-page-app framework or hydration bundle — no heavy JavaScript
 
 Icons are drawn as SVG (the logo and `icon_*` glyphs), so they cost almost nothing. That leaves the page's weight almost entirely **photography**, delivered through Drupal's image styles (`width_scale_xl`, `width_scale_m`) — and those resized copies aren't tuned for mobile (see findings). The staging server also runs plain **HTTP/1.1** with text compression turned off. Those are staging defaults rather than code faults, but they cost real time on mobile, so confirm how production is fronted (CDN or edge) before acting.
 
-## Performance
+## Audit findings
 
-### Findings
+The findings below lay out the diagnostic detail behind the metrics — each a single cause rather than a symptom, ordered by severity. They concentrate on the throttled-mobile runs, where the data has the most to explain.
 
 **F1** — The LCP hero is the full desktop image, even on mobile _(~227 KB on mobile · LCP −0.3 s)_
 

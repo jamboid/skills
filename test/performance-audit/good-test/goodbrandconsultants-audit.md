@@ -127,9 +127,9 @@ The main third-party scripts are:
 
 One quick win stands out. The site's CSS arrives as a dozen separate files (`core/modules/system/…`), which means Drupal's **CSS aggregation** — the setting that bundles those files into one download — is turned off or only partly on. Switching it on is a configuration change, not a code change.
 
-## Performance
+## Audit findings
 
-### Findings
+Each finding below isolates one cause behind the numbers above — what it is, why it happens, and how to address it — ordered by severity, highest-impact first.
 
 **F1** — Render-blocking CSS and fonts delay first paint on mobile _(est. mobile FCP/LCP −1.4 s)_
 
