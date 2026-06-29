@@ -528,24 +528,14 @@ def build_markdown(data):
                 out.append(para)
                 out.append("")
 
-    # Accessibility
+    # Accessibility — tools live in the Appendix; section lists findings only.
     acc = data.get("accessibility") or {}
-    if acc.get("tests") or acc.get("findings"):
+    if acc.get("findings"):
         out.append("## Accessibility")
         out.append("")
-        if acc.get("tests"):
-            out.append("### Tests")
-            out.append("")
-            for t in acc["tests"]:
-                url = t.get("url", "")
-                out.append("- " + t.get("label", "") + (": " + url if url else ""))
-            out.append("")
-        if acc.get("findings"):
-            out.append("### Findings")
-            out.append("")
-            for b in acc["findings"]:
-                out.append("- " + str(b))
-            out.append("")
+        for b in acc["findings"]:
+            out.append("- " + str(b))
+        out.append("")
 
     # Design & UX
     if data.get("ux"):
@@ -1056,15 +1046,10 @@ def build_html(data, template, slug):
 
     # Accessibility
     acc = data.get("accessibility") or {}
-    if acc.get("tests") or acc.get("findings"):
+    if acc.get("findings"):
         nav.append(nav_link("accessibility", "Accessibility"))
-        parts = []
-        if acc.get("tests"):
-            parts.append(build_tests_html(acc["tests"], "Tests"))
-        if acc.get("findings"):
-            parts.append('      <div class="subhead">Findings</div>')
-            parts.append(build_bullets_html(acc["findings"]))
-        body.append(section("accessibility", "Accessibility", "\n".join(parts)))
+        body.append(section("accessibility", "Accessibility",
+                            build_bullets_html(acc["findings"])))
 
     # Design & UX
     if data.get("ux"):
