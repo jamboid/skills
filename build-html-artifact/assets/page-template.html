@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}} — {{PROJECT}}</title>
+<style>
+:root {
+  --c-bg:            #fafaf9;
+  --c-surface:       #ffffff;
+  --c-surface-alt:   #f4f4f2;
+  --c-sidebar-bg:    #efeeea;
+  --c-sidebar-hover: #f4f4f2;
+  --c-sidebar-active:#1a1a18;
+  --c-text:          #1a1a18;
+  --c-text-muted:    #5a5a55;
+  --c-text-faint:    #8a8a82;
+  --c-border:        #e5e4e0;
+  --c-border-strong: #d4d2cc;
+  --c-accent:        #3a5cff;
+  --c-accent-soft:   #eaf0ff;
+  --c-good:          #1f7a3a;   --c-good-soft: #e7f5ec;
+  --c-warn:          #b27800;   --c-warn-soft: #fff5e1;
+  --c-bad:           #b1432a;   --c-bad-soft:  #fbece5;
+  --c-code-bg:       #161c2d;
+  --c-code-text:     #abb2bf;
+  --radius:          8px;
+  --radius-lg:       12px;
+  --shadow-sm:       0 1px 2px rgba(20,20,18,.04);
+  --shadow-md:       0 4px 14px rgba(20,20,18,.06);
+  --sidebar-w:       268px;
+  --content-max:     820px;
+  --font-sans:       system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:       'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.65;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Layout shell ── */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--c-sidebar-bg);
+  border-right: 1px solid var(--c-border-strong);
+  overflow-y: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease;
+}
+.sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid var(--c-border-strong); }
+.sidebar-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--c-text-muted); margin-bottom: 4px;
+}
+.sidebar-subtitle { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.sidebar-meta { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
+.sidebar-nav { padding: 12px 0 24px; flex: 1; }
+.sidebar-nav a {
+  display: block;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.sidebar-nav a:hover { color: var(--c-text); background: var(--c-sidebar-hover); }
+.sidebar-nav a.active {
+  color: var(--c-sidebar-active); font-weight: 600;
+  background: #e3e1db; border-left-color: var(--c-accent);
+}
+.sidebar-nav .nav-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--c-text-faint); padding: 16px 20px 4px; border: 0;
+}
+
+.mob-toggle {
+  display: none;
+  position: fixed; top: 14px; left: 14px; z-index: 200;
+  background: var(--c-sidebar-bg); color: var(--c-text);
+  border: 1px solid var(--c-border); border-radius: 6px;
+  width: 40px; height: 40px; cursor: pointer;
+  align-items: center; justify-content: center;
+}
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+.sidebar-overlay.active { display: block; }
+
+.content { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+.content-inner { max-width: var(--content-max); margin: 0 auto; padding: 56px 40px 96px; }
+/* Remove the sidebar for a plain single page: delete the <aside>, <button>, and
+   the .sidebar-overlay, then add class="no-sidebar" to <body>. */
+body.no-sidebar .content { margin-left: 0; }
+
+/* ── Base elements — plain semantic HTML inherits the look ── */
+.content-inner > * { max-width: 70ch; }
+h1, h2, h3, h4 { line-height: 1.25; color: var(--c-text); }
+h1 { font-size: 33px; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 16px; }
+h2 {
+  font-size: 23px; font-weight: 700; letter-spacing: -0.005em;
+  margin: 44px 0 16px; padding-bottom: 10px; border-bottom: 2px solid var(--c-border);
+  scroll-margin-top: 24px;
+}
+h3 { font-size: 17px; font-weight: 700; margin: 28px 0 8px; }
+h4 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-text-muted); margin: 22px 0 6px; }
+p { margin-bottom: 14px; }
+ul, ol { padding-left: 22px; margin: 0 0 14px; }
+li { margin-bottom: 5px; }
+li > ul, li > ol { margin: 5px 0 0; }
+a { color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }
+strong { font-weight: 700; }
+em { font-style: italic; }
+hr { border: 0; border-top: 1px solid var(--c-border); margin: 36px 0; }
+img { max-width: 100%; height: auto; border-radius: var(--radius); }
+
+blockquote {
+  margin: 16px 0;
+  padding: 4px 18px;
+  border-left: 3px solid var(--c-accent);
+  color: var(--c-text-muted);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Inline code */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--c-surface-alt);
+  border: 1px solid var(--c-border);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+/* Code block — always dark */
+pre {
+  background: var(--c-code-bg);
+  color: var(--c-code-text);
+  border: 1px solid #2a3347;
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  overflow-x: auto;
+  margin: 16px 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  max-width: 100%;
+}
+pre code { background: none; border: 0; padding: 0; font-size: inherit; color: inherit; }
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 15px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+th {
+  background: var(--c-surface-alt);
+  text-align: left;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+td { padding: 11px 16px; border-bottom: 1px solid var(--c-border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+
+/* ── Optional page header ── */
+.page-header { margin-bottom: 12px; }
+.page-eyebrow {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--c-text-muted); margin-bottom: 8px; max-width: none;
+}
+.lede { font-size: 19px; color: var(--c-text-muted); line-height: 1.6; margin-bottom: 8px; }
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--c-border);
+  margin-top: 64px; padding-top: 24px;
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  font-size: 13px; color: var(--c-text-faint);
+  max-width: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
+  .sidebar.open { transform: translateX(0); }
+  .content { margin-left: 0; }
+  .mob-toggle { display: flex; }
+  .content-inner { padding: 64px 20px 72px; }
+}
+@media (max-width: 500px) {
+  .content-inner { padding: 64px 16px 64px; }
+  h1 { font-size: 26px; }
+}
+@media print {
+  .sidebar, .mob-toggle { display: none; }
+  .content { margin-left: 0; }
+  .content-inner { padding: 24px; max-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<button class="mob-toggle" id="mobToggle" aria-label="Open navigation" aria-expanded="false">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect width="18" height="2" rx="1" fill="currentColor"/><rect y="6" width="18" height="2" rx="1" fill="currentColor"/><rect y="12" width="18" height="2" rx="1" fill="currentColor"/></svg>
+</button>
+<div class="sidebar-overlay" id="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">{{PROJECT}}</div>
+    <div class="sidebar-subtitle">{{TITLE}}</div>
+    <div class="sidebar-meta">{{DATE}}</div>
+  </div>
+  <nav class="sidebar-nav" aria-label="Sections">
+    <!-- One link per section; href + data-target must equal the section id (drives scroll-spy).
+         Group with <div class="nav-label">Group</div>. -->
+{{SIDEBAR_NAV}}
+  </nav>
+</aside>
+
+<main class="content">
+  <div class="content-inner">
+
+    <!-- Write plain semantic HTML here. Base elements are styled by the shell.
+         Give each major section an id matching its sidebar link. -->
+{{CONTENT}}
+
+    <footer>
+      <span>{{PROJECT}}</span>
+      <span>{{TITLE}}</span>
+    </footer>
+
+  </div>
+</main>
+
+<script>
+(function () {
+  var sidebar = document.getElementById('sidebar');
+  var toggle  = document.getElementById('mobToggle');
+  var overlay = document.getElementById('overlay');
+  if (sidebar && toggle) {
+    function open()  { sidebar.classList.add('open'); overlay.classList.add('active'); toggle.setAttribute('aria-expanded','true'); }
+    function close() { sidebar.classList.remove('open'); overlay.classList.remove('active'); toggle.setAttribute('aria-expanded','false'); }
+    toggle.addEventListener('click', function () { sidebar.classList.contains('open') ? close() : open(); });
+    if (overlay) overlay.addEventListener('click', close);
+    sidebar.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () { if (window.innerWidth <= 900) close(); });
+    });
+
+    // Scroll-spy
+    var links = sidebar.querySelectorAll('a[data-target]');
+    var targets = Array.prototype.map.call(links, function (l) { return { l: l, el: document.getElementById(l.dataset.target) }; })
+      .filter(function (t) { return t.el; });
+    if (targets.length) {
+      var obs = new IntersectionObserver(function (entries) {
+        var vis = entries.filter(function (e) { return e.isIntersecting; })
+          .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+        if (vis.length) links.forEach(function (l) { l.classList.toggle('active', l.dataset.target === vis[0].target.id); });
+      }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+      targets.forEach(function (t) { obs.observe(t.el); });
+    }
+  }
+})();
+</script>
+</body>
+</html>

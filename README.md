@@ -24,6 +24,16 @@ These skills help you write consistent, well-structured frontend code.
   npx skills@latest add jamboid/skills/document-patterns
   ```
 
+## Documentation
+
+These skills turn notes, docs, and findings into styled HTML artifacts.
+
+- **build-html-artifact** — Turn any documentation or captured knowledge into a self-contained, styled HTML artifact (single page or multi-page set) using a shared warm-stone design system. Guide-driven: copy a scaffold, fill the body from a component catalog.
+
+  ```
+  npx skills@latest add jamboid/skills/build-html-artifact
+  ```
+
 - **performance-audit** — Draft a performance-focused site audit from your notes plus Lighthouse/WebPageTest exports. Scaffolds a dated audit directory, writes a first-pass analysis you review and amend, and builds both a Markdown report and a static HTML report.
 
   ```
