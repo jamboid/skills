@@ -63,6 +63,25 @@ the `html/` folder at any domain.
 - Re-running the script after editing `findings.json` regenerates both files;
   hosted fix-progress survives because it is keyed to the report slug.
 
+## Language rules
+
+Govern every prose field written into `findings.json` (summary, issue impacts,
+fixes, recommendations).
+
+1. **One point in time.** Each report is a standalone snapshot of the markup
+   audited — it has no memory. Never reference a previous audit, an earlier run,
+   or a prior state of the code (e.g. "fixed since the last review", "previously
+   flagged", "remaining from last time"). Report only the issues present in the
+   code as it stands now. (Forward-looking fix instructions like "re-check the
+   heading outline afterwards" are fine — this bans only backward references.)
+2. **Plain and literal.** Write for a non-technical reader first. Strip jargon —
+   gloss any unavoidable technical term the first time it appears — and avoid
+   metaphors, idioms, and clever flourishes; say what you mean in plain, generic
+   words. "There's no fire here, only polish" → "Nothing here is broken; these
+   are refinements". (Technical terms that genuinely belong in a fix — element
+   names, ARIA attributes — are fine; this targets needless jargon and figurative
+   phrasing, not precision.)
+
 ## Reference
 
 - [REFERENCE.md](REFERENCE.md) — WCAG 2.1 success-criterion catalogue,

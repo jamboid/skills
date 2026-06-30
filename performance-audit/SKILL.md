@@ -87,6 +87,13 @@ page-resources intro, architecture, finding bodies, conclusions).
 8. **State, don't finish.** Performance is a point-in-time reading, not a finished task — a site that's fast today can be tanked next week by what gets added. Describe it as a current state ("desktop performance is excellent", "poor as it stands") that future changes could move. Avoid finality: no "solved", "done", "fixed for good", "sorted."
 9. **Section intros orient too.** The optional `metrics.intro`, `resources.intro`, and `performance.findingsIntro` set their data up and hand off — the same move as the summary (rule 7), never pre-empting the good/poor call that belongs to the summary and the components. Keep each short, and omit any if it only restates the captions, table, or findings below it. What each intro states, and the device-phrasing rule, live with the schema fields in [REFERENCE.md](REFERENCE.md).
 10. **Em dashes sparingly; colons for label–value.** An em dash is fine for a genuine aside in flowing prose, but in a `term: figure` bullet use a colon, not a dash (`Script: ~810 KB (62%)`, not `Script — ~810 KB (62%)`). Never butt an em dash against a `~` or the number it modifies — `— ~600 ms` reads badly; recast (`saving ~600 ms`) or spell it out (`about 600 ms`). Don't stack two em dashes in one sentence; if the aside is long, use parentheses.
+11. **One point in time.** Each report is a standalone snapshot of the data and notes to hand — it has no memory. Never reference a previous audit, an earlier run, or a prior state of the site (e.g. "improved since last time", "the staging version", "now fixed"). Report only the current measured state. (Distinct from rule 8: that bans implying *finality*; this bans looking *backward*.)
+12. **Literal, not figurative.** Say it plainly and generically — no metaphors, idioms, or journalistic flourishes, however vivid. Figurative phrasing makes a non-technical reader decode before they can understand. Recast to the literal point:
+    - "The biggest lever is server-side" → "The most impactful change is server-side"
+    - "There's no fire here, only polish" → "Nothing here is broken; these are refinements"
+    - "The notable shape is the JavaScript" → "The JavaScript is what stands out"
+
+    This extends rule 1: rule 1 strips jargon, this strips cleverness. Aim every line first at a non-technical reader.
 
 Don't let plainness inflate the word count — looser sentences and lists are for clarity, not padding. A short clean report beats a padded one.
 

@@ -64,7 +64,7 @@ Lighthouse flags a poor CLS of 0.59, but WebPageTest measures it at 0.02 — the
 
 ### Findings (candidates — data-derived, awaiting ratification)
 
-**Layout shift culprits.** Lighthouse measures CLS at **0.59** — well into the poor band. The WebPageTest run disagrees sharply (0.02), so the shift is likely intermittent or interaction-triggered; reproduce before committing effort. Probable cause: images/embeds loading without reserved space.
+**Layout shift sources.** Lighthouse measures CLS at **0.59** — well into the poor band. The WebPageTest run disagrees sharply (0.02), so the shift is likely intermittent or interaction-triggered; reproduce before committing effort. Probable cause: images/embeds loading without reserved space.
 
 **LCP request discovery.** The LCP image isn't discoverable early in the document. Preload the hero image and ensure it isn't lazy-loaded.
 
@@ -76,7 +76,7 @@ Lighthouse flags a poor CLS of 0.59, but WebPageTest measures it at 0.02 — the
 
 ## Conclusions
 
-This is a healthy staging build, not a problem site — load timings are strong and the request count is low (22). Two things to chase: confirm whether the CLS Lighthouse reports (0.59) is real, since WebPageTest's 0.02 suggests an intermittent or interaction-driven shift rather than a constant one; and tackle image delivery, the only material weight on the page. Everything here is an unratified **candidate** — supplying `notes.md`/`analysis.md` and re-running folds in judgment and architecture context.
+This is a healthy staging build, not a problem site — load timings are strong and the request count is low (22). Two things to address: confirm whether the CLS Lighthouse reports (0.59) is real, since WebPageTest's 0.02 suggests an intermittent or interaction-driven shift rather than a constant one; and tackle image delivery, the only material weight on the page. Everything here is an unratified **candidate** — supplying `notes.md`/`analysis.md` and re-running folds in judgment and architecture context.
 
 ### Priority actions
 
@@ -84,7 +84,7 @@ This is a healthy staging build, not a problem site — load timings are strong 
 
    Lighthouse and WebPageTest disagree on CLS (0.59 vs 0.02), so reproduce it before committing effort — but if it's real, content jumping under visitors as they read is both frustrating and a Google ranking signal. The fix is cheap: reserve space by adding explicit dimensions to images and embeds.
 
-   Related findings: Layout shift culprits, Image elements without explicit `width`/`height`
+   Related findings: Layout shift sources, Image elements without explicit `width`/`height`
 
 2. **Serve responsive, next-gen images**  _(Impact: Medium · Effort: Medium)_
 
