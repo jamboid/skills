@@ -4,6 +4,10 @@ Synthetic fixtures that exercise the HTML/Markdown output of skills whose build
 scripts render templates. They are **not** real docs or audits — they exist to
 preview and regression-check the template styles after editing.
 
+> Exception: [`scaffold-components/`](scaffold-components/README.md) holds vitest
+> **unit tests** for that skill's bundled JS scripts, not visual fixtures. Run
+> them with `npm test` from the repo root; they're outside the `build.sh` flow.
+
 Each skill has its own folder; output is generated into that folder's `out/`
 (gitignored). Rebuild with the dispatcher from the repo root:
 

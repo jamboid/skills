@@ -5,3 +5,5 @@
 /test/performance-audit/audit.json
 /test/performance-audit/html/
 /test/performance-audit/*-audit.md
+
+node_modules/

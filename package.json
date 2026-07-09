@@ -1,0 +1,11 @@
+{
+  "name": "skills",
+  "private": true,
+  "description": "Personal Claude Code skills. Node tooling here exists only to unit-test skills that bundle executable JS scripts (e.g. scaffold-components).",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  }
+}
