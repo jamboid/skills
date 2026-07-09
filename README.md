@@ -18,6 +18,12 @@ These skills help you write consistent, well-structured frontend code.
   npx skills@latest add jamboid/skills/write-vue-app
   ```
 
+- **scaffold-components** — Scaffold and style components in an eleventy-site-starter–convention project. Bundles the deterministic scaffolder scripts (spec → wired component, or markup → CSS/JS stubs) and adds the judgement layer: semantic markup + ARIA, and filling stubs with the project's design tokens. Works in both static/Eleventy and Drupal theme-pipeline modes.
+
+  ```
+  npx skills@latest add jamboid/skills/scaffold-components
+  ```
+
 - **document-patterns** — Write documentation detailing the common software design patterns found in a codebase, and render it into styled, navigable HTML.
 
   ```
