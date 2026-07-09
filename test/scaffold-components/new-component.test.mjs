@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import {
   generateComponentNjk,
   resolveMarkupTarget,
-} from '../../scaffold-components/scripts/new-component.mjs';
-import { parseMarkup } from '../../scaffold-components/scripts/scaffold-from-markup.mjs';
+} from '../../skills/scaffold-components/scripts/new-component.mjs';
+import { parseMarkup } from '../../skills/scaffold-components/scripts/scaffold-from-markup.mjs';
 
 // The forward scaffolder's contract: turn a spec into convention-correct markup
 // whose `b_*` classes + `data-*` hooks the reverse engine can consume unchanged.

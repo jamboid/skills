@@ -6,7 +6,7 @@ import {
   generateBehaviour,
   wireBlocksManifest,
   wireAppJs,
-} from '../../scaffold-components/scripts/scaffold-from-markup.mjs';
+} from '../../skills/scaffold-components/scripts/scaffold-from-markup.mjs';
 
 // The reverse scaffolder's contract: derive convention-correct CSS/JS stubs from
 // a component's `b_*` classes + `data-*` hooks (the portability surface), and

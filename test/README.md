@@ -1,33 +1,17 @@
-# Skill Test Fixtures
+# Skill Tests
 
-Synthetic fixtures that exercise the HTML/Markdown output of skills whose build
-scripts render templates. They are **not** real docs or audits — they exist to
-preview and regression-check the template styles after editing.
-
-> Exception: [`scaffold-components/`](scaffold-components/README.md) holds vitest
-> **unit tests** for that skill's bundled JS scripts, not visual fixtures. Run
-> them with `npm test` from the repo root; they're outside the `build.sh` flow.
-
-Each skill has its own folder; output is generated into that folder's `out/`
-(gitignored). Rebuild with the dispatcher from the repo root:
+Unit tests for skills that bundle executable JS scripts. Run from the repo root:
 
 ```
-./test/build.sh                       # rebuild every skill, open each result
-./test/build.sh document-patterns     # rebuild one skill only
-./test/build.sh accessibility-audit
-./test/build.sh --no-open [skill]     # rebuild without opening
+npm test
 ```
 
 ## Skills
 
-- [`document-patterns/`](document-patterns/README.md) — pattern-doc HTML
-  template gallery; fixtures cover every `:::` component and the compare-grid
-  overflow regression guard.
-- [`accessibility-audit/`](accessibility-audit/README.md) — kitchen-sink
-  `findings.json` exercising every report component across all severity tiers.
+- [`scaffold-components/`](scaffold-components/README.md) — vitest unit tests for
+  that skill's `scripts/` (`new-component.mjs`, `scaffold-from-markup.mjs`).
 
 ## Adding a skill
 
-1. Create `test/<skill>/` with its input fixture(s) and a short `README.md`.
-2. Add a `build_<skill>()` function and a `case` arm to `build.sh` that runs the
-   skill's build script with `--out-dir "$here/<skill>/out"`.
+Add `test/<skill>/` with `*.test.mjs` files that import the skill's scripts from
+`../../skills/<skill>/scripts/`. vitest discovers them automatically; no config needed.
