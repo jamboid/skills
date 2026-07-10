@@ -70,6 +70,29 @@ function norm(s) {
   return (s || '').replace(/\s+/g, ' ').trim();
 }
 
+/** True when a selector attaches to a component (has a class), vs a root/theme
+ *  scope (`:root`, `[data-theme=…]`, `html`). */
+function isComponentScope(scope) {
+  return /\.[a-zA-Z_-]/.test(scope || '');
+}
+
+/**
+ * COARSE tier split — `global` (defined only at root/theme scope) vs `block`
+ * (defined under any component selector). Deliberately shallow: full
+ * primitive/semantic/component tiering is #20. The naming axis needs *some*
+ * tier to infer a grammar per tier, and this is free from the scope facts.
+ */
+function classifyTier(definitions) {
+  if (!definitions.length) return null;
+  return definitions.some((d) => isComponentScope(d.scope)) ? 'block' : 'global';
+}
+
+/** Split a custom-property name into its grammar segments: `--nav-link-bg`
+ *  → ['nav','link','bg']. Empty segments (from `--`, `--x--y`) dropped. */
+function segmentName(name) {
+  return name.replace(/^--/, '').split('-').filter(Boolean);
+}
+
 /** First path segment of a relative file path (its top-level tree). */
 function topDir(file) {
   const i = file.indexOf('/');
@@ -231,6 +254,103 @@ function computeUsedIn(references) {
   );
 }
 
+// Known short/long spellings of the same concept. A tier using two forms of one
+// concept (e.g. `hov` and `hover`) is internally inconsistent. Kept to
+// unambiguous pairs — `col`/`c` (column? colour?) are omitted on purpose.
+const ABBR_GROUPS = {
+  hover: ['hover', 'hov', 'hvr'],
+  active: ['active', 'act'],
+  disabled: ['disabled', 'disable', 'dis'],
+  focus: ['focus', 'foc'],
+  background: ['background', 'bg'],
+  color: ['color', 'colour', 'clr'],
+  border: ['border', 'brd'],
+  small: ['small', 'sm'],
+  medium: ['medium', 'med', 'md'],
+  large: ['large', 'lg'],
+  default: ['default', 'def', 'dflt'],
+  primary: ['primary', 'prim'],
+  secondary: ['secondary', 'sec'],
+  button: ['button', 'btn'],
+  vertical: ['vertical', 'vert'],
+  horizontal: ['horizontal', 'horiz'],
+  padding: ['padding', 'pad'],
+  transition: ['transition', 'trans'],
+};
+const FORM_TO_CONCEPT = new Map();
+for (const [concept, forms] of Object.entries(ABBR_GROUPS))
+  for (const f of forms) FORM_TO_CONCEPT.set(f, concept);
+
+/** Concepts spelled ≥2 ways within a tier (naming inconsistency). */
+function tierAbbreviationConflicts(toks) {
+  const concepts = new Map(); // concept -> Map(form -> tokenNames[])
+  for (const t of toks) {
+    for (const seg of t.segments) {
+      const c = FORM_TO_CONCEPT.get(seg);
+      if (!c) continue;
+      if (!concepts.has(c)) concepts.set(c, new Map());
+      const forms = concepts.get(c);
+      if (!forms.has(seg)) forms.set(seg, []);
+      forms.get(seg).push(t.name);
+    }
+  }
+  const conflicts = [];
+  for (const [concept, forms] of concepts) {
+    if (forms.size < 2) continue;
+    const arr = [...forms]
+      .map(([form, names]) => ({ form, count: names.length, tokens: names }))
+      .sort((a, b) => b.count - a.count || a.form.localeCompare(b.form));
+    conflicts.push({ concept, forms: arr });
+  }
+  return conflicts;
+}
+
+/** Per-tier grammar summary: prefix vocabulary, segment-length shape, and a
+ *  consistency measure (share of tokens whose first segment is a recurring
+ *  category/namespace prefix). */
+function summariseTierGrammar(toks, template) {
+  const firstSeg = new Map();
+  const segLen = new Map();
+  for (const t of toks) {
+    const p = t.segments[0] ?? '(none)';
+    firstSeg.set(p, (firstSeg.get(p) || 0) + 1);
+    segLen.set(t.segments.length, (segLen.get(t.segments.length) || 0) + 1);
+  }
+  const prefixes = [...firstSeg]
+    .map(([prefix, count]) => ({ prefix, count }))
+    .sort((a, b) => b.count - a.count || a.prefix.localeCompare(b.prefix));
+  const recurring = prefixes.filter((p) => p.count >= 2).map((p) => p.prefix);
+  const singletons = prefixes.filter((p) => p.count === 1).map((p) => p.prefix);
+  const conforming = toks.filter((t) => recurring.includes(t.segments[0])).length;
+  const dominantSegmentCount =
+    [...segLen].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? 0;
+  return {
+    template,
+    tokenCount: toks.length,
+    prefixes,
+    recurringPrefixes: recurring,
+    singletonPrefixes: singletons,
+    dominantSegmentCount,
+    consistency: toks.length ? Number((conforming / toks.length).toFixed(2)) : 0,
+  };
+}
+
+/** The naming axis: an inferred grammar per tier. */
+function buildNamingAxis(defined) {
+  const byTier = { global: [], block: [] };
+  for (const t of defined) if (byTier[t.tier]) byTier[t.tier].push(t);
+  const tier = (toks, template) => ({
+    ...summariseTierGrammar(toks, template),
+    abbreviationConflicts: tierAbbreviationConflicts(toks),
+  });
+  return {
+    tiers: {
+      global: tier(byTier.global, '--{category}-{role}[-{variant}]'),
+      block: tier(byTier.block, '--{block}-{part}[-{state}]'),
+    },
+  };
+}
+
 // ── Model + findings ───────────────────────────────────────────────────────
 function buildModel(defs, refs) {
   // Token registry keyed by name.
@@ -276,6 +396,8 @@ function buildModel(defs, refs) {
   for (const t of tokens.values()) {
     t.fanOut = t.referencedTokens.size;
     t.usedIn = computeUsedIn(t.references); // selectors that consume this token
+    t.tier = classifyTier(t.definitions); // null for dangling (undefined) refs
+    t.segments = segmentName(t.name);
   }
 
   // A token is "defined" if it has ≥1 definition. Referenced-but-undefined
@@ -296,7 +418,9 @@ function buildModel(defs, refs) {
       usedInCount: t.usedIn.length, // distinct consuming selectors
     }));
 
-  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing };
+  const naming = buildNamingAxis(defined);
+
+  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming };
 }
 
 /** Serialize the token registry to plain JSON (facts embedded for later slices). */
@@ -305,6 +429,8 @@ function serializeTokens(defined) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((t) => ({
       name: t.name,
+      tier: t.tier,
+      segments: t.segments,
       fanIn: t.fanIn,
       fanOut: t.fanOut,
       referencedTokens: [...t.referencedTokens].sort(),
@@ -372,6 +498,66 @@ function buildFindings(model) {
     }
   }
 
+  // Off-grammar prefix (basis: convention — cites the norm). A global token
+  // whose first segment is used by nothing else, in a tier that otherwise
+  // clusters into recurring category prefixes. Global only — per the #18
+  // refinement, block-local brevity/per-block namespaces make singletons normal
+  // there. Low confidence: a singleton may be a legitimate one-off category.
+  const byName = new Map(model.defined.map((t) => [t.name, t]));
+  const locOf = (name) =>
+    (byName.get(name)?.definitions || []).map((d) => ({
+      selector: d.scope,
+      atScope: d.atScope,
+      file: d.file,
+      line: d.line,
+    }));
+  // Abbreviation conflict (basis: convention). One concept spelled two ways
+  // within a tier. The dominant form is the norm; minority forms deviate. High
+  // confidence — a factual inconsistency, not a judgement call.
+  for (const [tierName, grammar] of Object.entries(model.naming.tiers)) {
+    for (const c of grammar.abbreviationConflicts) {
+      const norm = c.forms[0];
+      const minority = c.forms.slice(1);
+      const deviants = [...new Set(minority.flatMap((f) => f.tokens))];
+      findings.push({
+        id: nextId(),
+        type: 'naming-inconsistency',
+        basis: 'convention',
+        confidence: 'high',
+        title: `Concept "${c.concept}" is spelled ${c.forms.length} ways in the ${tierName} tier`,
+        locations: deviants.flatMap(locOf),
+        evidence:
+          `In the ${tierName} tier, "${c.concept}" appears as ` +
+          c.forms.map((f) => `\`${f.form}\` (${f.count}×)`).join(', ') +
+          `. The dominant form is \`${norm.form}\`; ` +
+          minority.map((f) => `\`${f.form}\` (${f.tokens.join(', ')})`).join('; ') +
+          ` deviate${deviants.length === 1 ? 's' : ''}.`,
+      });
+    }
+  }
+
+  const g = model.naming.tiers.global;
+  const clustered =
+    g.consistency >= 0.6 &&
+    g.recurringPrefixes.length >= 3 &&
+    g.singletonPrefixes.length <= g.recurringPrefixes.length;
+  if (clustered) {
+    const share = Math.round(g.consistency * 100);
+    const norms = g.recurringPrefixes.slice(0, 8).map((p) => `\`${p}-\``).join(', ');
+    for (const t of model.defined) {
+      if (t.tier !== 'global' || !g.singletonPrefixes.includes(t.segments[0])) continue;
+      findings.push({
+        id: nextId(),
+        type: 'naming-outlier',
+        basis: 'convention',
+        confidence: 'low',
+        title: `Off-grammar prefix \`${t.segments[0]}-\` on \`${t.name}\` (global tier)`,
+        locations: locOf(t.name),
+        evidence: `${share}% of global tokens use a recurring category prefix (${norms}); \`${t.name}\` is the only token with prefix \`${t.segments[0]}-\`.`,
+      });
+    }
+  }
+
   return findings;
 }
 
@@ -430,6 +616,7 @@ function analyze({ root, slug, exclude, top }) {
             .map((t) => ({ name: t.name, fanIn: t.fanIn }))
             .sort((a, b) => b.fanIn - a.fanIn || a.name.localeCompare(b.name)),
         },
+        naming: model.naming,
       },
       tokens: serializeTokens(model.defined),
     },

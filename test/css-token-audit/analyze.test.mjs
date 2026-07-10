@@ -162,4 +162,84 @@ describe('build_report schema contract', () => {
     expect(() => assertSchema({})).toThrow(/missing a mandatory/);
     expect(() => assertSchema({ schemaVersion: SCHEMA_VERSION })).not.toThrow();
   });
+
+  it('renders the naming taxonomy section with per-tier grammar + consistency', () => {
+    const dir = fixture({
+      'a.css': ':root{--clr-a:#1;--clr-b:#2;--fs-a:1rem} .b_card{--card-x:1;--card-y:2}',
+    });
+    const audit = analyze({ root: dir, slug: 'n', exclude: [], top: 10 });
+    const md = renderReport(audit);
+    expect(md).toContain('## Naming taxonomy');
+    expect(md).toContain('global tier');
+    expect(md).toContain('block tier');
+    expect(md).toMatch(/Consistency/);
+  });
+});
+
+describe('naming taxonomy axis', () => {
+  it('classifies each token into a tier: global (:root) vs block (component-scoped)', () => {
+    const dir = fixture({
+      'a.css': ':root{--clr-ink:#111} .b_card{--card-gap:1rem} .b_card__body{gap:var(--card-gap)}',
+    });
+    const audit = analyze({ root: dir, slug: 't', exclude: [], top: 10 });
+    const byName = Object.fromEntries(audit.model.tokens.map((t) => [t.name, t]));
+    expect(byName['--clr-ink'].tier).toBe('global'); // defined at :root
+    expect(byName['--card-gap'].tier).toBe('block'); // defined under a component selector
+  });
+
+  it('splits each token name into grammar segments', () => {
+    const dir = fixture({ 'a.css': ':root{--nav-link-bg:#111;--fw:400}' });
+    const audit = analyze({ root: dir, slug: 's', exclude: [], top: 10 });
+    const byName = Object.fromEntries(audit.model.tokens.map((t) => [t.name, t]));
+    expect(byName['--nav-link-bg'].segments).toEqual(['nav', 'link', 'bg']);
+    expect(byName['--fw'].segments).toEqual(['fw']);
+  });
+
+  it('infers a per-tier grammar: recurring prefixes and a consistency measure', () => {
+    // 7 global tokens: 3 prefixes used twice (clr, space, fs) + 1 singleton (weird).
+    const dir = fixture({
+      'a.css': ':root{--clr-a:#1;--clr-b:#2;--space-a:1px;--space-b:2px;--fs-a:1rem;--fs-b:2rem;--weird-x:9}',
+    });
+    const audit = analyze({ root: dir, slug: 'g', exclude: [], top: 10 });
+    const g = audit.model.axes.naming.tiers.global;
+    expect(g.recurringPrefixes).toEqual(expect.arrayContaining(['clr', 'space', 'fs']));
+    expect(g.singletonPrefixes).toContain('weird');
+    expect(g.consistency).toBeCloseTo(6 / 7, 2); // 6 of 7 conform
+    expect(g.dominantSegmentCount).toBe(2);
+  });
+
+  it('flags an off-grammar global prefix as a convention outlier that cites the norm', () => {
+    const dir = fixture({
+      'a.css': ':root{--clr-a:#1;--clr-b:#2;--space-a:1px;--space-b:2px;--fs-a:1rem;--fs-b:2rem;--weird-x:9}',
+    });
+    const audit = analyze({ root: dir, slug: 'g', exclude: [], top: 10 });
+    const f = audit.findings.find((x) => x.type === 'naming-outlier');
+    expect(f.basis).toBe('convention'); // earned from the codebase's own pattern
+    expect(f.confidence).toBe('low'); // a singleton may be a legit category
+    expect(f.title).toContain('--weird-x');
+    expect(f.evidence).toMatch(/recurring category prefix/); // must cite the norm
+  });
+
+  // Guard (green on arrival): locks the #18 tier refinement — block-local
+  // brevity / per-block namespaces must NOT be flagged as outliers.
+  it('does not flag block-local brevity as an outlier', () => {
+    const dir = fixture({
+      'a.css': '.b_card{--card-a:1;--card-b:2} .b_nav{--nav-a:1;--nav-b:2} .b_x{--solo-q:9}',
+    });
+    const audit = analyze({ root: dir, slug: 'b', exclude: [], top: 10 });
+    expect(audit.findings.some((f) => f.type === 'naming-outlier')).toBe(false);
+  });
+
+  it('detects an abbreviation conflict within a tier and flags it (convention, high)', () => {
+    // One concept ("hover") spelled two ways in the global tier.
+    const dir = fixture({ 'a.css': ':root{--btn-bg-hover:#1;--link-bg-hov:#2}' });
+    const audit = analyze({ root: dir, slug: 'c', exclude: [], top: 10 });
+    const g = audit.model.axes.naming.tiers.global;
+    const hover = g.abbreviationConflicts.find((c) => c.concept === 'hover');
+    expect(hover.forms.map((f) => f.form).sort()).toEqual(['hov', 'hover']);
+    const f = audit.findings.find((x) => x.type === 'naming-inconsistency');
+    expect(f.basis).toBe('convention');
+    expect(f.confidence).toBe('high');
+    expect(f.title).toContain('hover');
+  });
 });
