@@ -74,6 +74,38 @@ function fmtUsedIn(usedIn, total) {
   return `${shown}${more}`;
 }
 
+/** Render the naming-taxonomy axis: an inferred grammar per tier, its
+ *  consistency, prefix vocabulary, and any abbreviation conflicts. */
+function renderNaming(L, naming) {
+  L.push('## Naming taxonomy');
+  L.push('');
+  L.push(
+    'The grammar is inferred **per tier** — the codebase runs one convention for global ' +
+      '`:root` design tokens and another for block-scoped locals, so they are measured ' +
+      'separately. Consistency is the share of a tier\'s tokens whose first segment is a ' +
+      'recurring category/namespace prefix.'
+  );
+  L.push('');
+  for (const [tierName, g] of Object.entries(naming.tiers)) {
+    if (!g.tokenCount) continue;
+    L.push(`### ${tierName} tier — ${g.tokenCount} tokens`);
+    L.push('');
+    L.push(`- **Inferred grammar:** ${code(g.template)}`);
+    L.push(`- **Consistency:** ${Math.round(g.consistency * 100)}% follow a recurring prefix`);
+    L.push(`- **Typical shape:** ${g.dominantSegmentCount} segments`);
+    if (g.recurringPrefixes.length)
+      L.push(`- **Category/namespace vocabulary:** ${g.recurringPrefixes.map((p) => code(p + '-')).join(', ')}`);
+    if (g.singletonPrefixes.length)
+      L.push(`- **One-of-a-kind prefixes:** ${g.singletonPrefixes.map((p) => code(p + '-')).join(', ')}`);
+    if (g.abbreviationConflicts.length) {
+      L.push('- **Abbreviation conflicts:**');
+      for (const c of g.abbreviationConflicts)
+        L.push(`  - "${c.concept}": ${c.forms.map((f) => `${code(f.form)} ×${f.count}`).join(' vs ')}`);
+    }
+    L.push('');
+  }
+}
+
 export function renderReport(audit) {
   assertSchema(audit);
   const { meta, summary, model } = audit;
@@ -185,6 +217,9 @@ export function renderReport(audit) {
     L.push(axis.undefinedReferences.map((t) => `${code(t.name)} (×${t.fanIn})`).join(', '));
     L.push('');
   }
+
+  // ── Naming taxonomy ──
+  if (model.axes.naming) renderNaming(L, model.axes.naming);
 
   // ── Findings ──
   L.push('## Findings');

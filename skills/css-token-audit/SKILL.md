@@ -1,6 +1,6 @@
 ---
 name: css-token-audit
-description: Reverse-engineers a project's CSS custom-property (design-token) architecture from a deterministic css-tree parse of the COMPILED CSS, and reports its shape and problems. Use when the user wants to audit CSS variables/tokens, see the shape of a token system, find dead or duplicate tokens, or check custom-property architecture. Walking skeleton — fan-in/fan-out axis + dead/duplicate findings.
+description: Reverse-engineers a project's CSS custom-property (design-token) architecture from a deterministic css-tree parse of the COMPILED CSS, and reports its shape and problems. Use when the user wants to audit CSS variables/tokens, see the shape of a token system, find dead or duplicate tokens, check naming consistency, or check custom-property architecture. Axes so far: fan-in/fan-out + naming taxonomy; findings: dead, exact-duplicate, naming outliers.
 disable-model-invocation: true
 ---
 
@@ -20,9 +20,11 @@ parser is to not do that.
 it. `audit.json` is **never hand-edited** — re-run `analyze.mjs`. See
 [REFERENCE.md](REFERENCE.md) for the schema (the versioned contract).
 
-This is the **walking skeleton** (one axis: fan-in/fan-out; two findings: dead
-tokens, exact-duplicate definitions). Later slices add naming, tiers, scope &
-cascade, coverage, near-duplicates, and the dispose/feedback loop.
+Two axes so far: **fan-in/fan-out** (#18) and **naming taxonomy** (#19, a grammar
+inferred *per tier* — global `:root` design tokens vs block-scoped locals).
+Findings: dead tokens, exact-duplicate definitions, and naming outliers
+(inconsistent abbreviations, off-grammar prefixes). Later slices add tiers,
+scope & cascade, coverage, near-duplicates, and the dispose/feedback loop.
 
 ## Audit the COMPILED CSS, not the authored source
 
@@ -89,6 +91,10 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
 - **One-off** — referenced exactly once; inline or consolidation candidates.
 - **Dangling references** — used via `var()` but never defined here (a typo, a
   token defined in an un-audited file, or a runtime/JS-set property).
+- **Naming (per tier)** — the inferred grammar and its consistency for the
+  global and block tiers separately. **Off-grammar** globals and **abbreviation
+  conflicts** (one concept spelled two ways in a tier) surface as `convention`
+  findings — deviations to weigh, never "wrong".
 
 ## Bundled files
 
