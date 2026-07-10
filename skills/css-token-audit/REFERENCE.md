@@ -38,17 +38,22 @@ Current: **`1.0.0`**.
   // Deterministic counts — the report's overview.
   "summary": {
     "tokenCount":        53,   // distinct tokens with ≥1 definition
+    "globalTokens":      37,   // defined only at root/theme scope
+    "blockTokens":       16,   // defined under a component selector
     "referenceCount":    158,  // total var() uses
     "deadCount":         11,
     "oneOffCount":       13,
     "undefinedRefCount": 6,    // referenced but never defined (dangling)
+    "tierCount":         3,    // primitive/semantic/component tiers in use (0–3)
+    "flowDirection":     "downward", // downward (healthy) | mixed (up-tier leak) | circular
+    "tierLeakCount":     0,    // tier-leak findings
     "findingCount":      11
   },
 
   "model": {
     "axes": {
       // AXIS 1 (slice #18): fan-in / fan-out. Later slices add sibling axes here
-      // (naming, tiers, scope&cascade, coverage, fallback) without breaking v1.
+      // (tiers, scope&cascade, coverage, fallback) without breaking v1.
       "fanInOut": {
         "tokenCount":  53,
         "loadBearing": [
@@ -61,6 +66,58 @@ Current: **`1.0.0`**.
         "dead":        [ "--clr-blue", "..." ],   // fanIn === 0
         "oneOff":      [ "--base-font", "..." ],   // fanIn === 1
         "undefinedReferences": [ { "name": "--text-h1", "fanIn": 1 } ] // used, never defined
+      },
+
+      // AXIS 2 (slice #19): naming taxonomy. A grammar inferred PER TIER — the
+      // codebase runs one convention for global :root tokens and another for
+      // block-scoped locals, so they're measured separately.
+      "naming": {
+        "tiers": {
+          "global": {
+            "template":           "--{category}-{role}[-{variant}]",
+            "tokenCount":         37,
+            "prefixes":           [ { "prefix": "clr", "count": 8 } ], // first-segment freq, desc
+            "recurringPrefixes":  [ "clr", "space", "fs" ],   // count ≥ 2 — the category vocabulary
+            "singletonPrefixes":  [ "measure", "flow" ],       // count 1 — outlier candidates
+            "dominantSegmentCount": 2,
+            "consistency":        0.93,   // share whose first segment is a recurring prefix
+            // one concept spelled ≥2 ways within the tier
+            "abbreviationConflicts": [
+              { "concept": "default",
+                "forms": [ { "form": "default", "count": 3, "tokens": ["--x-default"] },
+                           { "form": "def", "count": 1, "tokens": ["--y-def"] } ] }
+            ]
+          },
+          "block": { /* same shape, template "--{block}-{part}[-{state}]" */ }
+        }
+      },
+
+      // AXIS 3 (slice #20): layering / tiers. The primitive → semantic →
+      // component tier system reconstructed FROM THE GRAPH (not names), and how
+      // cleanly value flows through it. `tier` (global/block) is the coarse
+      // definition-scope split the naming axis reads; `layer` is this deeper
+      // classification — `global` splits into primitive (holds a raw value) +
+      // semantic (aliases a token) by graph position; `block` maps to component.
+      "layering": {
+        "tierCount": 3,                    // tiers populated (0–3)
+        "tiers": {
+          "primitive": { "tokenCount": 34, "tokens": [ "--clr-pink", "..." ] },
+          "semantic":  { "tokenCount": 15, "tokens": [ "--theme-accent", "..." ] },
+          "component": { "tokenCount": 4,  "tokens": [ "--base-font", "..." ] }
+        },
+        // Every token→token edge classified by the tiers it connects. A healthy
+        // reference points DOWN-tier (component reads semantic reads primitive).
+        "flow": {
+          "edges":            31,          // healthy + backward + lateral
+          "healthy":          30,          // points strictly down-tier
+          "backward":         0,           // points up-tier — a leak
+          "skip":             2,           // down-tier but jumps a tier (component→primitive)
+          "lateral":          1,           // same-tier (semantic→semantic, component→component)
+          "throughSemantic":  2,           // component refs routed via a semantic token
+          "directToPrimitive":2,           // component refs hitting a primitive directly
+          "norm":             "direct",    // component routing norm: semantic | direct | none
+          "direction":        "downward"   // downward | mixed (a backward edge) | circular (a cycle)
+        }
       }
     },
 
@@ -70,6 +127,9 @@ Current: **`1.0.0`**.
     "tokens": [
       {
         "name":     "--theme-accent",
+        "tier":     "global",               // global | block — coarse definition-scope split (naming axis)
+        "layer":    "semantic",             // primitive | semantic | component — deep graph tier (#20); null for dangling
+        "segments": [ "theme", "accent" ],   // name split on '-' (after the '--')
         "fanIn":    17,
         "fanOut":   1,
         "referencedTokens": [ "--clr-pink" ],           // tokens this one uses in its value(s)
@@ -95,7 +155,7 @@ Current: **`1.0.0`**.
   "findings": [
     {
       "id":         "F1",              // stable Fn id, render order
-      "type":       "dead-token",      // dead-token | exact-duplicate (v1)
+      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak
       "basis":      "universal",       // universal | convention | house-rule
       "confidence": "medium",          // high | medium | low
       "title":      "Dead token `--clr-blue` — defined but never referenced",
@@ -119,14 +179,19 @@ Current: **`1.0.0`**.
 }
 ```
 
-## Findings in v1
+## Findings
 
-Both are `basis: universal` — defensible on any codebase:
+| type | basis | confidence | rule |
+|---|---|---|---|
+| `dead-token` | universal | `medium` | Defined ≥1×, zero `var()` references. Medium, not high: static analysis can't see inline-style/JS consumption, and a design-system token may be a public API. The dispose loop (slice #24) is where the human accepts intentional exceptions. |
+| `exact-duplicate` | universal | `high` | Same token defined ≥2× with an **identical value** under the **same** (selector, at-rule) scope — pure redundancy, provable from the AST. Differing values in one scope are a redefinition/override → the cascade axis (slice #21), not flagged here. |
+| `naming-inconsistency` | convention | `high` | One concept spelled ≥2 ways **within a tier** (e.g. `hov` and `hover`). Cites the dominant form as the norm; minority forms deviate. A factual inconsistency. |
+| `naming-outlier` | convention | `low` | A **global** token whose first segment is a one-of-a-kind prefix, in a tier that otherwise clusters into recurring category prefixes. Cites the norm (recurring prefixes + share). Global only — block-local brevity/per-block namespaces make singletons normal there (#18 refinement). Low confidence: a singleton may be a legit category. |
+| `tier-leak` (backward) | convention | `medium` | A `var()` reference flows **up-tier** against the reconstructed tiering (`primitive → semantic → component`) — e.g. a component token consumed as a base value. Cites the tiering norm. |
+| `tier-leak` (skip) | convention | `low` | A component reaches a **primitive directly**, jumping the semantic tier — **only** flagged where routing through a semantic is the codebase's own norm (cites the share). Silent on a codebase that routes directly (both test beds do). Low confidence: a direct reference may be intentional. |
+| `tier-leak` (circular) | universal | `high` | Tokens form a `var()` reference cycle — the value can never resolve. Provable from the AST. |
 
-| type | confidence | rule |
-|---|---|---|
-| `dead-token` | `medium` | Defined ≥1×, zero `var()` references. Medium, not high: static analysis can't see inline-style/JS consumption, and a design-system token may be a public API. The dispose loop (slice #24) is where the human accepts intentional exceptions. |
-| `exact-duplicate` | `high` | Same token defined ≥2× with an **identical value** under the **same** (selector, at-rule) scope — pure redundancy, provable from the AST. Differing values in one scope are a redefinition/override → the cascade axis (slice #21), not flagged here. |
+`convention`-basis findings **cite the norm** they're measured against, per the PRD.
 
 ## Parse coverage (correctness caveat)
 

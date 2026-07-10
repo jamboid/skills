@@ -70,6 +70,48 @@ function norm(s) {
   return (s || '').replace(/\s+/g, ' ').trim();
 }
 
+/** True when a selector attaches to a component (has a class), vs a root/theme
+ *  scope (`:root`, `[data-theme=…]`, `html`). */
+function isComponentScope(scope) {
+  return /\.[a-zA-Z_-]/.test(scope || '');
+}
+
+/**
+ * COARSE tier split — `global` (defined only at root/theme scope) vs `block`
+ * (defined under any component selector). Deliberately shallow: full
+ * primitive/semantic/component tiering is #20. The naming axis needs *some*
+ * tier to infer a grammar per tier, and this is free from the scope facts.
+ */
+function classifyTier(definitions) {
+  if (!definitions.length) return null;
+  return definitions.some((d) => isComponentScope(d.scope)) ? 'block' : 'global';
+}
+
+/**
+ * DEEP tier (layer) — reconstructed from the graph, not from names. This is the
+ * layering axis (#20): where a token sits in the primitive → semantic →
+ * component flow.
+ *   primitive — global scope, holds a raw value (references no other token)
+ *   semantic  — global scope, aliases another token (fan-out ≥ 1)
+ *   component — defined under a component selector (block-local)
+ * Orthogonal to the coarse `tier` (global/block), which the naming axis reads:
+ * `global` splits into primitive + semantic by graph position; `block` maps to
+ * component. Null for a token with no definitions (a dangling reference).
+ */
+function classifyLayer(coarseTier, fanOut) {
+  if (coarseTier == null) return null;
+  if (coarseTier === 'block') return 'component';
+  return fanOut === 0 ? 'primitive' : 'semantic';
+}
+
+const LAYER_RANK = { primitive: 0, semantic: 1, component: 2 };
+
+/** Split a custom-property name into its grammar segments: `--nav-link-bg`
+ *  → ['nav','link','bg']. Empty segments (from `--`, `--x--y`) dropped. */
+function segmentName(name) {
+  return name.replace(/^--/, '').split('-').filter(Boolean);
+}
+
 /** First path segment of a relative file path (its top-level tree). */
 function topDir(file) {
   const i = file.indexOf('/');
@@ -231,6 +273,229 @@ function computeUsedIn(references) {
   );
 }
 
+// Known short/long spellings of the same concept. A tier using two forms of one
+// concept (e.g. `hov` and `hover`) is internally inconsistent. Kept to
+// unambiguous pairs — `col`/`c` (column? colour?) are omitted on purpose.
+const ABBR_GROUPS = {
+  hover: ['hover', 'hov', 'hvr'],
+  active: ['active', 'act'],
+  disabled: ['disabled', 'disable', 'dis'],
+  focus: ['focus', 'foc'],
+  background: ['background', 'bg'],
+  color: ['color', 'colour', 'clr'],
+  border: ['border', 'brd'],
+  small: ['small', 'sm'],
+  medium: ['medium', 'med', 'md'],
+  large: ['large', 'lg'],
+  default: ['default', 'def', 'dflt'],
+  primary: ['primary', 'prim'],
+  secondary: ['secondary', 'sec'],
+  button: ['button', 'btn'],
+  vertical: ['vertical', 'vert'],
+  horizontal: ['horizontal', 'horiz'],
+  padding: ['padding', 'pad'],
+  transition: ['transition', 'trans'],
+};
+const FORM_TO_CONCEPT = new Map();
+for (const [concept, forms] of Object.entries(ABBR_GROUPS))
+  for (const f of forms) FORM_TO_CONCEPT.set(f, concept);
+
+/** Concepts spelled ≥2 ways within a tier (naming inconsistency). */
+function tierAbbreviationConflicts(toks) {
+  const concepts = new Map(); // concept -> Map(form -> tokenNames[])
+  for (const t of toks) {
+    for (const seg of t.segments) {
+      const c = FORM_TO_CONCEPT.get(seg);
+      if (!c) continue;
+      if (!concepts.has(c)) concepts.set(c, new Map());
+      const forms = concepts.get(c);
+      if (!forms.has(seg)) forms.set(seg, []);
+      forms.get(seg).push(t.name);
+    }
+  }
+  const conflicts = [];
+  for (const [concept, forms] of concepts) {
+    if (forms.size < 2) continue;
+    const arr = [...forms]
+      .map(([form, names]) => ({ form, count: names.length, tokens: names }))
+      .sort((a, b) => b.count - a.count || a.form.localeCompare(b.form));
+    conflicts.push({ concept, forms: arr });
+  }
+  return conflicts;
+}
+
+/** Per-tier grammar summary: prefix vocabulary, segment-length shape, and a
+ *  consistency measure (share of tokens whose first segment is a recurring
+ *  category/namespace prefix). */
+function summariseTierGrammar(toks, template) {
+  const firstSeg = new Map();
+  const segLen = new Map();
+  for (const t of toks) {
+    const p = t.segments[0] ?? '(none)';
+    firstSeg.set(p, (firstSeg.get(p) || 0) + 1);
+    segLen.set(t.segments.length, (segLen.get(t.segments.length) || 0) + 1);
+  }
+  const prefixes = [...firstSeg]
+    .map(([prefix, count]) => ({ prefix, count }))
+    .sort((a, b) => b.count - a.count || a.prefix.localeCompare(b.prefix));
+  const recurring = prefixes.filter((p) => p.count >= 2).map((p) => p.prefix);
+  const singletons = prefixes.filter((p) => p.count === 1).map((p) => p.prefix);
+  const conforming = toks.filter((t) => recurring.includes(t.segments[0])).length;
+  const dominantSegmentCount =
+    [...segLen].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? 0;
+  return {
+    template,
+    tokenCount: toks.length,
+    prefixes,
+    recurringPrefixes: recurring,
+    singletonPrefixes: singletons,
+    dominantSegmentCount,
+    consistency: toks.length ? Number((conforming / toks.length).toFixed(2)) : 0,
+  };
+}
+
+/** The naming axis: an inferred grammar per tier. */
+function buildNamingAxis(defined) {
+  const byTier = { global: [], block: [] };
+  for (const t of defined) if (byTier[t.tier]) byTier[t.tier].push(t);
+  const tier = (toks, template) => ({
+    ...summariseTierGrammar(toks, template),
+    abbreviationConflicts: tierAbbreviationConflicts(toks),
+  });
+  return {
+    tiers: {
+      global: tier(byTier.global, '--{category}-{role}[-{variant}]'),
+      block: tier(byTier.block, '--{block}-{part}[-{state}]'),
+    },
+  };
+}
+
+/**
+ * The layering axis (#20): reconstruct the tier system from the graph and
+ * measure how value flows through it. Tiers rank primitive(0) → semantic(1) →
+ * component(2); a healthy reference points DOWN-tier (a component's value holds
+ * `var(--semantic)`, a semantic's holds `var(--primitive)`). An edge pointing
+ * up-tier leaks; a token in a `var()` cycle leaks universally.
+ *
+ * `defined` are the tokens with ≥1 definition; `byName` resolves a referenced
+ * name to its token (to read the referenced token's layer).
+ */
+function buildLayeringAxis(defined, byName) {
+  const tierNames = ['primitive', 'semantic', 'component'];
+  const tiers = {};
+  for (const name of tierNames) tiers[name] = { tokenCount: 0, tokens: [] };
+  for (const t of defined) {
+    if (!tiers[t.layer]) continue;
+    tiers[t.layer].tokenCount += 1;
+    tiers[t.layer].tokens.push(t.name);
+  }
+  for (const name of tierNames) tiers[name].tokens.sort();
+  const tierCount = tierNames.filter((n) => tiers[n].tokenCount > 0).length;
+
+  // Classify every token→token edge by the tiers it connects.
+  let healthy = 0; // points strictly down-tier
+  let backward = 0; // points up-tier — a leak
+  let skip = 0; // down-tier but jumps a tier (e.g. component → primitive)
+  let lateral = 0; // same tier (semantic→semantic, component→component)
+  let throughSemantic = 0; // down-tier refs that route via a semantic token
+  let directToPrimitive = 0; // down-tier refs that hit a primitive directly
+  const skipEdges = [];
+  const backwardEdges = [];
+  for (const t of defined) {
+    const from = LAYER_RANK[t.layer];
+    if (from == null) continue;
+    for (const refName of t.referencedTokens) {
+      const ref = byName.get(refName);
+      if (!ref || ref.layer == null) continue; // dangling / unclassified
+      const to = LAYER_RANK[ref.layer];
+      if (to > from) {
+        backward += 1;
+        backwardEdges.push({ from: t.name, to: refName });
+      } else if (to === from) {
+        lateral += 1;
+      } else {
+        healthy += 1;
+        // The routing norm is about COMPONENT tokens only: does a component
+        // route through a semantic, or reach for a primitive directly? A
+        // semantic→primitive edge is the semantic tier doing its job, not a
+        // routing choice, so it's excluded from the norm.
+        if (from === LAYER_RANK.component) {
+          if (to === LAYER_RANK.semantic) throughSemantic += 1;
+          else if (to === LAYER_RANK.primitive) directToPrimitive += 1;
+        }
+        if (from - to >= 2) {
+          skip += 1;
+          skipEdges.push({ from: t.name, to: refName });
+        }
+      }
+    }
+  }
+
+  // Is routing a down-tier reference THROUGH a semantic token the norm here, or
+  // is referencing a primitive directly the norm? A skip only leaks against a
+  // semantic-routing norm (see buildFindings). On a codebase that routes
+  // directly (both test beds do), skips are the house style, not a smell.
+  const routed = throughSemantic + directToPrimitive;
+  const norm = routed === 0 ? 'none' : throughSemantic > directToPrimitive ? 'semantic' : 'direct';
+
+  const cycles = findReferenceCycles(defined, byName);
+  const direction = cycles.length ? 'circular' : backward > 0 ? 'mixed' : 'downward';
+
+  return {
+    tiers,
+    tierCount,
+    flow: {
+      edges: healthy + backward + lateral,
+      healthy,
+      backward,
+      skip,
+      lateral,
+      throughSemantic,
+      directToPrimitive,
+      norm,
+      direction,
+    },
+    leaks: { backwardEdges, skipEdges, cycles },
+  };
+}
+
+/**
+ * Find `var()` reference cycles among defined tokens (A → … → A). Returns each
+ * cycle once as an array of token names (the loop, first node repeated implied).
+ * A cycle is a `basis: universal` leak — a value that can never resolve.
+ */
+function findReferenceCycles(defined, byName) {
+  const cycles = [];
+  const seen = new Set(); // canonical cycle keys already recorded
+  const state = new Map(); // name -> 'visiting' | 'done'
+  const stack = [];
+
+  function visit(name) {
+    const t = byName.get(name);
+    if (!t || t.layer == null) return; // only walk defined tokens
+    if (state.get(name) === 'done') return;
+    if (state.get(name) === 'visiting') {
+      const at = stack.indexOf(name);
+      if (at === -1) return;
+      const loop = stack.slice(at);
+      const key = [...loop].sort().join('|');
+      if (!seen.has(key)) {
+        seen.add(key);
+        cycles.push(loop);
+      }
+      return;
+    }
+    state.set(name, 'visiting');
+    stack.push(name);
+    for (const ref of t.referencedTokens) visit(ref);
+    stack.pop();
+    state.set(name, 'done');
+  }
+
+  for (const t of defined) visit(t.name);
+  return cycles;
+}
+
 // ── Model + findings ───────────────────────────────────────────────────────
 function buildModel(defs, refs) {
   // Token registry keyed by name.
@@ -276,6 +541,9 @@ function buildModel(defs, refs) {
   for (const t of tokens.values()) {
     t.fanOut = t.referencedTokens.size;
     t.usedIn = computeUsedIn(t.references); // selectors that consume this token
+    t.tier = classifyTier(t.definitions); // null for dangling (undefined) refs
+    t.layer = classifyLayer(t.tier, t.fanOut); // primitive | semantic | component
+    t.segments = segmentName(t.name);
   }
 
   // A token is "defined" if it has ≥1 definition. Referenced-but-undefined
@@ -296,7 +564,10 @@ function buildModel(defs, refs) {
       usedInCount: t.usedIn.length, // distinct consuming selectors
     }));
 
-  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing };
+  const naming = buildNamingAxis(defined);
+  const layering = buildLayeringAxis(defined, tokens);
+
+  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering };
 }
 
 /** Serialize the token registry to plain JSON (facts embedded for later slices). */
@@ -305,6 +576,9 @@ function serializeTokens(defined) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((t) => ({
       name: t.name,
+      tier: t.tier,
+      layer: t.layer,
+      segments: t.segments,
       fanIn: t.fanIn,
       fanOut: t.fanOut,
       referencedTokens: [...t.referencedTokens].sort(),
@@ -372,6 +646,123 @@ function buildFindings(model) {
     }
   }
 
+  // Off-grammar prefix (basis: convention — cites the norm). A global token
+  // whose first segment is used by nothing else, in a tier that otherwise
+  // clusters into recurring category prefixes. Global only — per the #18
+  // refinement, block-local brevity/per-block namespaces make singletons normal
+  // there. Low confidence: a singleton may be a legitimate one-off category.
+  const byName = new Map(model.defined.map((t) => [t.name, t]));
+  const locOf = (name) =>
+    (byName.get(name)?.definitions || []).map((d) => ({
+      selector: d.scope,
+      atScope: d.atScope,
+      file: d.file,
+      line: d.line,
+    }));
+  // Abbreviation conflict (basis: convention). One concept spelled two ways
+  // within a tier. The dominant form is the norm; minority forms deviate. High
+  // confidence — a factual inconsistency, not a judgement call.
+  for (const [tierName, grammar] of Object.entries(model.naming.tiers)) {
+    for (const c of grammar.abbreviationConflicts) {
+      const norm = c.forms[0];
+      const minority = c.forms.slice(1);
+      const deviants = [...new Set(minority.flatMap((f) => f.tokens))];
+      findings.push({
+        id: nextId(),
+        type: 'naming-inconsistency',
+        basis: 'convention',
+        confidence: 'high',
+        title: `Concept "${c.concept}" is spelled ${c.forms.length} ways in the ${tierName} tier`,
+        locations: deviants.flatMap(locOf),
+        evidence:
+          `In the ${tierName} tier, "${c.concept}" appears as ` +
+          c.forms.map((f) => `\`${f.form}\` (${f.count}×)`).join(', ') +
+          `. The dominant form is \`${norm.form}\`; ` +
+          minority.map((f) => `\`${f.form}\` (${f.tokens.join(', ')})`).join('; ') +
+          ` deviate${deviants.length === 1 ? 's' : ''}.`,
+      });
+    }
+  }
+
+  // Tier leaks (layering axis, #20). Value should flow one way — primitive →
+  // semantic → component. A reference pointing the other way, or a plainly
+  // circular one, leaks. Backward leaks are judged against the codebase's own
+  // reconstructed tiering (basis convention); a cycle is universal.
+  const layering = model.layering;
+  const layerOf = (name) => byName.get(name)?.layer;
+  const TIER_NORM = 'primitive → semantic → component';
+  for (const e of layering.leaks.backwardEdges) {
+    findings.push({
+      id: nextId(),
+      type: 'tier-leak',
+      basis: 'convention',
+      confidence: 'medium',
+      title: `Tier leak: \`${e.from}\` (${layerOf(e.from)}) reads \`${e.to}\` (${layerOf(e.to)})`,
+      locations: locOf(e.from),
+      evidence:
+        `\`${e.from}\` (${layerOf(e.from)}) references \`${e.to}\` (${layerOf(e.to)}), so value flows ` +
+        `${layerOf(e.to)} → ${layerOf(e.from)} — against the tiering norm (${TIER_NORM}). ` +
+        `A ${layerOf(e.to)} token is being consumed as a base value.`,
+    });
+  }
+
+  // Tier skip — a component reaches a primitive directly, jumping the semantic
+  // tier. Only a leak where routing THROUGH a semantic is the codebase's own
+  // norm (cite the share); on a codebase that routes directly it's the house
+  // style, not a smell. Low confidence — a direct reference may be intentional.
+  if (layering.flow.norm === 'semantic') {
+    const total = layering.flow.throughSemantic + layering.flow.directToPrimitive;
+    const share = total ? Math.round((layering.flow.throughSemantic / total) * 100) : 0;
+    for (const e of layering.leaks.skipEdges) {
+      findings.push({
+        id: nextId(),
+        type: 'tier-leak',
+        basis: 'convention',
+        confidence: 'low',
+        title: `Tier skip: \`${e.from}\` (${layerOf(e.from)}) reaches \`${e.to}\` (${layerOf(e.to)}) directly`,
+        locations: locOf(e.from),
+        evidence:
+          `${share}% of component references route through a semantic token, but \`${e.from}\` ` +
+          `reads the ${layerOf(e.to)} \`${e.to}\` directly, skipping the semantic tier.`,
+      });
+    }
+  }
+
+  for (const cycle of layering.leaks.cycles) {
+    const chain = [...cycle, cycle[0]].map((n) => `\`${n}\``).join(' → ');
+    findings.push({
+      id: nextId(),
+      type: 'tier-leak',
+      basis: 'universal',
+      confidence: 'high',
+      title: `Circular \`var()\` chain: ${cycle.map((n) => `\`${n}\``).join(' ↔ ')}`,
+      locations: cycle.flatMap(locOf),
+      evidence: `The tokens ${chain} form a reference cycle — the value can never resolve. Circular in any codebase.`,
+    });
+  }
+
+  const g = model.naming.tiers.global;
+  const clustered =
+    g.consistency >= 0.6 &&
+    g.recurringPrefixes.length >= 3 &&
+    g.singletonPrefixes.length <= g.recurringPrefixes.length;
+  if (clustered) {
+    const share = Math.round(g.consistency * 100);
+    const norms = g.recurringPrefixes.slice(0, 8).map((p) => `\`${p}-\``).join(', ');
+    for (const t of model.defined) {
+      if (t.tier !== 'global' || !g.singletonPrefixes.includes(t.segments[0])) continue;
+      findings.push({
+        id: nextId(),
+        type: 'naming-outlier',
+        basis: 'convention',
+        confidence: 'low',
+        title: `Off-grammar prefix \`${t.segments[0]}-\` on \`${t.name}\` (global tier)`,
+        locations: locOf(t.name),
+        evidence: `${share}% of global tokens use a recurring category prefix (${norms}); \`${t.name}\` is the only token with prefix \`${t.segments[0]}-\`.`,
+      });
+    }
+  }
+
   return findings;
 }
 
@@ -417,6 +808,9 @@ function analyze({ root, slug, exclude, top }) {
       deadCount: model.dead.length,
       oneOffCount: model.oneOff.length,
       undefinedRefCount: model.undefinedRefs.length,
+      tierCount: model.layering.tierCount,
+      flowDirection: model.layering.flow.direction,
+      tierLeakCount: findings.filter((f) => f.type === 'tier-leak').length,
       findingCount: findings.length,
     },
     model: {
@@ -429,6 +823,12 @@ function analyze({ root, slug, exclude, top }) {
           undefinedReferences: model.undefinedRefs
             .map((t) => ({ name: t.name, fanIn: t.fanIn }))
             .sort((a, b) => b.fanIn - a.fanIn || a.name.localeCompare(b.name)),
+        },
+        naming: model.naming,
+        layering: {
+          tiers: model.layering.tiers,
+          tierCount: model.layering.tierCount,
+          flow: model.layering.flow,
         },
       },
       tokens: serializeTokens(model.defined),

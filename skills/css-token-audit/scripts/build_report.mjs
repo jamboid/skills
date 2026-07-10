@@ -74,6 +74,76 @@ function fmtUsedIn(usedIn, total) {
   return `${shown}${more}`;
 }
 
+/** Render the naming-taxonomy axis: an inferred grammar per tier, its
+ *  consistency, prefix vocabulary, and any abbreviation conflicts. */
+function renderNaming(L, naming) {
+  L.push('## Naming taxonomy');
+  L.push('');
+  L.push(
+    'The grammar is inferred **per tier** — the codebase runs one convention for global ' +
+      '`:root` design tokens and another for block-scoped locals, so they are measured ' +
+      'separately. Consistency is the share of a tier\'s tokens whose first segment is a ' +
+      'recurring category/namespace prefix.'
+  );
+  L.push('');
+  for (const [tierName, g] of Object.entries(naming.tiers)) {
+    if (!g.tokenCount) continue;
+    L.push(`### ${tierName} tier — ${g.tokenCount} tokens`);
+    L.push('');
+    L.push(`- **Inferred grammar:** ${code(g.template)}`);
+    L.push(`- **Consistency:** ${Math.round(g.consistency * 100)}% follow a recurring prefix`);
+    L.push(`- **Typical shape:** ${g.dominantSegmentCount} segments`);
+    if (g.recurringPrefixes.length)
+      L.push(`- **Category/namespace vocabulary:** ${g.recurringPrefixes.map((p) => code(p + '-')).join(', ')}`);
+    if (g.singletonPrefixes.length)
+      L.push(`- **One-of-a-kind prefixes:** ${g.singletonPrefixes.map((p) => code(p + '-')).join(', ')}`);
+    if (g.abbreviationConflicts.length) {
+      L.push('- **Abbreviation conflicts:**');
+      for (const c of g.abbreviationConflicts)
+        L.push(`  - "${c.concept}": ${c.forms.map((f) => `${code(f.form)} ×${f.count}`).join(' vs ')}`);
+    }
+    L.push('');
+  }
+}
+
+/** Render the layering / tiers axis: the reconstructed primitive → semantic →
+ *  component tier system and how cleanly value flows through it. */
+function renderLayering(L, layering) {
+  const { tiers, tierCount, flow } = layering;
+  L.push('## Layering / tiers');
+  L.push('');
+  L.push(
+    'Tiers are reconstructed from the dependency graph, not from names: a **primitive** ' +
+      'holds a raw value, a **semantic** token aliases a primitive, and a **component** token ' +
+      'is a block-local. Value should flow one way — `primitive → semantic → component`; a ' +
+      'reference pointing the other way (or in a cycle) leaks.'
+  );
+  L.push('');
+  L.push(`- **Tiers in use:** ${tierCount} of 3`);
+  for (const name of ['primitive', 'semantic', 'component']) {
+    const t = tiers[name];
+    if (t && t.tokenCount) L.push(`  - **${name}:** ${t.tokenCount}`);
+  }
+  const dir =
+    flow.direction === 'downward'
+      ? 'one-directional (`primitive → semantic → component`)'
+      : flow.direction === 'circular'
+        ? '**circular** — at least one `var()` cycle'
+        : '**mixed** — some references flow up-tier'; // 'mixed'
+  L.push(`- **Flow:** ${dir}`);
+  L.push(
+    `- **Token→token edges:** ${flow.edges} (${flow.healthy} down-tier, ${flow.backward} up-tier, ` +
+      `${flow.lateral} same-tier)`
+  );
+  if (flow.norm !== 'none')
+    L.push(
+      `- **Component routing norm:** ${
+        flow.norm === 'semantic' ? 'through a semantic token' : 'directly to a primitive'
+      } (${flow.throughSemantic} via semantic, ${flow.directToPrimitive} direct)`
+    );
+  L.push('');
+}
+
 export function renderReport(audit) {
   assertSchema(audit);
   const { meta, summary, model } = audit;
@@ -133,6 +203,8 @@ export function renderReport(audit) {
   L.push(`- **Dead** (defined, never referenced): ${summary.deadCount}`);
   L.push(`- **One-off** (referenced exactly once): ${summary.oneOffCount}`);
   L.push(`- **Dangling references** (used but never defined): ${summary.undefinedRefCount}`);
+  if (summary.tierCount != null)
+    L.push(`- **Tiers** (primitive/semantic/component): ${summary.tierCount} of 3, flow ${summary.flowDirection}`);
   L.push(`- **Findings:** ${summary.findingCount}`);
   L.push('');
 
@@ -185,6 +257,12 @@ export function renderReport(audit) {
     L.push(axis.undefinedReferences.map((t) => `${code(t.name)} (×${t.fanIn})`).join(', '));
     L.push('');
   }
+
+  // ── Layering / tiers ──
+  if (model.axes.layering) renderLayering(L, model.axes.layering);
+
+  // ── Naming taxonomy ──
+  if (model.axes.naming) renderNaming(L, model.axes.naming);
 
   // ── Findings ──
   L.push('## Findings');
