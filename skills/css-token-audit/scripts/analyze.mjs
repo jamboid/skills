@@ -181,6 +181,137 @@ export function normalizeValue(raw) {
   return v;
 }
 
+// ── Value distance (the near-duplicate substrate #23 adds) ─────────────────
+// Basic named colours we can resolve to RGB — enough to let a `white`/`black`
+// token cluster with a near-identical hex. Steers ONLY distance; typing still
+// uses the broader NAMED_COLORS set above.
+const NAMED_COLOR_HEX = {
+  black: '#000000', white: '#ffffff', red: '#ff0000', green: '#008000',
+  blue: '#0000ff', yellow: '#ffff00', orange: '#ffa500', purple: '#800080',
+  gray: '#808080', grey: '#808080', silver: '#c0c0c0', navy: '#000080',
+  teal: '#008080', olive: '#808000', maroon: '#800000', lime: '#00ff00',
+  aqua: '#00ffff', cyan: '#00ffff', fuchsia: '#ff00ff', magenta: '#ff00ff',
+};
+
+/**
+ * Parse a colour literal to `{ r, g, b, a }` (channels 0–255, alpha 0–1), or
+ * null if it isn't a colour we can resolve. Handles hex (`#rgb`/`#rgba`/`#rrggbb`
+ * /`#rrggbbaa`), functional `rgb()/rgba()` (integer channels), and the basic
+ * named colours — enough to measure how far apart two colours are for clustering.
+ */
+export function parseColor(raw) {
+  let v = normalizeValue(raw); // lowercases, expands short hex
+  if (NAMED_COLOR_HEX[v]) v = NAMED_COLOR_HEX[v];
+  const hex = /^#([0-9a-f]{6})([0-9a-f]{2})?$/.exec(v);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: hex[2] != null ? parseInt(hex[2], 16) / 255 : 1 };
+  }
+  const fn = /^(rgba?)\(([^)]+)\)$/.exec(v);
+  if (fn) {
+    const parts = fn[2].split(',').map((s) => s.trim());
+    if (parts.length < 3 || parts.some((p) => p.includes('%'))) return null; // integer channels only
+    const [r, g, b] = parts.slice(0, 3).map((p) => parseInt(p, 10));
+    if ([r, g, b].some((x) => Number.isNaN(x))) return null;
+    const a = parts[3] != null ? parseFloat(parts[3]) : 1;
+    return { r, g, b, a: Number.isNaN(a) ? 1 : a };
+  }
+  return null;
+}
+
+/** Euclidean distance between two colours in RGBA space (alpha scaled to 0–255).
+ *  Infinity if either isn't a resolvable colour. 0 = identical. */
+export function colorDistance(a, b) {
+  const ca = parseColor(a);
+  const cb = parseColor(b);
+  if (!ca || !cb) return Infinity;
+  const dr = ca.r - cb.r, dg = ca.g - cb.g, db = ca.b - cb.b, da = (ca.a - cb.a) * 255;
+  return Math.sqrt(dr * dr + dg * dg + db * db + da * da);
+}
+
+/** Split a length literal into `[number, unit]` (unit '' for a bare number). */
+function splitLength(raw) {
+  const m = /^(-?(?:\d+\.?\d*|\.\d+))([a-z%]*)$/.exec((raw || '').trim().toLowerCase());
+  return m ? [parseFloat(m[1]), m[2]] : [NaN, ''];
+}
+
+/** Relative difference of two numbers, 0 (equal) → 1+ (far apart). */
+function relDiff(a, b) {
+  const scale = Math.max(Math.abs(a), Math.abs(b));
+  return scale === 0 ? 0 : Math.abs(a - b) / scale;
+}
+
+/** Normalized Levenshtein distance (0 identical → 1 wholly different). */
+function fuzzyDistance(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m || !n) return 1;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n] / Math.max(m, n);
+}
+
+// Per-value-type default thresholds — the closeness at/under which two values
+// are "near-duplicate". Colour is an RGBA Euclidean distance (0–~442); length /
+// number are RELATIVE differences; `other` is a normalized edit distance. Later
+// slices make these tunable via the conventions file (out of scope for #23).
+const NEAR_THRESHOLDS = { color: 12, length: 0.03, number: 0.03, other: 0.12 };
+
+/**
+ * Distance between two values of the SAME type, or null when they're
+ * incomparable (different types, or lengths in different units). Returns
+ * `{ type, distance, threshold }`; `distance <= threshold` means near-duplicate.
+ * The per-type normalization the near-duplicate axis (#23) clusters on.
+ */
+// Absolute/relative SIZE units — a near-duplicate on one of these is a real
+// scale-value lead. Layout-structural units (`%`, `fr`) and time/angle units
+// are deliberately excluded: two tokens both `1fr` or `100%` share a value by
+// coincidence of layout, not a redundant scale step worth consolidating.
+const SIZE_UNITS = new Set(['px', 'rem', 'em', 'pt', 'pc', 'ch', 'ex', 'vh', 'vw', 'vmin', 'vmax']);
+
+/**
+ * Gate a value into near-duplicate clustering — restricted to the DISTINCTIVE
+ * types where a near-match is a genuine consolidation lead: a colour, or a
+ * non-zero length in a size unit. Bare numbers, `0`s, percentages/fractions, and
+ * keyword/compound values (`block`, `1fr`, `clamp(…)`) share values coincidentally
+ * and only add noise (verified on both test beds). `valueDistance` itself still
+ * handles every type — this just keeps the clustering output high-signal.
+ */
+function isClusterableValue(raw) {
+  const type = valueType(raw);
+  if (type === 'color') return true;
+  if (type === 'length') {
+    const [n, unit] = splitLength(raw);
+    return !Number.isNaN(n) && n !== 0 && SIZE_UNITS.has(unit);
+  }
+  return false;
+}
+
+export function valueDistance(a, b) {
+  const ta = valueType(a);
+  if (ta !== valueType(b)) return null;
+  if (ta === 'color') {
+    const d = colorDistance(a, b);
+    return d === Infinity ? null : { type: 'color', distance: d, threshold: NEAR_THRESHOLDS.color };
+  }
+  if (ta === 'length') {
+    const [na, ua] = splitLength(a);
+    const [nb, ub] = splitLength(b);
+    if (ua !== ub || Number.isNaN(na) || Number.isNaN(nb)) return null; // units must match
+    return { type: 'length', distance: relDiff(na, nb), threshold: NEAR_THRESHOLDS.length };
+  }
+  if (ta === 'number') {
+    return { type: 'number', distance: relDiff(parseFloat(a), parseFloat(b)), threshold: NEAR_THRESHOLDS.number };
+  }
+  return { type: 'other', distance: fuzzyDistance((a || '').trim().toLowerCase(), (b || '').trim().toLowerCase()), threshold: NEAR_THRESHOLDS.other };
+}
+
 // Properties whose values are the ones a token system typically governs —
 // colour, spacing, borders, typography, motion. The coverage axis measures how
 // many of THESE consume a token vs a raw literal; other properties (`display`,
@@ -808,6 +939,92 @@ function buildFallbackAxis(refs) {
   };
 }
 
+/**
+ * The near-duplicate axis (#23): cluster DEFINED tokens whose raw values are
+ * *nearly* the same — the juiciest consolidation leads. Each token contributes
+ * one representative value (its unconditional root base, else its first
+ * definition); alias tokens (a value that is itself a `var()`) are skipped —
+ * they hold a reference, not a raw value. Tokens are grouped by value type, then
+ * connected (union-find) when their pairwise `valueDistance` is within the
+ * per-type threshold. A connected component of ≥2 tokens is a cluster.
+ * `closeness` = worst pairwise distance ÷ threshold (0 = exact, 1 = at the edge).
+ */
+function buildNearDuplicateAxis(defined) {
+  // One representative literal value per token.
+  const nodes = [];
+  for (const t of defined) {
+    const base = t.definitions.find((d) => d.cascadeScope === 'root') || t.definitions[0];
+    if (!base) continue;
+    const value = base.value;
+    if (/var\(/.test(value)) continue; // an alias, not a raw value
+    if (!isClusterableValue(value)) continue; // keep clusters to distinctive values
+    const type = valueType(value);
+    nodes.push({ name: t.name, value, type, base });
+  }
+
+  const clusters = [];
+  const byType = new Map();
+  for (const n of nodes) {
+    if (!byType.has(n.type)) byType.set(n.type, []);
+    byType.get(n.type).push(n);
+  }
+
+  for (const group of byType.values()) {
+    // Union-find over the group; record the worst distance seen on any edge so
+    // the cluster's closeness reflects its loosest pair.
+    const parent = group.map((_, i) => i);
+    const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const union = (i, j) => { parent[find(i)] = find(j); };
+    const edges = new Map(); // "root" -> max distance/threshold ratio seen
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        const d = valueDistance(group[i].value, group[j].value);
+        if (!d || d.distance > d.threshold) continue;
+        union(i, j);
+      }
+    }
+    // Second pass: attribute each near edge's ratio to its component root.
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        const d = valueDistance(group[i].value, group[j].value);
+        if (!d || d.distance > d.threshold) continue;
+        if (find(i) !== find(j)) continue;
+        const root = find(i);
+        const ratio = d.threshold ? d.distance / d.threshold : 0;
+        edges.set(root, Math.max(edges.get(root) || 0, ratio));
+      }
+    }
+    const comps = new Map();
+    for (let i = 0; i < group.length; i++) {
+      const root = find(i);
+      if (!comps.has(root)) comps.set(root, []);
+      comps.get(root).push(group[i]);
+    }
+    for (const [root, members] of comps) {
+      if (members.length < 2) continue;
+      members.sort((a, b) => a.name.localeCompare(b.name));
+      clusters.push({
+        valueType: members[0].type,
+        closeness: Number((edges.get(root) || 0).toFixed(2)),
+        tokens: members.map((m) => ({
+          name: m.name,
+          value: m.value,
+          file: m.base.file,
+          line: m.base.line,
+          selector: m.base.scope,
+          atScope: m.base.atScope,
+        })),
+      });
+    }
+  }
+
+  clusters.sort(
+    (a, b) => a.valueType.localeCompare(b.valueType) ||
+      a.tokens[0].name.localeCompare(b.tokens[0].name)
+  );
+  return { clusterCount: clusters.length, clusters };
+}
+
 // ── Model + findings ───────────────────────────────────────────────────────
 function buildModel(defs, refs, decls = []) {
   // Token registry keyed by name.
@@ -882,8 +1099,9 @@ function buildModel(defs, refs, decls = []) {
   const scopeCascade = buildScopeCascadeAxis(defined);
   const coverage = buildCoverageAxis(decls);
   const fallback = buildFallbackAxis(refs);
+  const nearDuplicates = buildNearDuplicateAxis(defined);
 
-  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade, coverage, fallback, decls };
+  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade, coverage, fallback, nearDuplicates, decls };
 }
 
 /** Serialize the token registry to plain JSON (facts embedded for later slices). */
@@ -1005,6 +1223,35 @@ function buildFindings(model) {
         `${sites.length} declaration${sites.length === 1 ? '' : 's'} hardcode \`${sites[0].value}\`, ` +
         `whose value equals the existing token${tokenNames.length > 1 ? 's' : ''} ${tokens}` +
         ` — a missed tokenization. Replace the literal with \`var(${tokenNames[0]})\`.`,
+    });
+  }
+
+  // Near-duplicate tokens (near-duplicate axis, #23). A cluster of tokens whose
+  // raw values are nearly identical — a consolidation lead. Universal: two tokens
+  // resolving to (essentially) the same value are redundant in any codebase.
+  // Confidence reflects CLOSENESS: an exact/near-exact cluster is high, a looser
+  // one (approaching the type threshold) is lower — the further apart, the more
+  // likely the difference is intentional.
+  for (const cluster of model.nearDuplicates.clusters) {
+    const confidence = cluster.closeness <= 0.34 ? 'high' : cluster.closeness <= 0.67 ? 'medium' : 'low';
+    const names = cluster.tokens.map((t) => `\`${t.name}\``).join(', ');
+    const pairs = cluster.tokens.map((t) => `\`${t.name}\` (${t.value})`).join(', ');
+    findings.push({
+      id: nextId(),
+      type: 'near-duplicate',
+      basis: 'universal',
+      confidence,
+      title: `Near-duplicate ${cluster.valueType} tokens: ${names}`,
+      locations: cluster.tokens.map((t) => ({
+        selector: t.selector,
+        atScope: t.atScope,
+        file: t.file,
+        line: t.line,
+      })),
+      evidence:
+        `${cluster.tokens.length} tokens hold near-identical ${cluster.valueType} values ` +
+        `(${pairs}) — ${cluster.closeness === 0 ? 'identical' : 'within the near-duplicate threshold'}. ` +
+        `Consolidation candidates: collapse to one token.`,
     });
   }
 
@@ -1254,6 +1501,7 @@ function analyze({ root, slug, exclude, top }) {
       overrideCount: model.scopeCascade.overrides.tokenCount,
       themingStyle: model.scopeCascade.theming.style,
       cascadeSmellCount: findings.filter((f) => f.type === 'cascade-smell').length,
+      nearDuplicateCount: model.nearDuplicates.clusterCount,
       hardcodeRatio: model.coverage.tokenizableDeclarations
         ? Number((model.coverage.hardcoded / model.coverage.tokenizableDeclarations).toFixed(2))
         : 0,
@@ -1279,6 +1527,7 @@ function analyze({ root, slug, exclude, top }) {
         scopeCascade: model.scopeCascade,
         coverage: model.coverage,
         fallback: model.fallback,
+        nearDuplicates: model.nearDuplicates,
       },
       tokens: serializeTokens(model.defined),
     },
@@ -1312,5 +1561,6 @@ function main() {
 
 // Export for tests; run when invoked directly.
 export { analyze, buildModel, buildFindings, extractFacts, findCssFiles, parseArgs };
+
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

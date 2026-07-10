@@ -7,6 +7,9 @@ import {
   extractFacts,
   normalizeValue,
   valueType,
+  parseColor,
+  colorDistance,
+  valueDistance,
   SCHEMA_VERSION,
 } from '../../skills/css-token-audit/scripts/analyze.mjs';
 import { renderReport, assertSchema } from '../../skills/css-token-audit/scripts/build_report.mjs';
@@ -52,6 +55,40 @@ describe('value normalization', () => {
     expect(valueType('12px')).toBe('length');
     expect(valueType('400')).toBe('number');
     expect(valueType('ease-in-out')).toBe('other');
+  });
+});
+
+describe('value distance (the near-duplicate substrate, #23)', () => {
+  // Per-value-type proximity: colour distance in RGB(A) space, numeric relative
+  // proximity for lengths/numbers, fuzzy string distance otherwise. Feeds the
+  // near-duplicate clustering — values that are *nearly* the same, not equal.
+  it('parses hex, rgb() and a named colour to RGBA channels', () => {
+    expect(parseColor('#ffffff')).toEqual({ r: 255, g: 255, b: 255, a: 1 });
+    expect(parseColor('#f00')).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    expect(parseColor('rgb(0, 128, 255)')).toEqual({ r: 0, g: 128, b: 255, a: 1 });
+    expect(parseColor('white')).toEqual({ r: 255, g: 255, b: 255, a: 1 });
+    expect(parseColor('ease-in-out')).toBeNull(); // not a colour
+  });
+
+  it('measures colour distance: near-identical shades are close, distinct hues far', () => {
+    expect(colorDistance('#333333', '#343434')).toBeLessThan(3); // 1-per-channel nudge
+    expect(colorDistance('#ffffff', '#ffffff')).toBe(0); // identical
+    expect(colorDistance('#000000', '#ffffff')).toBeGreaterThan(400); // black vs white
+  });
+
+  it('dispatches distance by matched value type, gating incomparable pairs', () => {
+    // Colour pair → small distance, well under its threshold.
+    const c = valueDistance('#333333', '#343434');
+    expect(c.type).toBe('color');
+    expect(c.distance).toBeLessThan(c.threshold);
+    // Length pair, same unit → relative proximity.
+    const l = valueDistance('1rem', '1.02rem');
+    expect(l.type).toBe('length');
+    expect(l.distance).toBeLessThan(l.threshold);
+    // Different units are incomparable — no distance.
+    expect(valueDistance('16px', '1rem')).toBeNull();
+    // Different value types are incomparable.
+    expect(valueDistance('#fff', '1rem')).toBeNull();
   });
 });
 
@@ -261,6 +298,54 @@ describe('literal-matches-token finding', () => {
   });
 });
 
+describe('near-duplicate axis', () => {
+  // Tokens whose VALUES are nearly (not exactly) the same — the juiciest
+  // consolidation leads. Clustered per value type by proximity: colour distance,
+  // numeric relative proximity, fuzzy fallback. Alias tokens (value is a var())
+  // are not raw values and never cluster.
+  it('clusters tokens with near-identical colour values, leaving distinct hues apart', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--ink:#333333;--charcoal:#343434;--brand:#0055ff}' +
+        ' .a{color:var(--ink)} .b{color:var(--charcoal)} .c{color:var(--brand)}',
+    });
+    const audit = analyze({ root: dir, slug: 'nd', exclude: [], top: 10 });
+    const clusters = audit.model.axes.nearDuplicates.clusters;
+    const near = clusters.find((c) => c.tokens.some((t) => t.name === '--ink'));
+    expect(near).toBeTruthy();
+    expect(near.tokens.map((t) => t.name).sort()).toEqual(['--charcoal', '--ink']);
+    expect(near.valueType).toBe('color');
+    // --brand is a distinct hue — never joins the cluster.
+    expect(clusters.some((c) => c.tokens.some((t) => t.name === '--brand'))).toBe(false);
+  });
+
+  it('emits a near-duplicate finding, universal, confidence reflecting closeness', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--ink:#333333;--charcoal:#343434} .a{color:var(--ink)} .b{color:var(--charcoal)}',
+    });
+    const audit = analyze({ root: dir, slug: 'nf', exclude: [], top: 10 });
+    const f = audit.findings.find((x) => x.type === 'near-duplicate');
+    expect(f.basis).toBe('universal');
+    expect(f.confidence).toBe('high'); // 1-per-channel nudge — very close
+    expect(f.title).toContain('--ink');
+    expect(f.title).toContain('--charcoal');
+    expect(f.evidence).toMatch(/consolidat/i); // frames it as a consolidation lead
+    expect(f.locations.length).toBe(2); // both token definition sites
+  });
+
+  it('does not cluster alias tokens (a value that is a var())', () => {
+    const dir = fixture({
+      'a.css': ':root{--c-blue:#0055ff;--brand:var(--c-blue);--accent:var(--c-blue)}',
+    });
+    const audit = analyze({ root: dir, slug: 'al', exclude: [], top: 10 });
+    const clusters = audit.model.axes.nearDuplicates.clusters;
+    // --brand and --accent share the SAME alias text but are references, not raw
+    // values — no cluster.
+    expect(clusters.some((c) => c.tokens.some((t) => t.name === '--brand'))).toBe(false);
+  });
+});
+
 describe('build_report schema contract', () => {
   it('renders the axis, findings and a parse-coverage warning when errors exist', () => {
     const dir = fixture({ 'a.css': ':root{--k:1;--d:2} .a{width:var(--k)}' });
@@ -321,6 +406,19 @@ describe('build_report schema contract', () => {
     expect(md).toMatch(/hardcod/i); // reports the hardcode ratio
     expect(md).toContain('## Fallback usage');
     expect(md).toMatch(/literal|token/); // names a fallback kind
+  });
+
+  it('renders the near-duplicates section with the consolidation clusters', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--ink:#333333;--charcoal:#343434} .a{color:var(--ink)} .b{color:var(--charcoal)}',
+    });
+    const audit = analyze({ root: dir, slug: 'nr', exclude: [], top: 10 });
+    const md = renderReport(audit);
+    expect(md).toContain('## Near-duplicates');
+    expect(md).toMatch(/consolidat/i); // frames clusters as consolidation leads
+    expect(md).toContain('--ink');
+    expect(md).toContain('--charcoal');
   });
 
   it('renders the naming taxonomy section with per-tier grammar + consistency', () => {
