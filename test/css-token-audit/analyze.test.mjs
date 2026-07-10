@@ -13,6 +13,12 @@ import {
   SCHEMA_VERSION,
 } from '../../skills/css-token-audit/scripts/analyze.mjs';
 import { renderReport, assertSchema } from '../../skills/css-token-audit/scripts/build_report.mjs';
+import {
+  emptyConventions,
+  recordDispositions,
+  renderConventions,
+  CONVENTIONS_VERSION,
+} from '../../skills/css-token-audit/scripts/conventions.mjs';
 
 // The analyzer's contract: a DETERMINISTIC css-tree parse of compiled CSS →
 // custom-property dependency graph → fan-in/fan-out axis + universal findings.
@@ -298,6 +304,92 @@ describe('literal-matches-token finding', () => {
   });
 });
 
+describe('finding fingerprints (the feedback-loop identity, #24)', () => {
+  // Each finding carries a STABLE, content-derived fingerprint (`type:subject`)
+  // independent of the render-order `Fn` id — the key the conventions file keys
+  // dispositions on, so an accepted finding stays matched across runs even as
+  // other findings come and go.
+  it('gives every finding a stable fingerprint + open disposition by default', () => {
+    const dir = fixture({ 'a.css': ':root{--gone:#000}' });
+    const audit = analyze({ root: dir, slug: 'fp', exclude: [], top: 10 });
+    const f = audit.findings.find((x) => x.type === 'dead-token');
+    expect(f.fingerprint).toBe('dead-token:--gone');
+    expect(f.disposition).toBe('open'); // untouched until curated
+    expect(f.suppressed).toBe(false);
+  });
+
+  it('suppresses an accepted finding on the next run, leaving the rest active', () => {
+    const dir = fixture({ 'a.css': ':root{--gone:#000;--also-gone:#111}' }); // two dead tokens
+    const first = analyze({ root: dir, slug: 'c1', exclude: [], top: 10 });
+    const target = first.findings.find((f) => f.fingerprint === 'dead-token:--gone');
+    // The conventions file (the audit's 4th input) — human-editable, versioned.
+    const convPath = join(dir, 'conventions.json');
+    writeFileSync(
+      convPath,
+      JSON.stringify({
+        conventionsVersion: '1.0.0',
+        dispositions: { [target.fingerprint]: { disposition: 'accept', note: 'intentional public token' } },
+      })
+    );
+    const second = analyze({ root: dir, slug: 'c2', exclude: [], top: 10, conventions: convPath });
+    const acc = second.findings.find((f) => f.fingerprint === target.fingerprint);
+    expect(acc.suppressed).toBe(true);
+    expect(acc.disposition).toBe('accept');
+    expect(acc.note).toMatch(/public token/);
+    // The other dead token re-surfaces, untouched.
+    const other = second.findings.find((f) => f.fingerprint === 'dead-token:--also-gone');
+    expect(other.suppressed).toBe(false);
+    expect(other.disposition).toBe('open');
+    // Counts reflect only the active (surfaced) findings.
+    expect(second.summary.findingCount).toBe(second.findings.filter((f) => !f.suppressed).length);
+    expect(second.summary.suppressedCount).toBe(1);
+  });
+
+  it('keeps a finding’s fingerprint stable when unrelated findings shift the Fn ids', () => {
+    const one = analyze({ root: fixture({ 'a.css': ':root{--gone:#000}' }), slug: 'a', exclude: [], top: 10 });
+    // Add another dead token BEFORE it — shifts Fn numbering, not the fingerprint.
+    const two = analyze({ root: fixture({ 'a.css': ':root{--aaa-first:#111;--gone:#000}' }), slug: 'b', exclude: [], top: 10 });
+    const fp1 = one.findings.find((x) => x.title.includes('--gone')).fingerprint;
+    const fp2 = two.findings.find((x) => x.title.includes('--gone')).fingerprint;
+    expect(fp1).toBe(fp2);
+    // Fingerprints are unique per distinct finding.
+    const all = two.findings.map((x) => x.fingerprint);
+    expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+describe('conventions curation (#24)', () => {
+  // Dispositions persist to the versioned conventions file. Recording merges —
+  // it never clobbers a human's prior decisions on other findings.
+  it('records dispositions without clobbering prior ones', () => {
+    let conv = emptyConventions('proj');
+    conv = recordDispositions(conv, [{ fingerprint: 'dead-token:--a', disposition: 'accept', note: 'public api' }], { date: '2026-07-10' });
+    conv = recordDispositions(conv, [{ fingerprint: 'near-duplicate:--x,--y', disposition: 'fix' }], { date: '2026-07-10' });
+    expect(Object.keys(conv.dispositions).sort()).toEqual(['dead-token:--a', 'near-duplicate:--x,--y']);
+    expect(conv.dispositions['dead-token:--a'].note).toBe('public api');
+    expect(conv.dispositions['dead-token:--a'].recordedAt).toBe('2026-07-10');
+    expect(conv.conventionsVersion).toBe(CONVENTIONS_VERSION);
+  });
+
+  it('replaces an earlier record for the same fingerprint', () => {
+    let conv = recordDispositions(null, [{ fingerprint: 'dead-token:--a', disposition: 'accept' }]);
+    conv = recordDispositions(conv, [{ fingerprint: 'dead-token:--a', disposition: 'fix' }]);
+    expect(conv.dispositions['dead-token:--a'].disposition).toBe('fix');
+  });
+
+  it('does not mutate the input conventions object', () => {
+    const before = emptyConventions('p');
+    const snapshot = JSON.stringify(before);
+    recordDispositions(before, [{ fingerprint: 'dead-token:--z', disposition: 'accept' }]);
+    expect(JSON.stringify(before)).toBe(snapshot);
+  });
+
+  it('rejects an entry with no fingerprint or an unknown disposition', () => {
+    expect(() => recordDispositions(null, [{ disposition: 'accept' }])).toThrow();
+    expect(() => recordDispositions(null, [{ fingerprint: 'x:y', disposition: 'maybe' }])).toThrow();
+  });
+});
+
 describe('near-duplicate axis', () => {
   // Tokens whose VALUES are nearly (not exactly) the same — the juiciest
   // consolidation leads. Clustered per value type by proximity: colour distance,
@@ -406,6 +498,44 @@ describe('build_report schema contract', () => {
     expect(md).toMatch(/hardcod/i); // reports the hardcode ratio
     expect(md).toContain('## Fallback usage');
     expect(md).toMatch(/literal|token/); // names a fallback kind
+  });
+
+  it('renders active findings and lists accepted findings as suppressed exceptions', () => {
+    const dir = fixture({ 'a.css': ':root{--gone:#000;--also-gone:#111}' });
+    const first = analyze({ root: dir, slug: 'e1', exclude: [], top: 10 });
+    void first;
+    const convPath = join(dir, 'conventions.json');
+    writeFileSync(
+      convPath,
+      JSON.stringify({
+        conventionsVersion: '1.0.0',
+        dispositions: { 'dead-token:--gone': { disposition: 'accept', note: 'intentional public token', title: 'Dead token `--gone`' } },
+      })
+    );
+    const audit = analyze({ root: dir, slug: 'e2', exclude: [], top: 10, conventions: convPath });
+    const md = renderReport(audit);
+    expect(md).toContain('Accepted exceptions');
+    expect(md).toContain('intentional public token'); // the note surfaces
+    expect(md).toContain('dead-token:--gone'); // the accepted fingerprint
+    // The still-active dead token is in the main findings listing.
+    expect(md).toContain('--also-gone');
+  });
+
+  it('renders a readable conventions view grouping accepted and fix dispositions', () => {
+    const conv = recordDispositions(
+      emptyConventions('proj'),
+      [
+        { fingerprint: 'dead-token:--a', disposition: 'accept', note: 'api', title: 'Dead token --a' },
+        { fingerprint: 'tier-leak:backward:--x->--y', disposition: 'fix' },
+      ],
+      { date: '2026-07-10' }
+    );
+    const md = renderConventions(conv);
+    expect(md).toContain('# CSS token audit — conventions');
+    expect(md).toMatch(/Accepted/);
+    expect(md).toMatch(/Fix/);
+    expect(md).toContain('dead-token:--a');
+    expect(md).toContain('api');
   });
 
   it('renders the near-duplicates section with the consolidation clusters', () => {

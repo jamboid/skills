@@ -52,7 +52,8 @@ Current: **`1.0.0`**.
     "cascadeSmellCount": 0,    // cascade-smell findings
     "hardcodeRatio":     0.41,  // share of tokenizable declarations that are raw literals (#22)
     "nearDuplicateCount":2,     // near-duplicate token clusters (#23)
-    "findingCount":      11
+    "findingCount":      11,    // SURFACED findings (suppressed excluded)
+    "suppressedCount":   2       // findings accepted via the conventions file (#24)
   },
 
   "model": {
@@ -250,15 +251,20 @@ Current: **`1.0.0`**.
   // confidence, location(s), evidence. Ordered by type then discovery.
   "findings": [
     {
-      "id":         "F1",              // stable Fn id, render order
-      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode | near-duplicate
-      "basis":      "universal",       // universal | convention | house-rule
-      "confidence": "medium",          // high | medium | low
-      "title":      "Dead token `--clr-blue` — defined but never referenced",
+      "id":          "F1",             // render-order id (NOT stable across runs)
+      "type":        "dead-token",     // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode | near-duplicate
+      "subject":     "--clr-blue",     // the finding's identity within its type
+      "fingerprint": "dead-token:--clr-blue", // STABLE `type:subject` — the conventions key (#24)
+      "basis":       "universal",      // universal | convention | house-rule
+      "confidence":  "medium",         // high | medium | low
+      "disposition": "open",           // open (uncurated) | accept | fix — set from the conventions file
+      "suppressed":  false,            // true when disposition==accept — excluded from findingCount + main report listing
+      "note":        null,             // the human's note from the conventions file, if any
+      "title":       "Dead token `--clr-blue` — defined but never referenced",
       // Each location leads with the selector (the defining scope here) so it
       // stays useful on minified CSS where line is always 1.
-      "locations":  [ { "selector": ":root", "atScope": null, "file": "assets/jbdn.css", "line": 1 } ],
-      "evidence":   "…why this was flagged, in plain words."
+      "locations":   [ { "selector": ":root", "atScope": null, "file": "assets/jbdn.css", "line": 1 } ],
+      "evidence":    "…why this was flagged, in plain words."
     }
   ],
 
@@ -292,6 +298,50 @@ Current: **`1.0.0`**.
 | `near-duplicate` | universal | `high`\|`medium`\|`low` | A cluster of tokens whose raw values are **nearly** (not exactly) the same — a consolidation lead. Per-value-type proximity: colour distance in RGBA, numeric relative proximity for lengths. Restricted to distinctive values (a colour, or a non-zero size-unit length) so coincidental `1fr`/`100%`/keyword matches don't fire. Confidence tracks **closeness** — an identical/near-exact cluster is high, one approaching the type threshold is low (the further apart, the likelier the difference is intentional). |
 
 `convention`-basis findings **cite the norm** they're measured against, per the PRD.
+
+## Conventions file (the propose/dispose feedback loop, #24)
+
+The audit *proposes* findings; a human *disposes* of each one. Dispositions
+persist to a **versioned, human-readable conventions file** — the audit's **4th
+input** (alongside the CSS tree, the CLI flags, and `notes.md`). It is the only
+new **human-editable** input; `audit.json` and the report stay **generated**.
+
+Two dispositions in this slice:
+
+- **`accept`** — a local exception; suppress **this instance** of the finding
+  (`suppressed: true`, excluded from `findingCount` and the main report listing,
+  shown under "Accepted exceptions"). Narrow — it keys on the exact fingerprint.
+- **`fix`** — a real problem; leave it flagged (a refactor lead). Recorded so the
+  triage is complete/auditable, but it does not change surfacing.
+
+Dispositions key on a finding's **stable `fingerprint`** (`type:subject`), never
+its render-order `Fn` id — so an accepted finding stays matched as other findings
+come and go. Re-running the audit with `--conventions <file>` reads it: accepted
+instances stay quiet; everything else re-surfaces.
+
+```jsonc
+{
+  "conventionsVersion": "1.0.0",       // versioned contract (CONVENTIONS_VERSION)
+  "project": "jbdn",
+  "dispositions": {                    // keyed by finding fingerprint
+    "dead-token:--clr-blue": {
+      "disposition": "accept",         // accept | fix
+      "note":        "deliberate public-API token",  // optional human note
+      "title":       "Dead token `--clr-blue` …",    // finding title for context
+      "recordedAt":  "2026-07-10"
+    }
+  }
+}
+```
+
+Written/updated by `curate` (`conventions.mjs`), which **merges** — it never
+clobbers prior human decisions on other findings. A rendered `conventions.md`
+companion view is optional (`--md`). The JSON stays the source of truth.
+
+```
+node conventions.mjs --conventions conventions.json --audit audit.json \
+     --accept <fingerprint> --note "why" [--fix <fingerprint>]... [--md conventions.md]
+```
 
 ## Parse coverage (correctness caveat)
 
@@ -327,6 +377,7 @@ one). `audit.doubling` is `null` when nothing systemic is found.
 
 ## Bundled files
 
-- `scripts/analyze.mjs` — parser + graph + fan-in/fan-out axis + findings → `audit.json`.
+- `scripts/analyze.mjs` — parser + graph + all axes + findings → `audit.json`; reads the conventions file (`--conventions`) as the 4th input.
 - `scripts/build_report.mjs` — renders `audit.json` → Markdown (refuses incompatible major).
-- `notes-template.md` — copied to `notes.md` by `init`; the human-editable input.
+- `scripts/conventions.mjs` — the propose/dispose feedback loop: `loadConventions` / `applyConventions` (read by analyze) + the `curate` CLI (`recordDispositions` / `renderConventions`).
+- `notes-template.md` — copied to `notes.md` by `init`; a human-editable input.
