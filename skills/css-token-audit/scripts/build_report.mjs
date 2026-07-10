@@ -50,9 +50,28 @@ export function assertSchema(audit) {
 
 const code = (s) => '`' + s + '`';
 
+/** Render one location, preferring the selector (survives minification) and
+ *  keeping file:line as a secondary hint. */
+function fmtLocation(l) {
+  const parts = [];
+  if (l.selector) parts.push(code(l.selector));
+  if (l.atScope) parts.push(`in ${code(l.atScope)}`);
+  const fileLine = l.file ? `${l.file}:${l.line ?? '?'}` : null;
+  if (fileLine) parts.push(parts.length ? `(${fileLine})` : code(fileLine));
+  return parts.join(' ') || '_no location_';
+}
+
 function fmtLocations(locations) {
   if (!locations || !locations.length) return '_no location_';
-  return locations.map((l) => code(`${l.file}:${l.line ?? '?'}`)).join(', ');
+  return locations.map(fmtLocation).join(', ');
+}
+
+/** Compact list of the selectors that consume a token. */
+function fmtUsedIn(usedIn, total) {
+  if (!usedIn || !usedIn.length) return '';
+  const shown = usedIn.map((u) => code(u.selector)).join(', ');
+  const more = total > usedIn.length ? `, +${total - usedIn.length} more` : '';
+  return `${shown}${more}`;
 }
 
 export function renderReport(audit) {
@@ -130,9 +149,14 @@ export function renderReport(audit) {
   if (axis.loadBearing.length) {
     L.push(`### Load-bearing tokens (top ${axis.loadBearing.length} by fan-in)`);
     L.push('');
-    L.push('| Token | Fan-in | Fan-out |');
-    L.push('| --- | ---: | ---: |');
-    for (const t of axis.loadBearing) L.push(`| ${code(t.name)} | ${t.fanIn} | ${t.fanOut} |`);
+    L.push('Each shows fan-in / fan-out and a sample of the selectors that consume it ' +
+      '(`var --token` means it feeds another token). Selectors survive minification where ' +
+      'line numbers don\'t.');
+    L.push('');
+    for (const t of axis.loadBearing) {
+      const used = fmtUsedIn(t.usedIn, t.usedInCount);
+      L.push(`- ${code(t.name)} — fan-in ${t.fanIn}, fan-out ${t.fanOut}${used ? ` — used in ${used}` : ''}`);
+    }
     L.push('');
   }
 

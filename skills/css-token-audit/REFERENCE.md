@@ -51,7 +51,13 @@ Current: **`1.0.0`**.
       // (naming, tiers, scope&cascade, coverage, fallback) without breaking v1.
       "fanInOut": {
         "tokenCount":  53,
-        "loadBearing": [ { "name": "--theme-accent", "fanIn": 17, "fanOut": 1 } ], // top N by fan-in
+        "loadBearing": [
+          { "name": "--theme-accent", "fanIn": 17, "fanOut": 1,
+            // sample of consuming selectors, most-frequent first, capped at 6;
+            // usedInCount is the full distinct-selector total.
+            "usedIn": [ { "selector": ".b_button", "atScope": null, "count": 3 } ],
+            "usedInCount": 9 }
+        ],
         "dead":        [ "--clr-blue", "..." ],   // fanIn === 0
         "oneOff":      [ "--base-font", "..." ],   // fanIn === 1
         "undefinedReferences": [ { "name": "--text-h1", "fanIn": 1 } ] // used, never defined
@@ -67,12 +73,18 @@ Current: **`1.0.0`**.
         "fanIn":    17,
         "fanOut":   1,
         "referencedTokens": [ "--clr-pink" ],           // tokens this one uses in its value(s)
+        // distinct selectors that consume this token, most-frequent first.
+        // `var --x` means it feeds another token's value. The location signal
+        // that survives minification (line collapses to 1; the selector doesn't).
+        "usedIn": [ { "selector": ".b_button", "atScope": null, "count": 3 } ],
         "definitions": [
           { "value": "#e91e63", "scope": ":root", "atScope": null, "file": "assets/jbdn.css", "line": 1 }
         ],
         "references": [
-          { "inProperty": "color", "file": "assets/jbdn.css", "line": 1, "owner": null }
-          // owner = the custom property whose value holds this var(), or null in a normal declaration
+          { "inProperty": "color", "scope": ".b_button", "atScope": null, "owner": null,
+            "file": "assets/jbdn.css", "line": 1 }
+          // scope  = the selector this var() sits under.
+          // owner  = the custom property whose value holds this var(), or null in a normal declaration.
         ]
       }
     ]
@@ -87,7 +99,9 @@ Current: **`1.0.0`**.
       "basis":      "universal",       // universal | convention | house-rule
       "confidence": "medium",          // high | medium | low
       "title":      "Dead token `--clr-blue` — defined but never referenced",
-      "locations":  [ { "file": "assets/jbdn.css", "line": 1 } ],
+      // Each location leads with the selector (the defining scope here) so it
+      // stays useful on minified CSS where line is always 1.
+      "locations":  [ { "selector": ":root", "atScope": null, "file": "assets/jbdn.css", "line": 1 } ],
       "evidence":   "…why this was flagged, in plain words."
     }
   ],

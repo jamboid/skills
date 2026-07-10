@@ -72,13 +72,29 @@ describe('analyze', () => {
     expect(axis.oneOff).toContain('--base'); // referenced exactly once
   });
 
-  it('emits a dead-token finding, universal basis', () => {
+  it('emits a dead-token finding, universal basis, with the defining selector', () => {
     const dir = fixture({ 'a.css': ':root{--gone:#000}' });
     const audit = analyze({ root: dir, slug: 'd', exclude: [], top: 10 });
     const f = audit.findings.find((x) => x.type === 'dead-token');
     expect(f.basis).toBe('universal');
     expect(f.title).toContain('--gone');
     expect(f.locations[0].file).toBe('a.css');
+    expect(f.locations[0].selector).toBe(':root'); // where it's defined
+  });
+
+  it('records the selectors that consume a token (survives minification)', () => {
+    const dir = fixture({
+      'a.css': ':root{--brand:#f0f;--heading:var(--brand)} .btn{color:var(--brand)} .card{border-color:var(--brand)}',
+    });
+    const audit = analyze({ root: dir, slug: 'u', exclude: [], top: 10 });
+    const brand = audit.model.tokens.find((t) => t.name === '--brand');
+    const selectors = brand.usedIn.map((u) => u.selector);
+    expect(selectors).toContain('.btn');
+    expect(selectors).toContain('.card');
+    expect(selectors).toContain('var --heading'); // used inside another token's value
+    // Load-bearing entry carries the same sample + a total count.
+    const lb = audit.model.axes.fanInOut.loadBearing.find((t) => t.name === '--brand');
+    expect(lb.usedInCount).toBe(3);
   });
 
   it('flags exact-duplicate definitions in one scope, not cross-value overrides', () => {

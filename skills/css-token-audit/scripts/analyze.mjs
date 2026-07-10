@@ -200,6 +200,8 @@ function extractFacts(css, relPath, defs, refs, parseErrors) {
             name: first.name,
             owner: isCustomProp ? node.property : null, // token that references it, if any
             inProperty: node.property,
+            scope, // the selector this var() is used under — survives minification
+            atScope,
             file: relPath,
             line: fn.loc ? fn.loc.start.line : line,
           });
@@ -207,6 +209,26 @@ function extractFacts(css, relPath, defs, refs, parseErrors) {
       });
     },
   });
+}
+
+/**
+ * Roll a token's references up into the distinct selectors that consume it,
+ * most-frequent first. This is the location signal that survives minification:
+ * a compiled build collapses every line to 1, but the selector a `var()` sits
+ * under is intact. A reference inside another token's value (owner set) is
+ * attributed to `var --owner` rather than a page selector.
+ */
+function computeUsedIn(references) {
+  const byKey = new Map();
+  for (const r of references) {
+    const selector = r.owner ? `var ${r.owner}` : r.scope;
+    const key = `${r.atScope || ''}||${selector}`;
+    if (!byKey.has(key)) byKey.set(key, { selector, atScope: r.atScope || null, count: 0 });
+    byKey.get(key).count += 1;
+  }
+  return [...byKey.values()].sort(
+    (a, b) => b.count - a.count || a.selector.localeCompare(b.selector)
+  );
 }
 
 // ── Model + findings ───────────────────────────────────────────────────────
@@ -240,11 +262,21 @@ function buildModel(defs, refs) {
   for (const r of refs) {
     const t = tokenOf(r.name); // referenced token (may be defined elsewhere or undefined)
     t.fanIn += 1;
-    t.references.push({ inProperty: r.inProperty, file: r.file, line: r.line, owner: r.owner });
+    t.references.push({
+      inProperty: r.inProperty,
+      scope: r.scope,
+      atScope: r.atScope,
+      owner: r.owner,
+      file: r.file,
+      line: r.line,
+    });
     if (r.owner) tokenOf(r.owner).referencedTokens.add(r.name);
   }
 
-  for (const t of tokens.values()) t.fanOut = t.referencedTokens.size;
+  for (const t of tokens.values()) {
+    t.fanOut = t.referencedTokens.size;
+    t.usedIn = computeUsedIn(t.references); // selectors that consume this token
+  }
 
   // A token is "defined" if it has ≥1 definition. Referenced-but-undefined
   // names are surfaced separately (a dangling var reference).
@@ -256,7 +288,13 @@ function buildModel(defs, refs) {
   const loadBearing = [...defined]
     .filter((t) => t.fanIn > 0)
     .sort((a, b) => b.fanIn - a.fanIn || a.name.localeCompare(b.name))
-    .map((t) => ({ name: t.name, fanIn: t.fanIn, fanOut: t.fanOut }));
+    .map((t) => ({
+      name: t.name,
+      fanIn: t.fanIn,
+      fanOut: t.fanOut,
+      usedIn: t.usedIn.slice(0, 6), // sample of consuming selectors
+      usedInCount: t.usedIn.length, // distinct consuming selectors
+    }));
 
   return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing };
 }
@@ -270,6 +308,7 @@ function serializeTokens(defined) {
       fanIn: t.fanIn,
       fanOut: t.fanOut,
       referencedTokens: [...t.referencedTokens].sort(),
+      usedIn: t.usedIn,
       definitions: t.definitions,
       references: t.references,
     }));
@@ -293,7 +332,12 @@ function buildFindings(model) {
       basis: 'universal',
       confidence: 'medium',
       title: `Dead token \`${name}\` — defined but never referenced`,
-      locations: t.definitions.map((d) => ({ file: d.file, line: d.line })),
+      locations: t.definitions.map((d) => ({
+        selector: d.scope,
+        atScope: d.atScope,
+        file: d.file,
+        line: d.line,
+      })),
       evidence: `${name} is defined ${t.definitions.length}× but has zero \`var()\` references in the parsed CSS. (Static scope: consumption via inline styles or JS is not visible.)`,
     });
   }
@@ -317,7 +361,12 @@ function buildFindings(model) {
         basis: 'universal',
         confidence: 'high',
         title: `Exact-duplicate definition of \`${t.name}\` in one scope`,
-        locations: group.map((d) => ({ file: d.file, line: d.line })),
+        locations: group.map((d) => ({
+          selector: d.scope,
+          atScope: d.atScope,
+          file: d.file,
+          line: d.line,
+        })),
         evidence: `${t.name} is defined ${group.length}× with the identical value \`${group[0].value}\` under scope \`${group[0].scope}\`${group[0].atScope ? ` (${group[0].atScope})` : ''} — the later definitions are redundant.`,
       });
     }
