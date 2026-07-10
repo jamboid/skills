@@ -76,6 +76,39 @@ function isComponentScope(scope) {
   return /\.[a-zA-Z_-]/.test(scope || '');
 }
 
+/** Component scope for the cascade axis — broader than `isComponentScope`:
+ *  also matches attribute-class selectors (`[class*=b_prose]`) that name a
+ *  block without a literal `.`. Kept separate so the coarse naming/layering
+ *  `tier` split (which reads `isComponentScope`) is unchanged. */
+function isComponentSelector(scope) {
+  return isComponentScope(scope) || /\[class[*^$~|]?=/.test(scope || '');
+}
+
+/** A root-level VARIANT selector — a conditional re-scoping of root tokens for a
+ *  theme/state (`[data-theme=dark]`, `.dark`, `.theme-x`, `:root[data-…]`),
+ *  distinct from an unconditional `:root`/`html`. */
+function isVariantSelector(scope) {
+  const s = scope || '';
+  return /\[data-[a-z-]*(theme|mode|scheme|color)/i.test(s) ||
+    /(^|\s|:root)\.(dark|light|theme[\w-]*)\b/i.test(s) || /:root\s*\[/.test(s);
+}
+
+/**
+ * Classify one definition by the cascade scope it lives in (scope & cascade
+ * axis, #21) — statically, from the selector plus any enclosing @-rule:
+ *   component — under a component/block selector (a class or `[class*=…]`)
+ *   theme     — root-level but CONDITIONAL: a variant selector, or gated by an
+ *               @-rule (`@media prefers-color-scheme`, a breakpoint, …)
+ *   root      — an unconditional `:root`/`html` base value
+ * A token with definitions in several of these is being overridden (see
+ * buildScopeCascadeAxis).
+ */
+function classifyCascadeScope(def) {
+  if (isComponentSelector(def.scope)) return 'component';
+  if (def.atScope || isVariantSelector(def.scope)) return 'theme';
+  return 'root';
+}
+
 /**
  * COARSE tier split — `global` (defined only at root/theme scope) vs `block`
  * (defined under any component selector). Deliberately shallow: full
@@ -496,6 +529,120 @@ function findReferenceCycles(defined, byName) {
   return cycles;
 }
 
+/**
+ * The scope & cascade axis (#21): where each token is defined in the cascade,
+ * where it gets overridden, and how theming is wired — all statically, from the
+ * selector + @-rule structure (no headless browser).
+ *
+ * A token's HOME scope is root if it has any unconditional `:root` base, else
+ * component, else theme. A token with definitions in more than one scope (or
+ * under more than one condition) is being OVERRIDDEN; each override site is
+ * classified by kind:
+ *   theme     — a root base re-defined by conditional root variants (healthy
+ *               theming: `[data-theme]`, `@media prefers-color-scheme`, …)
+ *   component — a root/global base re-defined INSIDE a component (a global
+ *               token given a different meaning locally — the notable smell)
+ *   local     — no root base; defined across several component scopes
+ */
+function buildScopeCascadeAxis(defined) {
+  const scopes = { root: 0, theme: 0, component: 0 };
+  for (const t of defined) {
+    const kinds = new Set(t.definitions.map((d) => d.cascadeScope));
+    const home = kinds.has('root') ? 'root' : kinds.has('component') ? 'component' : 'theme';
+    scopes[home] += 1;
+  }
+
+  const pick = (d) => ({
+    selector: d.scope,
+    atScope: d.atScope,
+    cascadeScope: d.cascadeScope,
+    value: d.value,
+    file: d.file,
+    line: d.line,
+  });
+  const sites = [];
+  let themeVariants = 0;
+  let componentOverrides = 0;
+  let localMultiScope = 0;
+  for (const t of defined) {
+    if (t.definitions.length < 2) continue;
+    const kinds = new Set(t.definitions.map((d) => d.cascadeScope));
+    const hasRoot = kinds.has('root');
+    let kind;
+    if (hasRoot && kinds.has('component')) kind = 'component';
+    else if (hasRoot && kinds.has('theme')) kind = 'theme';
+    else kind = 'local';
+    if (kind === 'theme') themeVariants += 1;
+    else if (kind === 'component') componentOverrides += 1;
+    else localMultiScope += 1;
+
+    // Base = the unconditional root def if any, else the first definition.
+    const base = t.definitions.find((d) => d.cascadeScope === 'root') || t.definitions[0];
+    const overrides = t.definitions.filter((d) => d !== base);
+    sites.push({ name: t.name, kind, base: pick(base), overrides: overrides.map(pick) });
+  }
+  sites.sort((a, b) => a.name.localeCompare(b.name));
+
+  const counts = { theme: themeVariants, component: componentOverrides, local: localMultiScope };
+  const total = themeVariants + componentOverrides + localMultiScope;
+  const norm =
+    total === 0
+      ? 'none'
+      : Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+
+  return {
+    scopes,
+    overrides: {
+      tokenCount: sites.length,
+      themeVariants,
+      componentOverrides,
+      localMultiScope,
+      norm,
+      sites,
+    },
+    theming: buildTheming(defined),
+  };
+}
+
+/**
+ * Static theming approximation: the CONDITIONS under which root-level tokens get
+ * a theme variant, ranked by how many tokens each themes, plus a coarse `style`.
+ * A theme def's condition is its enclosing @-rule if any (`@media prefers-color-
+ * scheme:dark`), else the variant selector (`[data-theme=dark]`). No headless
+ * browser — this is purely the selector/@-rule structure.
+ */
+function buildTheming(defined) {
+  const byCondition = new Map(); // condition -> Set<tokenName>
+  for (const t of defined) {
+    for (const d of t.definitions) {
+      if (d.cascadeScope !== 'theme') continue;
+      const condition = d.atScope || d.scope;
+      if (!byCondition.has(condition)) byCondition.set(condition, new Set());
+      byCondition.get(condition).add(t.name);
+    }
+  }
+  const mechanisms = [...byCondition]
+    .map(([condition, names]) => ({ condition, tokenCount: names.size }))
+    .sort((a, b) => b.tokenCount - a.tokenCount || a.condition.localeCompare(b.condition));
+  const themed = new Set();
+  for (const names of byCondition.values()) for (const n of names) themed.add(n);
+
+  // Classify each mechanism into a family, then name the dominant style. `none`
+  // only when nothing is themed; otherwise every themed mechanism lands in a
+  // family, so `themedTokens > 0` never reads as `none`.
+  const family = (c) =>
+    /prefers-color-scheme/i.test(c) ? 'color-scheme'
+      : isVariantSelector(c) ? 'data-attr'
+        : /@media[^,]*(min-width|max-width)|@container/i.test(c) ? 'responsive'
+          : /prefers-reduced-motion/i.test(c) ? 'motion'
+            : 'other';
+  const families = [...new Set(mechanisms.map((m) => family(m.condition)))];
+  const style =
+    families.length === 0 ? 'none' : families.length > 1 ? 'mixed' : families[0];
+
+  return { mechanisms, themedTokens: themed.size, style };
+}
+
 // ── Model + findings ───────────────────────────────────────────────────────
 function buildModel(defs, refs) {
   // Token registry keyed by name.
@@ -519,6 +666,7 @@ function buildModel(defs, refs) {
       value: d.value,
       scope: d.scope,
       atScope: d.atScope,
+      cascadeScope: classifyCascadeScope(d),
       file: d.file,
       line: d.line,
     });
@@ -566,8 +714,9 @@ function buildModel(defs, refs) {
 
   const naming = buildNamingAxis(defined);
   const layering = buildLayeringAxis(defined, tokens);
+  const scopeCascade = buildScopeCascadeAxis(defined);
 
-  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering };
+  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade };
 }
 
 /** Serialize the token registry to plain JSON (facts embedded for later slices). */
@@ -642,6 +791,83 @@ function buildFindings(model) {
           line: d.line,
         })),
         evidence: `${t.name} is defined ${group.length}× with the identical value \`${group[0].value}\` under scope \`${group[0].scope}\`${group[0].atScope ? ` (${group[0].atScope})` : ''} — the later definitions are redundant.`,
+      });
+    }
+  }
+
+  // Shadowed definition (scope & cascade axis, #21). The same token defined ≥2×
+  // under the IDENTICAL (selector, at-rule) scope but with DIFFERENT values:
+  // source order alone decides the winner, so the earlier definition(s) can never
+  // win — dead code, provable from the AST. Universal. (Same value → an
+  // exact-duplicate; a different scope → a legitimate override, not this.)
+  for (const t of model.defined) {
+    const groups = new Map();
+    for (const d of t.definitions) {
+      const key = `${d.atScope || ''}||${d.scope}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(d);
+    }
+    for (const [, group] of groups) {
+      if (group.length < 2) continue;
+      const values = new Set(group.map((d) => d.value));
+      if (values.size < 2) continue; // identical → exact-duplicate handles it
+      const winner = group[group.length - 1];
+      const shadowed = group.slice(0, -1);
+      findings.push({
+        id: nextId(),
+        type: 'cascade-smell',
+        basis: 'universal',
+        confidence: 'high',
+        title: `Shadowed definition of \`${t.name}\` — an earlier value can never win`,
+        locations: group.map((d) => ({
+          selector: d.scope,
+          atScope: d.atScope,
+          file: d.file,
+          line: d.line,
+        })),
+        evidence:
+          `${t.name} is defined ${group.length}× under the identical scope \`${winner.scope}\`` +
+          `${winner.atScope ? ` (${winner.atScope})` : ''} with differing values ` +
+          `(${[...values].map((v) => `\`${v}\``).join(', ')}). Source order alone decides: ` +
+          `\`${winner.value}\` wins and ${shadowed.map((d) => `\`${d.value}\``).join(', ')} ` +
+          `${shadowed.length === 1 ? 'is' : 'are'} unreachable dead code.`,
+      });
+    }
+  }
+
+  // Stray override (scope & cascade axis, #21). A global/root token redefined
+  // INSIDE a component gives it a different meaning locally, fighting the global
+  // cascade. Only a smell where THEMING is the codebase's override norm (globals
+  // are otherwise re-scoped only via theme variants) — cite that norm. On a
+  // codebase that overrides locally by habit (norm component/local) it is the
+  // house style, not a smell. Low confidence: a local override may be deliberate.
+  const sc = model.scopeCascade;
+  if (sc.overrides.norm === 'theme') {
+    const themeShare = sc.overrides.tokenCount
+      ? Math.round((sc.overrides.themeVariants / sc.overrides.tokenCount) * 100)
+      : 0;
+    for (const site of sc.overrides.sites) {
+      if (site.kind !== 'component') continue;
+      const compDefs = site.overrides.filter((o) => isComponentSelector(o.selector));
+      if (!compDefs.length) continue;
+      const selectors = compDefs.map((o) => `\`${o.selector}\``).join(', ');
+      findings.push({
+        id: nextId(),
+        type: 'cascade-smell',
+        basis: 'convention',
+        confidence: 'low',
+        title: `Stray override: global \`${site.name}\` redefined inside ${selectors}`,
+        locations: compDefs.map((o) => ({
+          selector: o.selector,
+          atScope: o.atScope,
+          file: o.file,
+          line: o.line,
+        })),
+        evidence:
+          `${themeShare}% of this codebase's overrides are theme variants (globals re-scoped ` +
+          `only for a theme), but \`${site.name}\` is a global redefined inside a component ` +
+          `(${selectors}) with value \`${compDefs[0].value}\` — a local meaning that deviates ` +
+          `from the theming norm.`,
       });
     }
   }
@@ -811,6 +1037,9 @@ function analyze({ root, slug, exclude, top }) {
       tierCount: model.layering.tierCount,
       flowDirection: model.layering.flow.direction,
       tierLeakCount: findings.filter((f) => f.type === 'tier-leak').length,
+      overrideCount: model.scopeCascade.overrides.tokenCount,
+      themingStyle: model.scopeCascade.theming.style,
+      cascadeSmellCount: findings.filter((f) => f.type === 'cascade-smell').length,
       findingCount: findings.length,
     },
     model: {
@@ -830,6 +1059,7 @@ function analyze({ root, slug, exclude, top }) {
           tierCount: model.layering.tierCount,
           flow: model.layering.flow,
         },
+        scopeCascade: model.scopeCascade,
       },
       tokens: serializeTokens(model.defined),
     },

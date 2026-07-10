@@ -177,6 +177,23 @@ describe('build_report schema contract', () => {
     expect(md).toMatch(/primitive.*semantic.*component/); // shows the flow direction
   });
 
+  it('renders the scope & cascade section with scopes, overrides and theming', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--clr-ink:#111;--theme-bg:#fff}' +
+        '[data-theme=dark]{--theme-bg:#000}' +
+        '@media (prefers-color-scheme:dark){:root{--theme-bg:#000}}' +
+        ' .b_card{--card-gap:1rem;color:var(--theme-bg)}',
+    });
+    const audit = analyze({ root: dir, slug: 'sc', exclude: [], top: 10 });
+    const md = renderReport(audit);
+    expect(md).toContain('## Scope & cascade');
+    expect(md).toMatch(/root/); // names the scopes
+    expect(md).toMatch(/[Oo]verride/); // reports override sites
+    expect(md).toMatch(/[Tt]heming/); // the theming approximation
+    expect(md).toMatch(/data-theme|prefers-color-scheme/); // a concrete mechanism
+  });
+
   it('renders the naming taxonomy section with per-tier grammar + consistency', () => {
     const dir = fixture({
       'a.css': ':root{--clr-a:#1;--clr-b:#2;--fs-a:1rem} .b_card{--card-x:1;--card-y:2}',
@@ -350,5 +367,133 @@ describe('layering / tiers axis', () => {
     const audit = analyze({ root: dir, slug: 'dir', exclude: [], top: 10 });
     expect(audit.model.axes.layering.flow.norm).toBe('direct');
     expect(audit.findings.some((f) => f.type === 'tier-leak')).toBe(false);
+  });
+});
+
+describe('scope & cascade axis', () => {
+  // Each DEFINITION is classified by the cascade scope it lives in — statically,
+  // from the selector + any enclosing @-rule:
+  //   root      — unconditional :root / html (the base value)
+  //   theme     — root-level but CONDITIONAL: a variant selector ([data-theme=…])
+  //               or an @-rule (@media prefers-color-scheme / breakpoint)
+  //   component — under a component (class / [class*=…]) selector
+  // Orthogonal to the coarse `tier` (global/block) — a token can hold defs in
+  // several cascade scopes (that is exactly what an override is).
+  const themed = {
+    'a.css':
+      ':root{--clr-ink:#111;--theme-bg:#fff}' +
+      '[data-theme=dark]{--theme-bg:#000}' +
+      '@media (prefers-color-scheme:dark){:root{--theme-bg:#000}}' +
+      ' .b_card{--card-gap:1rem;color:var(--theme-bg)}',
+  };
+
+  it('classifies each definition by cascade scope: root / theme / component', () => {
+    const dir = fixture(themed);
+    const audit = analyze({ root: dir, slug: 'sc', exclude: [], top: 10 });
+    const byName = Object.fromEntries(audit.model.tokens.map((t) => [t.name, t]));
+    // Unconditional :root base.
+    expect(byName['--clr-ink'].definitions[0].cascadeScope).toBe('root');
+    // --theme-bg has a root base + two conditional variants (attr + media).
+    const bgScopes = byName['--theme-bg'].definitions.map((d) => d.cascadeScope).sort();
+    expect(bgScopes).toEqual(['root', 'theme', 'theme']);
+    // Component-scoped local.
+    expect(byName['--card-gap'].definitions[0].cascadeScope).toBe('component');
+  });
+
+  it('reports scope counts and override sites', () => {
+    const dir = fixture(themed);
+    const audit = analyze({ root: dir, slug: 'sc', exclude: [], top: 10 });
+    const sc = audit.model.axes.scopeCascade;
+    // Per-token home scope (root if it has any unconditional :root base).
+    expect(sc.scopes.root).toBe(2); // --clr-ink, --theme-bg
+    expect(sc.scopes.component).toBe(1); // --card-gap
+    // --theme-bg is the one overridden token: a root base + 2 theme variants.
+    expect(sc.overrides.tokenCount).toBe(1);
+    expect(sc.overrides.themeVariants).toBe(1);
+    const site = sc.overrides.sites.find((s) => s.name === '--theme-bg');
+    expect(site.kind).toBe('theme');
+    expect(site.overrides.length).toBe(2); // the two conditional variants
+    // The dominant override kind on this codebase.
+    expect(sc.overrides.norm).toBe('theme');
+  });
+
+  it('approximates the theming wiring: mechanisms + a style', () => {
+    const dir = fixture(themed);
+    const audit = analyze({ root: dir, slug: 'sc', exclude: [], top: 10 });
+    const th = audit.model.axes.scopeCascade.theming;
+    expect(th.themedTokens).toBe(1); // --theme-bg
+    const conditions = th.mechanisms.map((m) => m.condition);
+    expect(conditions).toContain('[data-theme=dark]');
+    expect(conditions.some((c) => /prefers-color-scheme/.test(c))).toBe(true);
+    // Two mechanism families (a color-scheme media query + a data-attr toggle).
+    expect(th.style).toBe('mixed');
+  });
+
+  // Guard: a variant family that isn't colour theming (reduced-motion token
+  // swaps, wattage's shape) is still theming — style must name it, never read
+  // 'none' while tokens vary conditionally.
+  it('names a non-colour variant family rather than reporting no theming', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--motion:0.3s}@media (prefers-reduced-motion:no-preference){:root{--motion:0.3s}}' +
+        ':root{--dur:1s}@media (prefers-reduced-motion:no-preference){:root{--dur:0s}}',
+    });
+    const audit = analyze({ root: dir, slug: 'mo', exclude: [], top: 10 });
+    const th = audit.model.axes.scopeCascade.theming;
+    expect(th.themedTokens).toBeGreaterThan(0);
+    expect(th.style).not.toBe('none'); // a themed codebase is never 'none'
+    expect(th.style).toBe('motion');
+  });
+
+  it('emits a universal cascade-smell for a shadowed definition (same scope, different value)', () => {
+    // Two values for --x under the identical scope: source order decides, so the
+    // first can NEVER win — dead code, provable from the AST. Distinct from an
+    // exact-duplicate (identical value) and from a legitimate cross-scope override.
+    const dir = fixture({ 'a.css': ':root{--x:red;--x:blue}' });
+    const audit = analyze({ root: dir, slug: 'sh', exclude: [], top: 10 });
+    const f = audit.findings.find((x) => x.type === 'cascade-smell' && x.basis === 'universal');
+    expect(f.confidence).toBe('high');
+    expect(f.title.toLowerCase()).toMatch(/shadow|never win|unreachable/);
+    expect(f.evidence).toContain('--x');
+    // Not misreported as an exact-duplicate (values differ).
+    expect(audit.findings.some((x) => x.type === 'exact-duplicate')).toBe(false);
+  });
+
+  it('flags a component overriding a global token only when theming is the override norm', () => {
+    // Two globals are re-themed via a variant (theme is the override norm); one
+    // global is instead redefined inside a component — a deviation from the norm.
+    const dir = fixture({
+      'a.css':
+        ':root{--theme-bg:#fff;--theme-text:#111;--brand:#f00}' +
+        '[data-theme=dark]{--theme-bg:#000;--theme-text:#eee}' +
+        ' .b_card{--brand:#00f}',
+    });
+    const audit = analyze({ root: dir, slug: 'st', exclude: [], top: 10 });
+    expect(audit.model.axes.scopeCascade.overrides.norm).toBe('theme');
+    const f = audit.findings.find(
+      (x) => x.type === 'cascade-smell' && x.title.includes('--brand')
+    );
+    expect(f.basis).toBe('convention'); // judged against the codebase's own norm
+    expect(f.confidence).toBe('low'); // a local override may be intentional
+    expect(f.title).toContain('.b_card');
+    expect(f.evidence).toMatch(/theme/); // cites the theming norm
+  });
+
+  // Guard (green-critical): a codebase whose overrides are mostly component /
+  // local (wattage's shape) must NOT flag component overrides — there, a local
+  // redefinition IS the house style, not a smell.
+  it('does not flag a component override when local/component overriding is the norm', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--brand:#f00}' +
+        ' .b_a{--x:1} .b_a{--x:2px}' + // treated as local multi-scope shapes
+        ' .b_b{--y:1} .b_c{--y:2}' +
+        ' .b_card{--brand:#00f}', // a component override, but norm is not theme
+    });
+    const audit = analyze({ root: dir, slug: 'nt', exclude: [], top: 10 });
+    expect(audit.model.axes.scopeCascade.overrides.norm).not.toBe('theme');
+    expect(audit.findings.some((f) => f.type === 'cascade-smell' && f.title.includes('--brand'))).toBe(
+      false
+    );
   });
 });

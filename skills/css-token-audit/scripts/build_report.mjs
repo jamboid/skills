@@ -144,6 +144,45 @@ function renderLayering(L, layering) {
   L.push('');
 }
 
+/** Render the scope & cascade axis: where tokens are defined in the cascade,
+ *  where they get overridden, and the static theming approximation. */
+function renderScopeCascade(L, sc) {
+  const { scopes, overrides, theming } = sc;
+  L.push('## Scope & cascade');
+  L.push('');
+  L.push(
+    'Where each token lives in the cascade — an unconditional `:root` **root** base, a ' +
+      'conditional **theme** variant (`[data-theme=…]`, `@media prefers-color-scheme`, a ' +
+      'breakpoint), or a **component**-scoped local — plus where values get overridden and how ' +
+      'theming is wired. All static, from selectors + `@`-rules (no headless browser).'
+  );
+  L.push('');
+  L.push(
+    `- **Home scope:** ${scopes.root} root, ${scopes.theme} theme, ${scopes.component} component`
+  );
+  const oNorm =
+    overrides.norm === 'none'
+      ? 'no overrides'
+      : `mostly ${overrides.norm === 'theme' ? 'theme variants' : overrides.norm === 'component' ? 'component overrides' : 'local multi-scope'}`;
+  L.push(
+    `- **Overridden tokens:** ${overrides.tokenCount} (${overrides.themeVariants} theme, ` +
+      `${overrides.componentOverrides} component, ${overrides.localMultiScope} local) — ${oNorm}`
+  );
+  const styleNote =
+    theming.style === 'none'
+      ? 'none detected'
+      : theming.style === 'mixed'
+        ? 'mixed (more than one mechanism)'
+        : theming.style;
+  L.push(`- **Theming style:** ${styleNote}`);
+  if (theming.mechanisms.length) {
+    L.push('- **Mechanisms:**');
+    for (const m of theming.mechanisms)
+      L.push(`  - ${code(m.condition)} — ${m.tokenCount} token(s)`);
+  }
+  L.push('');
+}
+
 export function renderReport(audit) {
   assertSchema(audit);
   const { meta, summary, model } = audit;
@@ -205,6 +244,8 @@ export function renderReport(audit) {
   L.push(`- **Dangling references** (used but never defined): ${summary.undefinedRefCount}`);
   if (summary.tierCount != null)
     L.push(`- **Tiers** (primitive/semantic/component): ${summary.tierCount} of 3, flow ${summary.flowDirection}`);
+  if (summary.overrideCount != null)
+    L.push(`- **Overrides** (tokens redefined): ${summary.overrideCount}, theming ${summary.themingStyle}`);
   L.push(`- **Findings:** ${summary.findingCount}`);
   L.push('');
 
@@ -260,6 +301,9 @@ export function renderReport(audit) {
 
   // ── Layering / tiers ──
   if (model.axes.layering) renderLayering(L, model.axes.layering);
+
+  // ── Scope & cascade ──
+  if (model.axes.scopeCascade) renderScopeCascade(L, model.axes.scopeCascade);
 
   // ── Naming taxonomy ──
   if (model.axes.naming) renderNaming(L, model.axes.naming);

@@ -47,6 +47,9 @@ Current: **`1.0.0`**.
     "tierCount":         3,    // primitive/semantic/component tiers in use (0–3)
     "flowDirection":     "downward", // downward (healthy) | mixed (up-tier leak) | circular
     "tierLeakCount":     0,    // tier-leak findings
+    "overrideCount":     12,   // tokens with >1 definition (overridden)
+    "themingStyle":      "mixed", // color-scheme | data-attr | responsive | motion | mixed | none
+    "cascadeSmellCount": 0,    // cascade-smell findings
     "findingCount":      11
   },
 
@@ -118,6 +121,43 @@ Current: **`1.0.0`**.
           "norm":             "direct",    // component routing norm: semantic | direct | none
           "direction":        "downward"   // downward | mixed (a backward edge) | circular (a cycle)
         }
+      },
+
+      // AXIS 4 (slice #21): scope & cascade. Where each token lives in the
+      // cascade, where it gets overridden, and how theming is wired — all
+      // static, from the selector + `@`-rule structure (no headless browser).
+      // Per-DEFINITION `cascadeScope` (root/theme/component) is embedded on each
+      // token definition; this axis aggregates it. Orthogonal to `tier`/`layer`:
+      // a token holds definitions in several cascade scopes (that IS an override).
+      "scopeCascade": {
+        // Per-token HOME scope (mutually exclusive; sums to tokenCount): root if
+        // it has any unconditional `:root` base, else component, else theme.
+        "scopes": { "root": 48, "theme": 0, "component": 5 },
+        "overrides": {
+          "tokenCount":         12,        // tokens with >1 definition
+          "themeVariants":       9,        // root base re-defined by conditional root variants (healthy theming)
+          "componentOverrides":  0,        // root/global base re-defined INSIDE a component (the notable smell)
+          "localMultiScope":     3,        // no root base; defined across ≥2 component scopes
+          "norm":                "theme",  // dominant override kind: theme | component | local | none
+          // Each overridden token: its base def + the overriding defs. A def is
+          // { selector, atScope, cascadeScope, value, file, line }.
+          "sites": [
+            { "name": "--theme-bg", "kind": "theme",
+              "base":      { "selector": ":root", "atScope": null, "cascadeScope": "root", "value": "var(--clr-sand)", "file": "…", "line": 1 },
+              "overrides": [ { "selector": "[data-theme=dark]", "atScope": null, "cascadeScope": "theme", "value": "var(--clr-slate)", "file": "…", "line": 1 } ] }
+          ]
+        },
+        // Static theming approximation: the CONDITIONS under which root tokens get
+        // a variant (an `@`-rule if any, else the variant selector), ranked by how
+        // many tokens each themes, plus a coarse dominant `style`.
+        "theming": {
+          "mechanisms": [
+            { "condition": "[data-theme=dark]", "tokenCount": 6 },
+            { "condition": "@media (prefers-color-scheme:dark)", "tokenCount": 6 }
+          ],
+          "themedTokens": 9,               // distinct tokens with ≥1 theme-scope definition
+          "style":        "mixed"          // color-scheme | data-attr | responsive | motion | mixed | none
+        }
       }
     },
 
@@ -138,7 +178,9 @@ Current: **`1.0.0`**.
         // that survives minification (line collapses to 1; the selector doesn't).
         "usedIn": [ { "selector": ".b_button", "atScope": null, "count": 3 } ],
         "definitions": [
-          { "value": "#e91e63", "scope": ":root", "atScope": null, "file": "assets/jbdn.css", "line": 1 }
+          // cascadeScope (#21): root | theme | component — this definition's place
+          // in the cascade (see the scope & cascade axis).
+          { "value": "#e91e63", "scope": ":root", "atScope": null, "cascadeScope": "root", "file": "assets/jbdn.css", "line": 1 }
         ],
         "references": [
           { "inProperty": "color", "scope": ".b_button", "atScope": null, "owner": null,
@@ -155,7 +197,7 @@ Current: **`1.0.0`**.
   "findings": [
     {
       "id":         "F1",              // stable Fn id, render order
-      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak
+      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell
       "basis":      "universal",       // universal | convention | house-rule
       "confidence": "medium",          // high | medium | low
       "title":      "Dead token `--clr-blue` — defined but never referenced",
@@ -190,6 +232,8 @@ Current: **`1.0.0`**.
 | `tier-leak` (backward) | convention | `medium` | A `var()` reference flows **up-tier** against the reconstructed tiering (`primitive → semantic → component`) — e.g. a component token consumed as a base value. Cites the tiering norm. |
 | `tier-leak` (skip) | convention | `low` | A component reaches a **primitive directly**, jumping the semantic tier — **only** flagged where routing through a semantic is the codebase's own norm (cites the share). Silent on a codebase that routes directly (both test beds do). Low confidence: a direct reference may be intentional. |
 | `tier-leak` (circular) | universal | `high` | Tokens form a `var()` reference cycle — the value can never resolve. Provable from the AST. |
+| `cascade-smell` (shadowed) | universal | `high` | The same token defined ≥2× under the **identical** (selector, at-rule) scope with **differing values** — source order alone decides, so the earlier definition can never win (dead code). Provable from the AST. Complement of `exact-duplicate` (identical value); a **different** scope is a legitimate override, not this. |
+| `cascade-smell` (stray override) | convention | `low` | A **global/root** token redefined **inside a component** — a local meaning that fights the global cascade. **Only** flagged where theming is the codebase's own override norm (globals otherwise re-scoped only via theme variants); cites the share. Silent where local/component overriding is the house style (wattage). Low confidence: a local override may be deliberate. |
 
 `convention`-basis findings **cite the norm** they're measured against, per the PRD.
 
