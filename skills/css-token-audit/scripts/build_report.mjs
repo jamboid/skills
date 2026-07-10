@@ -256,6 +256,29 @@ function renderNearDuplicates(L, nd) {
   L.push('');
 }
 
+/** Render the promotable house rules (#25): inferred norms the audit does NOT
+ *  enforce by default, each with the blast radius `promote` would unleash. */
+function renderHouseRuleCandidates(L, candidates) {
+  L.push('## Promotable house rules');
+  L.push('');
+  L.push(
+    'Inferred norms the audit does **not** enforce by default. `promote` one (via the ' +
+      'conventions file) to enshrine it as a house rule — the audit then raises a ' +
+      '`basis: house-rule` finding for every violation on each run. Broad and dangerous: the ' +
+      'count below is the blast radius, so promotion is confirmed against this preview first.'
+  );
+  L.push('');
+  for (const c of candidates) {
+    L.push(`- ${code(c.rule)} — ${c.title}`);
+    L.push(
+      `  - would raise **${c.violationCount}** new violation(s): ${c.violations.map((v) => code(v.name)).join(', ')}`
+    );
+    if (Array.isArray(c.allowed))
+      L.push(`  - allowed vocabulary: ${c.allowed.map((p) => code(p + '-')).join(', ')}`);
+  }
+  L.push('');
+}
+
 export function renderReport(audit) {
   assertSchema(audit);
   const { meta, summary, model } = audit;
@@ -327,8 +350,12 @@ export function renderReport(audit) {
   if (summary.nearDuplicateCount != null)
     L.push(`- **Near-duplicate clusters** (consolidation leads): ${summary.nearDuplicateCount}`);
   L.push(`- **Findings:** ${summary.findingCount}`);
+  if (summary.houseRuleFindingCount)
+    L.push(`- **House-rule violations** (from promoted rules): ${summary.houseRuleFindingCount}`);
   if (summary.suppressedCount)
     L.push(`- **Accepted exceptions** (suppressed via conventions): ${summary.suppressedCount}`);
+  if (summary.promotableCount)
+    L.push(`- **Promotable house rules** (inferred norms you could enforce): ${summary.promotableCount}`);
   L.push('');
 
   // ── Axis: fan-in / fan-out ──
@@ -449,6 +476,10 @@ export function renderReport(audit) {
     }
     L.push('');
   }
+
+  // ── Promotable house rules (the propose side of `promote`, #25) ──
+  if (model.axes.houseRuleCandidates && model.axes.houseRuleCandidates.length)
+    renderHouseRuleCandidates(L, model.axes.houseRuleCandidates);
 
   // ── Appendix ──
   L.push('## Appendix');

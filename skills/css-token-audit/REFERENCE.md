@@ -53,7 +53,9 @@ Current: **`1.0.0`**.
     "hardcodeRatio":     0.41,  // share of tokenizable declarations that are raw literals (#22)
     "nearDuplicateCount":2,     // near-duplicate token clusters (#23)
     "findingCount":      11,    // SURFACED findings (suppressed excluded)
-    "suppressedCount":   2       // findings accepted via the conventions file (#24)
+    "suppressedCount":   2,      // findings accepted via the conventions file (#24)
+    "houseRuleFindingCount": 0,  // SURFACED findings from PROMOTED house rules (#25)
+    "promotableCount":   1       // inferred norms available to `promote` (#25)
   },
 
   "model": {
@@ -213,7 +215,27 @@ Current: **`1.0.0`**.
                 "selector": ":root", "atScope": null, "file": "…", "line": 1 }
             ] }
         ]
-      }
+      },
+
+      // AXIS 8 (slice #25): promotable house rules. Inferred norms the audit does
+      // NOT enforce by default — offered as candidates a human may `promote` into
+      // the conventions file. Each carries the exact violation set strict
+      // enforcement WOULD raise (the curation preview / blast radius). Off by
+      // default: a candidate enforces nothing until promoted. `allowed` is frozen
+      // into the rule at promote time. Kinds so far: `naming-prefix` (the global
+      // tier's recurring category prefixes as a CLOSED vocabulary).
+      "houseRuleCandidates": [
+        { "rule": "naming-prefix:global",   // stable rule id (kind:tier)
+          "kind": "naming-prefix",
+          "tier": "global",
+          "title": "Global tokens use a recurring category prefix",
+          "allowed": [ "clr", "space", "text" ],   // the recurring vocabulary (frozen on promote)
+          "violationCount": 1,
+          "violations": [
+            { "name": "--zzz-odd", "prefix": "zzz",
+              "locations": [ { "selector": ":root", "atScope": null, "file": "…", "line": 1 } ] }
+          ] }
+      ]
     },
 
     // The structured facts the graph is built from — embedded so later slices'
@@ -252,10 +274,10 @@ Current: **`1.0.0`**.
   "findings": [
     {
       "id":          "F1",             // render-order id (NOT stable across runs)
-      "type":        "dead-token",     // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode | near-duplicate
+      "type":        "dead-token",     // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode | near-duplicate | house-rule
       "subject":     "--clr-blue",     // the finding's identity within its type
       "fingerprint": "dead-token:--clr-blue", // STABLE `type:subject` — the conventions key (#24)
-      "basis":       "universal",      // universal | convention | house-rule
+      "basis":       "universal",      // universal | convention | house-rule (#25 — a PROMOTED rule)
       "confidence":  "medium",         // high | medium | low
       "disposition": "open",           // open (uncurated) | accept | fix — set from the conventions file
       "suppressed":  false,            // true when disposition==accept — excluded from findingCount + main report listing
@@ -296,51 +318,78 @@ Current: **`1.0.0`**.
 | `cascade-smell` (stray override) | convention | `low` | A **global/root** token redefined **inside a component** — a local meaning that fights the global cascade. **Only** flagged where theming is the codebase's own override norm (globals otherwise re-scoped only via theme variants); cites the share. Silent where local/component overriding is the house style (wattage). Low confidence: a local override may be deliberate. |
 | `literal-hardcode` | universal | `medium` | A hardcoded literal whose **normalized value** equals an existing token's value — a missed tokenization. Matching keys off the normalized value (`#f00` matches a token holding `#ffffff`) and is restricted to distinctive types (colour, non-zero length); a bare `0`/`1`/keyword is too generic. Cites the matched token(s). Medium: the literal may be a coincidence. |
 | `near-duplicate` | universal | `high`\|`medium`\|`low` | A cluster of tokens whose raw values are **nearly** (not exactly) the same — a consolidation lead. Per-value-type proximity: colour distance in RGBA, numeric relative proximity for lengths. Restricted to distinctive values (a colour, or a non-zero size-unit length) so coincidental `1fr`/`100%`/keyword matches don't fire. Confidence tracks **closeness** — an identical/near-exact cluster is high, one approaching the type threshold is low (the further apart, the likelier the difference is intentional). |
+| `house-rule` | house-rule | `high` | A violation of a **promoted** house rule (#25) — an inferred norm a human enshrined via the conventions file (`promote` disposition). Off by default: raised **only** where the conventions file carries the rule. `subject` is `<ruleId>:<token>`; `basis` is always `house-rule`. Deterministic given the rule, so confidence is high. Vanilla runs (no conventions) never raise one. |
 
 `convention`-basis findings **cite the norm** they're measured against, per the PRD.
+`house-rule`-basis findings are raised by a norm the human **opted into** via `promote`.
 
-## Conventions file (the propose/dispose feedback loop, #24)
+## Conventions file (the propose/dispose feedback loop, #24 · #25)
 
 The audit *proposes* findings; a human *disposes* of each one. Dispositions
 persist to a **versioned, human-readable conventions file** — the audit's **4th
 input** (alongside the CSS tree, the CLI flags, and `notes.md`). It is the only
 new **human-editable** input; `audit.json` and the report stay **generated**.
 
-Two dispositions in this slice:
+Three dispositions, narrow → broad:
 
 - **`accept`** — a local exception; suppress **this instance** of the finding
   (`suppressed: true`, excluded from `findingCount` and the main report listing,
   shown under "Accepted exceptions"). Narrow — it keys on the exact fingerprint.
 - **`fix`** — a real problem; leave it flagged (a refactor lead). Recorded so the
   triage is complete/auditable, but it does not change surfacing.
+- **`promote`** (#25) — the broadest: enshrine an inferred-but-unenforced **norm**
+  as a **house rule**. Unlike accept/fix (which key on a finding fingerprint),
+  promote keys on a **rule id** from `model.axes.houseRuleCandidates` — because
+  the promotable norms are exactly the ones the audit keeps quiet by default. On
+  re-run the rule is enforced: a `basis: house-rule` finding is raised per
+  violation. Broad and dangerous — enforcing raises **new** violations elsewhere
+  — so `curate` shows a **preview** of that blast radius and persists the rule
+  **only** with `--confirm`. Off by default (opt-in): a fresh conventions file
+  has none.
 
-Dispositions key on a finding's **stable `fingerprint`** (`type:subject`), never
-its render-order `Fn` id — so an accepted finding stays matched as other findings
-come and go. Re-running the audit with `--conventions <file>` reads it: accepted
-instances stay quiet; everything else re-surfaces.
+accept/fix key on a finding's **stable `fingerprint`** (`type:subject`), never its
+render-order `Fn` id — so an accepted finding stays matched as other findings come
+and go. Re-running the audit with `--conventions <file>` reads it: accepted
+instances stay quiet, promoted rules are enforced, everything else re-surfaces.
 
 ```jsonc
 {
   "conventionsVersion": "1.0.0",       // versioned contract (CONVENTIONS_VERSION)
   "project": "jbdn",
-  "dispositions": {                    // keyed by finding fingerprint
+  "dispositions": {                    // accept/fix — keyed by finding fingerprint
     "dead-token:--clr-blue": {
       "disposition": "accept",         // accept | fix
       "note":        "deliberate public-API token",  // optional human note
       "title":       "Dead token `--clr-blue` …",    // finding title for context
       "recordedAt":  "2026-07-10"
     }
+  },
+  "houseRules": {                      // promote — keyed by rule id (#25)
+    "naming-prefix:global": {
+      "kind":       "naming-prefix",
+      "tier":       "global",
+      "allowed":    [ "clr", "space", "text" ],   // frozen vocabulary at promote time
+      "title":      "Global tokens use a recurring category prefix",
+      "note":       "our category-prefix house style",  // optional
+      "recordedAt": "2026-07-10"
+    }
   }
 }
 ```
 
 Written/updated by `curate` (`conventions.mjs`), which **merges** — it never
-clobbers prior human decisions on other findings. A rendered `conventions.md`
-companion view is optional (`--md`). The JSON stays the source of truth.
+clobbers prior human decisions on other findings or rules. A rendered
+`conventions.md` companion view is optional (`--md`). The JSON stays the source of
+truth.
 
 ```
+# accept / fix
 node conventions.mjs --conventions conventions.json --audit audit.json \
      --accept <fingerprint> --note "why" [--fix <fingerprint>]... [--md conventions.md]
+
+# promote — preview the blast radius; add --confirm to persist
+node conventions.mjs --conventions conventions.json --audit audit.json \
+     --promote <ruleId> [--note "why"] [--confirm] [--md conventions.md]
 ```
 
 ## Parse coverage (correctness caveat)
@@ -379,5 +428,5 @@ one). `audit.doubling` is `null` when nothing systemic is found.
 
 - `scripts/analyze.mjs` — parser + graph + all axes + findings → `audit.json`; reads the conventions file (`--conventions`) as the 4th input.
 - `scripts/build_report.mjs` — renders `audit.json` → Markdown (refuses incompatible major).
-- `scripts/conventions.mjs` — the propose/dispose feedback loop: `loadConventions` / `applyConventions` (read by analyze) + the `curate` CLI (`recordDispositions` / `renderConventions`).
+- `scripts/conventions.mjs` — the propose/dispose feedback loop: `loadConventions` / `applyConventions` (read by analyze) + the `curate` CLI (`recordDispositions` for accept/fix, `promoteRule` / `previewHouseRule` for promote, `renderConventions`).
 - `notes-template.md` — copied to `notes.md` by `init`; a human-editable input.

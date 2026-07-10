@@ -25,9 +25,13 @@ export const CONVENTIONS_VERSION = '1.0.0';
 
 const VALID = new Set(['accept', 'fix']);
 
+// House-rule kinds `promote` knows how to enforce (#25). A candidate of an
+// unknown kind is rejected — the audit must know how to raise its violations.
+const VALID_KINDS = new Set(['naming-prefix']);
+
 /** A fresh, empty conventions object for a project (what `curate` scaffolds). */
 export function emptyConventions(project) {
-  return { conventionsVersion: CONVENTIONS_VERSION, project: project || null, dispositions: {} };
+  return { conventionsVersion: CONVENTIONS_VERSION, project: project || null, dispositions: {}, houseRules: {} };
 }
 
 /** Load a conventions file, or null if it's absent/unreadable. A malformed file
@@ -90,6 +94,38 @@ export function recordDispositions(conventions, entries, meta = {}) {
     conventionsVersion: base.conventionsVersion || CONVENTIONS_VERSION,
     project: meta.project || base.project || null,
     dispositions,
+    houseRules: { ...(base.houseRules || {}) },
+  };
+}
+
+/**
+ * Promote a house-rule candidate (from `model.axes.houseRuleCandidates`) into the
+ * conventions file — the third, broadest disposition (#25). Returns a NEW object
+ * (never mutates the input); the candidate's `allowed` set is FROZEN into the rule
+ * at promote time, so the enshrined vocabulary doesn't drift as the codebase
+ * changes. Existing dispositions and other house rules are preserved.
+ */
+export function promoteRule(conventions, candidate, meta = {}) {
+  if (!candidate || !candidate.rule || !VALID_KINDS.has(candidate.kind) || !Array.isArray(candidate.allowed)) {
+    throw new Error(
+      `Invalid house-rule candidate: ${JSON.stringify(candidate)} (need rule + known kind + allowed[]).`
+    );
+  }
+  const base = conventions || emptyConventions(meta.project);
+  const houseRules = { ...(base.houseRules || {}) };
+  houseRules[candidate.rule] = {
+    kind: candidate.kind,
+    tier: candidate.tier,
+    allowed: [...candidate.allowed],
+    ...(candidate.title ? { title: candidate.title } : {}),
+    ...(meta.note ? { note: meta.note } : {}),
+    recordedAt: meta.date || new Date().toISOString().slice(0, 10),
+  };
+  return {
+    conventionsVersion: base.conventionsVersion || CONVENTIONS_VERSION,
+    project: meta.project || base.project || null,
+    dispositions: { ...(base.dispositions || {}) },
+    houseRules,
   };
 }
 
@@ -129,12 +165,45 @@ export function renderConventions(conventions) {
   };
   section('Accepted (suppressed)', 'Local exceptions — suppressed on this instance, kept quiet across runs.', accepted);
   section('Fix (left flagged)', 'Triaged as real problems — they stay flagged as refactor leads.', fixed);
+  const rules = Object.entries(c.houseRules || {});
+  L.push(`## House rules (promoted) (${rules.length})`);
+  L.push('');
+  L.push(
+    'Broad, enforced preferences — the audit raises a `basis: house-rule` finding for every ' +
+      'violation on each run. Delete a rule here to stop enforcing it.'
+  );
+  L.push('');
+  if (!rules.length) {
+    L.push('_None._');
+    L.push('');
+  } else {
+    for (const [rule, r] of rules) {
+      L.push(`- \`${rule}\` — ${r.title || r.kind}`);
+      if (Array.isArray(r.allowed)) L.push(`  - allowed: ${r.allowed.map((p) => `\`${p}-\``).join(', ')}`);
+      if (r.note) L.push(`  - note: ${r.note}`);
+      if (r.recordedAt) L.push(`  - recorded: ${r.recordedAt}`);
+    }
+    L.push('');
+  }
   return L.join('\n') + '\n';
+}
+
+/** Render the preview of NEW violations that promoting a candidate would raise —
+ *  the confirmation gate's payload (#25). Promotion is broad; the human sees the
+ *  blast radius before it persists. */
+export function previewHouseRule(candidate) {
+  const L = [];
+  L.push(`Promote \`${candidate.rule}\` — ${candidate.title}`);
+  L.push(`  Allowed vocabulary: ${(candidate.allowed || []).map((p) => `${p}-`).join(', ')}`);
+  L.push(`  ⚠ Enforcing this house rule would raise ${candidate.violationCount} new violation(s):`);
+  for (const v of candidate.violations || []) L.push(`    - ${v.name} (prefix \`${v.prefix}-\`)`);
+  return L.join('\n');
 }
 
 // ── CLI: `curate` — record dispositions into the conventions file ───────────
 function parseArgs(argv) {
-  const args = { audit: null, conventions: null, out: null, md: null, project: null, entries: [] };
+  const args = { audit: null, conventions: null, out: null, md: null, project: null, confirm: false, entries: [], promotions: [] };
+  let last = null; // the entry/promotion a trailing --note attaches to
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--audit') args.audit = argv[++i];
@@ -142,12 +211,11 @@ function parseArgs(argv) {
     else if (a === '--out') args.out = argv[++i];
     else if (a === '--md') args.md = argv[++i];
     else if (a === '--project') args.project = argv[++i];
-    else if (a === '--accept') args.entries.push({ fingerprint: argv[++i], disposition: 'accept' });
-    else if (a === '--fix') args.entries.push({ fingerprint: argv[++i], disposition: 'fix' });
-    else if (a === '--note') {
-      const last = args.entries[args.entries.length - 1];
-      if (last) last.note = argv[++i];
-    }
+    else if (a === '--confirm') args.confirm = true;
+    else if (a === '--accept') args.entries.push((last = { fingerprint: argv[++i], disposition: 'accept' }));
+    else if (a === '--fix') args.entries.push((last = { fingerprint: argv[++i], disposition: 'fix' }));
+    else if (a === '--promote') args.promotions.push((last = { rule: argv[++i] }));
+    else if (a === '--note' && last) last.note = argv[++i];
   }
   return args;
 }
@@ -155,35 +223,72 @@ function parseArgs(argv) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const convPath = args.conventions || 'conventions.json';
-  if (!args.entries.length) {
+  if (!args.entries.length && !args.promotions.length) {
     console.error(
-      'Usage: node conventions.mjs --conventions <file> [--audit audit.json] ' +
-        '(--accept <fingerprint> [--note "…"] | --fix <fingerprint>)... [--md <conventions.md>]'
+      'Usage: node conventions.mjs --conventions <file> [--audit audit.json] (\n' +
+        '  --accept <fingerprint> [--note "…"] | --fix <fingerprint> |\n' +
+        '  --promote <ruleId> [--note "…"] [--confirm]\n' +
+        ')... [--md <conventions.md>]\n' +
+        '`--promote` without `--confirm` previews the new violations; nothing is written.'
     );
     process.exit(2);
   }
-  // Enrich entries with the finding title from audit.json, when available.
+  let audit = null;
   if (args.audit) {
     try {
-      const audit = JSON.parse(readFileSync(args.audit, 'utf8'));
+      audit = JSON.parse(readFileSync(args.audit, 'utf8'));
+    } catch {
+      // audit is optional context; proceed without it
+    }
+  }
+  let conv = loadConventions(convPath);
+
+  // Promotions (#25) — preview the blast radius always; persist only with --confirm.
+  if (args.promotions.length) {
+    const candidates = new Map(((audit && audit.model?.axes?.houseRuleCandidates) || []).map((c) => [c.rule, c]));
+    for (const p of args.promotions) {
+      const cand = candidates.get(p.rule);
+      if (!cand) {
+        console.error(
+          `css-token-audit: no promotable candidate \`${p.rule}\` in ${args.audit || '(no --audit)'} — run \`draft\` first.`
+        );
+        process.exit(2);
+      }
+      console.log(previewHouseRule(cand));
+      if (args.confirm) conv = promoteRule(conv, cand, { project: args.project, note: p.note });
+    }
+    if (!args.confirm) {
+      console.error('css-token-audit: preview only — re-run with --confirm to persist the house rule(s).');
+    }
+  }
+
+  // Dispositions (accept/fix, #24) — enrich with titles from audit.json when present.
+  if (args.entries.length) {
+    if (audit) {
       const byFp = new Map((audit.findings || []).map((f) => [f.fingerprint, f]));
       for (const e of args.entries) {
         const f = byFp.get(e.fingerprint);
         if (f) e.title = f.title;
       }
-    } catch {
-      // audit is optional context; proceed without titles
     }
+    conv = recordDispositions(conv, args.entries, { project: args.project });
   }
-  const existing = loadConventions(convPath);
-  const merged = recordDispositions(existing, args.entries, { project: args.project });
-  const out = args.out || convPath;
-  writeFileSync(out, JSON.stringify(merged, null, 2) + '\n');
-  if (args.md) writeFileSync(args.md, renderConventions(merged));
-  console.error(
-    `css-token-audit: recorded ${args.entries.length} disposition(s) → ${out}` +
-      (args.md ? ` (+ ${args.md})` : '')
-  );
+
+  // Write only when something is actually persisted: any disposition, or a
+  // CONFIRMED promotion. A bare promote preview leaves the file untouched.
+  const persisting = args.entries.length > 0 || (args.promotions.length > 0 && args.confirm);
+  if (persisting) {
+    const merged = conv || emptyConventions(args.project);
+    const out = args.out || convPath;
+    writeFileSync(out, JSON.stringify(merged, null, 2) + '\n');
+    if (args.md) writeFileSync(args.md, renderConventions(merged));
+    console.error(
+      `css-token-audit: recorded ${args.entries.length} disposition(s)` +
+        (args.confirm && args.promotions.length ? `, ${args.promotions.length} house rule(s)` : '') +
+        ` → ${out}` +
+        (args.md ? ` (+ ${args.md})` : '')
+    );
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
