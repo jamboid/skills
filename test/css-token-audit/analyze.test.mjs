@@ -2,7 +2,13 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { analyze, extractFacts, SCHEMA_VERSION } from '../../skills/css-token-audit/scripts/analyze.mjs';
+import {
+  analyze,
+  extractFacts,
+  normalizeValue,
+  valueType,
+  SCHEMA_VERSION,
+} from '../../skills/css-token-audit/scripts/analyze.mjs';
 import { renderReport, assertSchema } from '../../skills/css-token-audit/scripts/build_report.mjs';
 
 // The analyzer's contract: a DETERMINISTIC css-tree parse of compiled CSS →
@@ -27,6 +33,27 @@ const fixture = (files) => {
   return d;
 };
 afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
+
+describe('value normalization', () => {
+  // The substrate for exact literal↔token matching (#22) and, later, fuzzy
+  // near-duplicate matching (#23). Equal values must canonicalize equal.
+  it('canonicalizes colours so equal colours compare equal regardless of spelling', () => {
+    expect(normalizeValue('#FFF')).toBe(normalizeValue('#ffffff'));
+    expect(normalizeValue('#AABBCC')).toBe('#aabbcc'); // lowercase
+    expect(normalizeValue('#F00')).toBe('#ff0000'); // short hex expanded
+    expect(normalizeValue('rgb(255, 0, 0)')).toBe(normalizeValue('rgb(255,0,0)')); // comma spacing
+  });
+
+  it('classifies a value by type: color / length / number / other', () => {
+    expect(valueType('#fff')).toBe('color');
+    expect(valueType('rgb(0,0,0)')).toBe('color');
+    expect(valueType('white')).toBe('color');
+    expect(valueType('1.5rem')).toBe('length');
+    expect(valueType('12px')).toBe('length');
+    expect(valueType('400')).toBe('number');
+    expect(valueType('ease-in-out')).toBe('other');
+  });
+});
 
 describe('extractFacts', () => {
   it('captures a var() reference nested inside another token’s value', () => {
@@ -145,6 +172,95 @@ describe('tree-doubling guard', () => {
   });
 });
 
+describe('coverage / hardcode axis', () => {
+  // The proportion of tokenizable declarations (color, spacing, …) that consume
+  // a token via `var()` vs a raw literal. Custom-property definitions themselves
+  // are not coverage subjects — only ordinary declarations are.
+  it('computes the hardcode ratio over tokenizable declarations', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--clr-ink:#111}' +
+        ' .a{color:var(--clr-ink); background:#fff; margin:1rem}' +
+        ' .b{padding:var(--space)}',
+    });
+    const audit = analyze({ root: dir, slug: 'cov', exclude: [], top: 10 });
+    const cov = audit.model.axes.coverage;
+    // color + padding consume a token (covered); background + margin are literals.
+    expect(cov.covered).toBe(2);
+    expect(cov.hardcoded).toBe(2);
+    expect(cov.tokenizableDeclarations).toBe(4);
+    expect(cov.ratio).toBeCloseTo(0.5, 2);
+  });
+
+  it('ignores non-tokenizable properties (display, position) in the ratio', () => {
+    const dir = fixture({
+      'a.css': '.a{display:flex; position:absolute; color:#000}',
+    });
+    const audit = analyze({ root: dir, slug: 'ntk', exclude: [], top: 10 });
+    const cov = audit.model.axes.coverage;
+    expect(cov.tokenizableDeclarations).toBe(1); // only `color`
+    expect(cov.hardcoded).toBe(1);
+  });
+});
+
+describe('fallback usage axis', () => {
+  // Catalogue `var(--x, fallback)` patterns: a fallback is a token (a chained
+  // dependency the graph should see) or a literal (a hardcoded default the token
+  // would otherwise supply).
+  it('catalogues var() fallbacks by kind: token / literal / none', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--a:#111;--b:#222}' +
+        ' .x{color:var(--a)}' + // no fallback
+        ' .y{color:var(--missing, #f00)}' + // literal fallback
+        ' .z{color:var(--missing, var(--b))}', // token (chained) fallback
+    });
+    const audit = analyze({ root: dir, slug: 'fb', exclude: [], top: 10 });
+    const fb = audit.model.axes.fallback;
+    // 4 var() references: --a, --missing×2 (as first arg), --b (nested).
+    expect(fb.total).toBe(4);
+    expect(fb.withFallback).toBe(2); // the two --missing refs carry a fallback
+    expect(fb.byKind.literal).toBe(1); // #f00
+    expect(fb.byKind.token).toBe(1); // var(--b)
+  });
+
+  it('records the fallback expression text on the reference', () => {
+    const defs = [];
+    const refs = [];
+    extractFacts('.a{color:var(--x, #f00)}', 'x.css', defs, refs, []);
+    const ref = refs.find((r) => r.name === '--x');
+    expect(ref.fallback).toBe('#f00');
+  });
+});
+
+describe('literal-matches-token finding', () => {
+  // A hardcoded literal whose NORMALIZED value equals an existing token's value
+  // — a missed tokenization. Universal: defensible anywhere. Matching keys off
+  // the normalized value, so `#f00` matches a token holding `#ff0000`.
+  it('flags a hardcoded literal that equals an existing token, citing the token', () => {
+    const dir = fixture({
+      'a.css': ':root{--clr-brand:#ff0000} .a{color:#f00}',
+    });
+    const audit = analyze({ root: dir, slug: 'lm', exclude: [], top: 10 });
+    const f = audit.findings.find((x) => x.type === 'literal-hardcode');
+    expect(f.basis).toBe('universal');
+    expect(f.confidence).toBe('medium');
+    expect(f.title).toContain('--clr-brand'); // cites the matched token
+    expect(f.locations.some((l) => l.selector === '.a')).toBe(true);
+    expect(f.evidence).toMatch(/#ff0000|#f00/);
+  });
+
+  // Guard: a trivial `0` is too generic to be a missed token — no finding, even
+  // if a token happens to hold `0`.
+  it('does not flag a trivial zero literal', () => {
+    const dir = fixture({
+      'a.css': ':root{--space-none:0} .a{margin:0}',
+    });
+    const audit = analyze({ root: dir, slug: 'z', exclude: [], top: 10 });
+    expect(audit.findings.some((f) => f.type === 'literal-hardcode')).toBe(false);
+  });
+});
+
 describe('build_report schema contract', () => {
   it('renders the axis, findings and a parse-coverage warning when errors exist', () => {
     const dir = fixture({ 'a.css': ':root{--k:1;--d:2} .a{width:var(--k)}' });
@@ -192,6 +308,19 @@ describe('build_report schema contract', () => {
     expect(md).toMatch(/[Oo]verride/); // reports override sites
     expect(md).toMatch(/[Tt]heming/); // the theming approximation
     expect(md).toMatch(/data-theme|prefers-color-scheme/); // a concrete mechanism
+  });
+
+  it('renders the coverage and fallback sections', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--clr:#111} .a{color:var(--clr); background:#fff} .b{color:var(--x, #f00)}',
+    });
+    const audit = analyze({ root: dir, slug: 'cf', exclude: [], top: 10 });
+    const md = renderReport(audit);
+    expect(md).toContain('## Coverage / hardcode');
+    expect(md).toMatch(/hardcod/i); // reports the hardcode ratio
+    expect(md).toContain('## Fallback usage');
+    expect(md).toMatch(/literal|token/); // names a fallback kind
   });
 
   it('renders the naming taxonomy section with per-tier grammar + consistency', () => {

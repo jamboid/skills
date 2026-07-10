@@ -183,6 +183,55 @@ function renderScopeCascade(L, sc) {
   L.push('');
 }
 
+/** Render the coverage / hardcode axis: what share of tokenizable declarations
+ *  route through a token vs a raw literal, and the properties most often literal. */
+function renderCoverage(L, coverage) {
+  const { tokenizableDeclarations, covered, hardcoded, ratio, topHardcodedProperties } = coverage;
+  L.push('## Coverage / hardcode');
+  L.push('');
+  L.push(
+    'Of the declarations a token scheme typically governs (colour, spacing, borders, ' +
+      'typography, motion), how many consume a token via `var()` vs hold a raw literal. ' +
+      'Coarse by design — a literal `0` counts as hardcoded even where a token is unwarranted — ' +
+      'so read the ratio as a direction, not a grade.'
+  );
+  L.push('');
+  L.push(
+    `- **Tokenizable declarations:** ${tokenizableDeclarations} (${covered} via token, ${hardcoded} literal)`
+  );
+  L.push(`- **Coverage:** ${Math.round(ratio * 100)}% route through a token`);
+  if (topHardcodedProperties.length) {
+    L.push('- **Most-hardcoded properties:**');
+    for (const p of topHardcodedProperties)
+      L.push(`  - ${code(p.property)} — ${p.count} literal(s)`);
+  }
+  L.push('');
+}
+
+/** Render the fallback-usage axis: how many `var()` uses carry a fallback and of
+ *  what kind (a chained token, a literal default, or an explicit empty). */
+function renderFallback(L, fallback) {
+  const { total, withFallback, byKind, samples } = fallback;
+  L.push('## Fallback usage');
+  L.push('');
+  L.push(
+    'How many `var()` references carry a fallback (`var(--x, …)`) and of what kind: a **token** ' +
+      '(a chained dependency the main graph doesn\'t model), a **literal** (a hardcoded default ' +
+      'the token would otherwise supply), or an explicit **empty** fallback.'
+  );
+  L.push('');
+  L.push(
+    `- **References with a fallback:** ${withFallback} of ${total} ` +
+      `(${byKind.token} token, ${byKind.literal} literal, ${byKind.empty} empty)`
+  );
+  if (samples.length) {
+    L.push('- **Examples:**');
+    for (const s of samples)
+      L.push(`  - ${code(`var(${s.name}, ${s.fallback})`)} (${s.kind}) in ${code(s.scope)}`);
+  }
+  L.push('');
+}
+
 export function renderReport(audit) {
   assertSchema(audit);
   const { meta, summary, model } = audit;
@@ -246,6 +295,11 @@ export function renderReport(audit) {
     L.push(`- **Tiers** (primitive/semantic/component): ${summary.tierCount} of 3, flow ${summary.flowDirection}`);
   if (summary.overrideCount != null)
     L.push(`- **Overrides** (tokens redefined): ${summary.overrideCount}, theming ${summary.themingStyle}`);
+  if (summary.hardcodeRatio != null && model.axes.coverage)
+    L.push(
+      `- **Coverage** (tokenizable declarations via a token): ` +
+        `${Math.round((1 - summary.hardcodeRatio) * 100)}% (${model.axes.coverage.hardcoded} hardcoded literal(s))`
+    );
   L.push(`- **Findings:** ${summary.findingCount}`);
   L.push('');
 
@@ -304,6 +358,12 @@ export function renderReport(audit) {
 
   // ── Scope & cascade ──
   if (model.axes.scopeCascade) renderScopeCascade(L, model.axes.scopeCascade);
+
+  // ── Coverage / hardcode ──
+  if (model.axes.coverage) renderCoverage(L, model.axes.coverage);
+
+  // ── Fallback usage ──
+  if (model.axes.fallback) renderFallback(L, model.axes.fallback);
 
   // ── Naming taxonomy ──
   if (model.axes.naming) renderNaming(L, model.axes.naming);

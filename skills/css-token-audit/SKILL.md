@@ -1,6 +1,6 @@
 ---
 name: css-token-audit
-description: Reverse-engineers a project's CSS custom-property (design-token) architecture from a deterministic css-tree parse of the COMPILED CSS, and reports its shape and problems. Use when the user wants to audit CSS variables/tokens, see the shape of a token system, find dead or duplicate tokens, check naming consistency, check tier/layering leaks, check scope/cascade/theming, or check custom-property architecture. Axes so far: fan-in/fan-out + naming taxonomy + layering/tiers + scope & cascade; findings: dead, exact-duplicate, naming outliers, tier leaks, cascade smells.
+description: Reverse-engineers a project's CSS custom-property (design-token) architecture from a deterministic css-tree parse of the COMPILED CSS, and reports its shape and problems. Use when the user wants to audit CSS variables/tokens, see the shape of a token system, find dead or duplicate tokens, check naming consistency, check tier/layering leaks, check scope/cascade/theming, check token coverage / hardcoded literals / fallback usage, or check custom-property architecture. Axes so far: fan-in/fan-out + naming taxonomy + layering/tiers + scope & cascade + coverage/hardcode + fallback usage; findings: dead, exact-duplicate, naming outliers, tier leaks, cascade smells, hardcoded literals matching a token.
 disable-model-invocation: true
 ---
 
@@ -20,17 +20,21 @@ parser is to not do that.
 it. `audit.json` is **never hand-edited** — re-run `analyze.mjs`. See
 [REFERENCE.md](REFERENCE.md) for the schema (the versioned contract).
 
-Four axes so far: **fan-in/fan-out** (#18); **naming taxonomy** (#19, a grammar
+Six axes so far: **fan-in/fan-out** (#18); **naming taxonomy** (#19, a grammar
 inferred *per tier* — global `:root` design tokens vs block-scoped locals);
 **layering/tiers** (#20, the primitive → semantic → component tier system
-reconstructed from the graph, and whether value flows one way or leaks); and
+reconstructed from the graph, and whether value flows one way or leaks);
 **scope & cascade** (#21, where each token lives in the cascade — root / theme /
-component — where it gets overridden, and how theming is wired, all statically).
-Findings: dead tokens, exact-duplicate definitions, naming outliers (inconsistent
-abbreviations, off-grammar prefixes), tier leaks (up-tier, circular, or a skip
-against a semantic-routing norm), and cascade smells (a shadowed unreachable
-definition, or a global strayed into a component against a theming norm). Later
-slices add coverage, near-duplicates, and the dispose/feedback loop.
+component — where it gets overridden, and how theming is wired, all statically);
+**coverage/hardcode** (#22, the share of tokenizable declarations that route
+through a token vs a raw literal); and **fallback usage** (#22, the catalogue of
+`var(--x, fallback)` patterns by kind). Findings: dead tokens, exact-duplicate
+definitions, naming outliers (inconsistent abbreviations, off-grammar prefixes),
+tier leaks (up-tier, circular, or a skip against a semantic-routing norm),
+cascade smells (a shadowed unreachable definition, or a global strayed into a
+component against a theming norm), and hardcoded literals that match an existing
+token's value (a missed tokenization). Later slices add near-duplicates and the
+dispose/feedback loop.
 
 ## Audit the COMPILED CSS, not the authored source
 
@@ -115,6 +119,15 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
   definition (same scope, differing value → an earlier value that can never win)
   is `universal`; a **stray override** (a global redefined inside a component,
   against a theming norm) is `convention`.
+- **Coverage / hardcode** — over the declarations a token scheme typically
+  governs (colour, spacing, borders, typography, motion), the share that consume
+  a token via `var()` vs a raw literal, plus the properties most often literal.
+  Coarse — a literal `0` counts as hardcoded — so read the ratio as a direction.
+  A hardcoded literal whose value equals an existing token's surfaces as a
+  **`literal-hardcode`** finding (`universal`) — a missed tokenization.
+- **Fallback usage** — the `var(--x, fallback)` patterns catalogued by kind: a
+  **token** fallback (a chained dependency), a **literal** default, or an
+  explicit **empty** one. A catalogue, not a finding.
 
 ## Bundled files
 

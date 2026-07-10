@@ -50,6 +50,7 @@ Current: **`1.0.0`**.
     "overrideCount":     12,   // tokens with >1 definition (overridden)
     "themingStyle":      "mixed", // color-scheme | data-attr | responsive | motion | mixed | none
     "cascadeSmellCount": 0,    // cascade-smell findings
+    "hardcodeRatio":     0.41,  // share of tokenizable declarations that are raw literals (#22)
     "findingCount":      11
   },
 
@@ -158,6 +159,34 @@ Current: **`1.0.0`**.
           "themedTokens": 9,               // distinct tokens with ≥1 theme-scope definition
           "style":        "mixed"          // color-scheme | data-attr | responsive | motion | mixed | none
         }
+      },
+
+      // AXIS 5 (slice #22): coverage / hardcode. Over the declarations a token
+      // scheme typically governs (colour, spacing, borders, typography, motion —
+      // the TOKENIZABLE set), how many consume a token via var() vs a raw literal.
+      // Coarse by design (a literal `0` counts as hardcoded), so read `ratio` as a
+      // direction, not a grade. `topHardcodedProperties` are the richest leads.
+      "coverage": {
+        "tokenizableDeclarations": 160,    // ordinary (non-custom-prop) decls on a tokenizable property
+        "covered":                 109,    // …that consume a token (hasVar)
+        "hardcoded":               51,     // …that hold a raw literal
+        "ratio":                   0.68,   // covered / tokenizable — share routed through a token
+        "topHardcodedProperties":  [ { "property": "margin", "count": 7 } ]
+      },
+
+      // AXIS 6 (slice #22): fallback usage. Catalogue of `var(--x, fallback)`
+      // patterns by kind — token (a chained dependency the main graph doesn't
+      // model), literal (a hardcoded default), or empty (`var(--x,)`). Catalogue
+      // only; no finding in this slice.
+      "fallback": {
+        "total":          304,             // total var() references
+        "withFallback":   40,              // …carrying a fallback
+        "withoutFallback":264,
+        "byKind":         { "token": 15, "literal": 25, "empty": 0 },
+        "samples": [
+          { "name": "--section-bg", "fallback": "transparent", "kind": "literal",
+            "scope": ".b_section", "file": "…", "line": 1 }
+        ]
       }
     },
 
@@ -197,7 +226,7 @@ Current: **`1.0.0`**.
   "findings": [
     {
       "id":         "F1",              // stable Fn id, render order
-      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell
+      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode
       "basis":      "universal",       // universal | convention | house-rule
       "confidence": "medium",          // high | medium | low
       "title":      "Dead token `--clr-blue` — defined but never referenced",
@@ -234,6 +263,7 @@ Current: **`1.0.0`**.
 | `tier-leak` (circular) | universal | `high` | Tokens form a `var()` reference cycle — the value can never resolve. Provable from the AST. |
 | `cascade-smell` (shadowed) | universal | `high` | The same token defined ≥2× under the **identical** (selector, at-rule) scope with **differing values** — source order alone decides, so the earlier definition can never win (dead code). Provable from the AST. Complement of `exact-duplicate` (identical value); a **different** scope is a legitimate override, not this. |
 | `cascade-smell` (stray override) | convention | `low` | A **global/root** token redefined **inside a component** — a local meaning that fights the global cascade. **Only** flagged where theming is the codebase's own override norm (globals otherwise re-scoped only via theme variants); cites the share. Silent where local/component overriding is the house style (wattage). Low confidence: a local override may be deliberate. |
+| `literal-hardcode` | universal | `medium` | A hardcoded literal whose **normalized value** equals an existing token's value — a missed tokenization. Matching keys off the normalized value (`#f00` matches a token holding `#ffffff`) and is restricted to distinctive types (colour, non-zero length); a bare `0`/`1`/keyword is too generic. Cites the matched token(s). Medium: the literal may be a coincidence. |
 
 `convention`-basis findings **cite the norm** they're measured against, per the PRD.
 

@@ -139,6 +139,83 @@ function classifyLayer(coarseTier, fanOut) {
 
 const LAYER_RANK = { primitive: 0, semantic: 1, component: 2 };
 
+// ── Value normalization (the substrate #22 adds; #23 extends to fuzzy) ──────
+// Named CSS colors we recognise for TYPING a value (not exhaustive — enough to
+// tell a colour literal from an identifier). Exact literal↔token matching keys
+// off the normalized string, so a named colour only ever matches another spelt
+// the same way; this set just steers value-type classification.
+const NAMED_COLORS = new Set([
+  'transparent', 'currentcolor', 'black', 'white', 'red', 'green', 'blue',
+  'yellow', 'orange', 'purple', 'pink', 'gray', 'grey', 'cyan', 'magenta',
+  'silver', 'gold', 'navy', 'teal', 'olive', 'maroon', 'lime', 'aqua',
+  'fuchsia', 'brown', 'beige', 'coral', 'crimson', 'indigo', 'violet',
+]);
+
+const LENGTH_UNIT = /(px|rem|em|vh|vw|vmin|vmax|%|pt|pc|ch|ex|fr|deg|rad|turn|s|ms)/;
+
+/**
+ * Classify a declaration value by type — `color` | `length` | `number` |
+ * `other` — so a match/near-match can be judged per type (#22 exact, #23 fuzzy).
+ * Single-value only: a compound value (`0 0 2px #000`) is `other` here.
+ */
+export function valueType(raw) {
+  const v = (raw || '').trim().toLowerCase();
+  if (/^#[0-9a-f]{3,8}$/.test(v) || /^(rgba?|hsla?)\(/.test(v) || NAMED_COLORS.has(v))
+    return 'color';
+  if (new RegExp(`^-?(\\d+\\.?\\d*|\\.\\d+)${LENGTH_UNIT.source}$`).test(v)) return 'length';
+  if (/^-?(\d+\.?\d*|\.\d+)$/.test(v)) return 'number';
+  return 'other';
+}
+
+/**
+ * Canonicalize a declaration value so equal values compare equal: lowercase,
+ * whitespace collapsed, spaces around commas dropped, and short hex expanded to
+ * long (`#f00` → `#ff0000`). Applied to BOTH a token's value and a literal, so
+ * only consistency matters — aggressiveness is safe (this is never rendered).
+ * The exact-match key for literal↔token findings, and #23's near-match input.
+ */
+export function normalizeValue(raw) {
+  let v = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/\s*,\s*/g, ',');
+  const m = /^#([0-9a-f]{3,4})$/.exec(v);
+  if (m) v = '#' + [...m[1]].map((c) => c + c).join('');
+  return v;
+}
+
+// Properties whose values are the ones a token system typically governs —
+// colour, spacing, borders, typography, motion. The coverage axis measures how
+// many of THESE consume a token vs a raw literal; other properties (`display`,
+// `position`, `flex`) aren't tokenizable in this sense and are excluded so the
+// ratio isn't diluted by declarations no token scheme would cover.
+const TOKENIZABLE = new Set([
+  'color', 'background', 'background-color', 'border-color', 'outline-color',
+  'fill', 'stroke', 'box-shadow', 'text-shadow', 'caret-color', 'accent-color',
+  'text-decoration-color', 'column-rule-color', 'border', 'border-top',
+  'border-right', 'border-bottom', 'border-left', 'border-top-color',
+  'border-right-color', 'border-bottom-color', 'border-left-color',
+  'border-width', 'border-radius', 'outline', 'column-rule',
+  'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+  'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'gap', 'row-gap', 'column-gap', 'inset',
+  'font-size', 'line-height', 'font-weight', 'letter-spacing', 'font-family',
+  'transition', 'transition-duration', 'animation-duration',
+]);
+
+/** True when a property's value is one a token scheme typically governs (see
+ *  TOKENIZABLE) — the coverage axis only weighs these. */
+function isTokenizableProperty(property) {
+  return TOKENIZABLE.has((property || '').toLowerCase());
+}
+
+/** A value distinctive enough to implicate a token when it appears as a raw
+ *  literal: a colour, or a non-zero length. Bare numbers, `0`-lengths, and
+ *  keywords (`none`, `inherit`) are too generic — matching them is noise. */
+function isMatchableLiteral(raw) {
+  const type = valueType(raw);
+  if (type === 'color') return true;
+  if (type === 'length') return parseFloat((raw || '').trim()) !== 0;
+  return false;
+}
+
 /** Split a custom-property name into its grammar segments: `--nav-link-bg`
  *  → ['nav','link','bg']. Empty segments (from `--`, `--x--y`) dropped. */
 function segmentName(name) {
@@ -226,7 +303,7 @@ function detectDoubling(defs, definedCount) {
  * a `var(--x)` use anywhere in a value (including inside another token's value
  * and inside fallbacks).
  */
-function extractFacts(css, relPath, defs, refs, parseErrors) {
+function extractFacts(css, relPath, defs, refs, parseErrors, decls = []) {
   let ast;
   try {
     ast = csstree.parse(css, {
@@ -265,23 +342,48 @@ function extractFacts(css, relPath, defs, refs, parseErrors) {
       }
 
       // References: any var() inside this declaration's value.
+      let declHasVar = false;
       csstree.walk(node.value, {
         visit: 'Function',
         enter(fn) {
           if (fn.name !== 'var') return;
           const first = fn.children && fn.children.first;
           if (!first || first.type !== 'Identifier') return;
+          declHasVar = true;
+          // Fallback = everything after the first Operator(',') inside var().
+          const parts = fn.children ? fn.children.toArray() : [];
+          const comma = parts.findIndex((c) => c.type === 'Operator' && c.value === ',');
+          const fallback =
+            comma === -1
+              ? null
+              : csstree.generate({ type: 'Value', children: parts.slice(comma + 1) }).trim();
           refs.push({
             name: first.name,
             owner: isCustomProp ? node.property : null, // token that references it, if any
             inProperty: node.property,
             scope, // the selector this var() is used under — survives minification
             atScope,
+            fallback, // null (no fallback), or the fallback expression text
             file: relPath,
             line: fn.loc ? fn.loc.start.line : line,
           });
         },
       });
+
+      // Coverage subject: an ORDINARY declaration on a tokenizable property (a
+      // custom-property definition is a token, not a coverage subject). `hasVar`
+      // = it consumes a token; otherwise it holds a raw literal.
+      if (!isCustomProp && isTokenizableProperty(node.property)) {
+        decls.push({
+          property: node.property.toLowerCase(),
+          value,
+          hasVar: declHasVar,
+          scope,
+          atScope,
+          file: relPath,
+          line,
+        });
+      }
     },
   });
 }
@@ -643,8 +745,71 @@ function buildTheming(defined) {
   return { mechanisms, themedTokens: themed.size, style };
 }
 
+/**
+ * The coverage / hardcode axis (#22): over the tokenizable declarations, how
+ * many consume a token (`var()`) vs hold a raw literal. `ratio` is the share
+ * covered — 1.0 = every tokenizable value routes through a token. Coarse by
+ * design: a literal `0` counts as hardcoded even where a token is unwarranted,
+ * so read the ratio as a direction, not a grade. `topHardcodedProperties` ranks
+ * the properties most often literal — the richest tokenization leads.
+ */
+function buildCoverageAxis(decls) {
+  let covered = 0;
+  let hardcoded = 0;
+  const byProperty = new Map();
+  for (const d of decls) {
+    if (d.hasVar) covered += 1;
+    else {
+      hardcoded += 1;
+      byProperty.set(d.property, (byProperty.get(d.property) || 0) + 1);
+    }
+  }
+  const total = covered + hardcoded;
+  const topHardcodedProperties = [...byProperty]
+    .map(([property, count]) => ({ property, count }))
+    .sort((a, b) => b.count - a.count || a.property.localeCompare(b.property))
+    .slice(0, 10);
+  return {
+    tokenizableDeclarations: total,
+    covered,
+    hardcoded,
+    ratio: total ? Number((covered / total).toFixed(2)) : 0,
+    topHardcodedProperties,
+  };
+}
+
+/**
+ * The fallback-usage axis (#22): catalogue `var(--x, fallback)` patterns. A
+ * fallback's kind tells what it implies —
+ *   token   — the fallback is itself a `var()`: a chained dependency (the token
+ *             graph doesn't model this second edge; worth surfacing)
+ *   literal — a hardcoded default the token would otherwise supply
+ *   empty   — `var(--x,)`: an explicit empty fallback (renders nothing if unset)
+ * Purely a catalogue with counts + samples; no finding in this slice.
+ */
+function buildFallbackAxis(refs) {
+  let withFallback = 0;
+  const byKind = { token: 0, literal: 0, empty: 0 };
+  const samples = [];
+  for (const r of refs) {
+    if (r.fallback == null) continue;
+    withFallback += 1;
+    const kind = r.fallback === '' ? 'empty' : /var\(/.test(r.fallback) ? 'token' : 'literal';
+    byKind[kind] += 1;
+    if (samples.length < 10)
+      samples.push({ name: r.name, fallback: r.fallback, kind, scope: r.scope, file: r.file, line: r.line });
+  }
+  return {
+    total: refs.length,
+    withFallback,
+    withoutFallback: refs.length - withFallback,
+    byKind,
+    samples,
+  };
+}
+
 // ── Model + findings ───────────────────────────────────────────────────────
-function buildModel(defs, refs) {
+function buildModel(defs, refs, decls = []) {
   // Token registry keyed by name.
   const tokens = new Map();
   const tokenOf = (name) => {
@@ -715,8 +880,10 @@ function buildModel(defs, refs) {
   const naming = buildNamingAxis(defined);
   const layering = buildLayeringAxis(defined, tokens);
   const scopeCascade = buildScopeCascadeAxis(defined);
+  const coverage = buildCoverageAxis(decls);
+  const fallback = buildFallbackAxis(refs);
 
-  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade };
+  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade, coverage, fallback, decls };
 }
 
 /** Serialize the token registry to plain JSON (facts embedded for later slices). */
@@ -793,6 +960,52 @@ function buildFindings(model) {
         evidence: `${t.name} is defined ${group.length}× with the identical value \`${group[0].value}\` under scope \`${group[0].scope}\`${group[0].atScope ? ` (${group[0].atScope})` : ''} — the later definitions are redundant.`,
       });
     }
+  }
+
+  // Literal matches an existing token (coverage axis, #22). A hardcoded literal
+  // whose NORMALIZED value equals a token's value is a missed tokenization —
+  // universal (defensible anywhere). Matching keys off the normalized value so
+  // `#f00` matches a token holding `#ff0000`. Restricted to distinctive value
+  // types (colour, non-zero length): a bare `0`/`1`/`none` is too generic to
+  // implicate a token. Medium confidence — the literal may be a coincidence.
+  const valueIndex = new Map(); // normalized value -> Set<token name>
+  for (const t of model.defined) {
+    for (const d of t.definitions) {
+      if (!isMatchableLiteral(d.value)) continue;
+      const key = normalizeValue(d.value);
+      if (!valueIndex.has(key)) valueIndex.set(key, new Set());
+      valueIndex.get(key).add(t.name);
+    }
+  }
+  const literalSites = new Map(); // normalized value -> declaration sites
+  for (const d of model.decls) {
+    if (d.hasVar || !isMatchableLiteral(d.value)) continue;
+    const key = normalizeValue(d.value);
+    if (!valueIndex.has(key)) continue;
+    if (!literalSites.has(key)) literalSites.set(key, []);
+    literalSites.get(key).push(d);
+  }
+  for (const [key, sites] of [...literalSites].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const tokenNames = [...valueIndex.get(key)].sort();
+    const tokens = tokenNames.map((n) => `\`${n}\``).join(', ');
+    findings.push({
+      id: nextId(),
+      type: 'literal-hardcode',
+      basis: 'universal',
+      confidence: 'medium',
+      title: `Hardcoded \`${sites[0].value}\` matches existing token${tokenNames.length > 1 ? 's' : ''} ${tokens}`,
+      locations: sites.map((d) => ({
+        selector: d.scope,
+        atScope: d.atScope,
+        property: d.property,
+        file: d.file,
+        line: d.line,
+      })),
+      evidence:
+        `${sites.length} declaration${sites.length === 1 ? '' : 's'} hardcode \`${sites[0].value}\`, ` +
+        `whose value equals the existing token${tokenNames.length > 1 ? 's' : ''} ${tokens}` +
+        ` — a missed tokenization. Replace the literal with \`var(${tokenNames[0]})\`.`,
+    });
   }
 
   // Shadowed definition (scope & cascade axis, #21). The same token defined ≥2×
@@ -998,6 +1211,7 @@ function analyze({ root, slug, exclude, top }) {
   const files = findCssFiles(absRoot, exclude);
   const defs = [];
   const refs = [];
+  const decls = [];
   const parseErrors = [];
 
   for (const file of files) {
@@ -1009,10 +1223,10 @@ function analyze({ root, slug, exclude, top }) {
       parseErrors.push({ file: rel, message: String(err.message || err) });
       continue;
     }
-    extractFacts(css, rel, defs, refs, parseErrors);
+    extractFacts(css, rel, defs, refs, parseErrors, decls);
   }
 
-  const model = buildModel(defs, refs);
+  const model = buildModel(defs, refs, decls);
   const findings = buildFindings(model);
   const doubling = detectDoubling(defs, model.defined.length);
 
@@ -1040,6 +1254,9 @@ function analyze({ root, slug, exclude, top }) {
       overrideCount: model.scopeCascade.overrides.tokenCount,
       themingStyle: model.scopeCascade.theming.style,
       cascadeSmellCount: findings.filter((f) => f.type === 'cascade-smell').length,
+      hardcodeRatio: model.coverage.tokenizableDeclarations
+        ? Number((model.coverage.hardcoded / model.coverage.tokenizableDeclarations).toFixed(2))
+        : 0,
       findingCount: findings.length,
     },
     model: {
@@ -1060,6 +1277,8 @@ function analyze({ root, slug, exclude, top }) {
           flow: model.layering.flow,
         },
         scopeCascade: model.scopeCascade,
+        coverage: model.coverage,
+        fallback: model.fallback,
       },
       tokens: serializeTokens(model.defined),
     },
