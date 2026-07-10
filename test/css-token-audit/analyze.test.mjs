@@ -1,5 +1,6 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -17,8 +18,19 @@ import {
   emptyConventions,
   recordDispositions,
   renderConventions,
+  promoteRule,
   CONVENTIONS_VERSION,
 } from '../../skills/css-token-audit/scripts/conventions.mjs';
+
+const NAMING_CANDIDATE = {
+  rule: 'naming-prefix:global',
+  kind: 'naming-prefix',
+  tier: 'global',
+  title: 'Global tokens use a recurring category prefix',
+  allowed: ['clr', 'space', 'text'],
+  violations: [{ name: '--zzz-odd', prefix: 'zzz', locations: [] }],
+  violationCount: 1,
+};
 
 // The analyzer's contract: a DETERMINISTIC css-tree parse of compiled CSS →
 // custom-property dependency graph → fan-in/fan-out axis + universal findings.
@@ -390,6 +402,140 @@ describe('conventions curation (#24)', () => {
   });
 });
 
+describe('house-rule promotion (#25)', () => {
+  // Promoting a candidate persists it to the conventions file as a house rule —
+  // a NEW object (never a mutation), with `allowed` frozen at promote time, and
+  // prior dispositions/house rules untouched.
+  it('persists a promoted candidate as a frozen house rule, preserving dispositions', () => {
+    let conv = recordDispositions(null, [{ fingerprint: 'dead-token:--a', disposition: 'accept' }]);
+    conv = promoteRule(conv, NAMING_CANDIDATE, { date: '2026-07-10', note: 'house style' });
+    const rule = conv.houseRules['naming-prefix:global'];
+    expect(rule.kind).toBe('naming-prefix');
+    expect(rule.allowed).toEqual(['clr', 'space', 'text']);
+    expect(rule.note).toBe('house style');
+    expect(rule.recordedAt).toBe('2026-07-10');
+    // No clobber: the prior disposition survives.
+    expect(conv.dispositions['dead-token:--a'].disposition).toBe('accept');
+  });
+
+  it('does not mutate the input conventions object', () => {
+    const before = emptyConventions('p');
+    const snapshot = JSON.stringify(before);
+    promoteRule(before, NAMING_CANDIDATE, {});
+    expect(JSON.stringify(before)).toBe(snapshot);
+  });
+
+  it('rejects a candidate missing its rule id, kind, or allowed set', () => {
+    expect(() => promoteRule(null, { kind: 'naming-prefix', allowed: ['a'] }, {})).toThrow();
+    expect(() => promoteRule(null, { rule: 'naming-prefix:global', kind: 'naming-prefix' }, {})).toThrow();
+    expect(() => promoteRule(null, { rule: 'x', kind: 'bogus', allowed: [] }, {})).toThrow();
+  });
+
+  it('renders promoted house rules in the readable conventions view', () => {
+    const conv = promoteRule(emptyConventions('p'), NAMING_CANDIDATE, { date: '2026-07-10', note: 'house style' });
+    const md = renderConventions(conv);
+    expect(md).toMatch(/House rules/i);
+    expect(md).toContain('naming-prefix:global');
+    expect(md).toContain('house style');
+  });
+
+  it('previews a promotion without persisting, and persists only with --confirm (the curate CLI)', () => {
+    const SCRIPT = new URL('../../skills/css-token-audit/scripts/conventions.mjs', import.meta.url).pathname;
+    const dir = fixture({
+      'a.css': ':root{--clr-a:#111;--clr-b:#222;--space-1:1px;--space-2:2px;--text-sm:1rem;--text-lg:2rem;--zzz-odd:5px}',
+    });
+    const auditPath = join(dir, 'audit.json');
+    writeFileSync(auditPath, JSON.stringify(analyze({ root: dir, slug: 'cli', exclude: [], top: 10 })));
+    const convPath = join(dir, 'conventions.json');
+    const cmd = (...extra) =>
+      execFileSync('node', [SCRIPT, '--conventions', convPath, '--audit', auditPath, '--promote', 'naming-prefix:global', ...extra], {
+        encoding: 'utf8',
+      });
+    // Preview only — the would-be violation is shown, nothing is written.
+    const preview = cmd();
+    expect(preview).toMatch(/--zzz-odd/);
+    expect(existsSync(convPath)).toBe(false);
+    // Confirm — now the house rule persists.
+    cmd('--confirm');
+    expect(existsSync(convPath)).toBe(true);
+    expect(JSON.parse(readFileSync(convPath, 'utf8')).houseRules['naming-prefix:global'].allowed).toEqual([
+      'clr',
+      'space',
+      'text',
+    ]);
+  });
+});
+
+describe('promotable house rules (the promote disposition, #25)', () => {
+  // `promote` is the third, broadest disposition: it enshrines an inferred-but-
+  // UNENFORCED norm as a house rule. The audit keeps these norms quiet by default
+  // (naming-outlier only fires on a "clustered" tier), so the promotable candidate
+  // carries the exact violation set strict enforcement WOULD raise — the preview.
+  it('offers a naming-prefix house rule with the off-grammar tokens as its would-be violations', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--clr-a:#111;--clr-b:#222;--space-1:1px;--space-2:2px;--text-sm:1rem;--text-lg:2rem;--zzz-odd:5px}',
+    });
+    const audit = analyze({ root: dir, slug: 'hr', exclude: [], top: 10 });
+    const c = audit.model.axes.houseRuleCandidates.find((c) => c.rule === 'naming-prefix:global');
+    expect(c).toBeTruthy();
+    expect(c.allowed).toEqual(['clr', 'space', 'text']); // the recurring vocabulary, frozen
+    expect(c.violations.map((v) => v.name)).toEqual(['--zzz-odd']);
+    expect(c.violationCount).toBe(1);
+  });
+
+  it('offers no naming-prefix candidate when every global token is on-grammar', () => {
+    const dir = fixture({
+      'a.css': ':root{--clr-a:#111;--clr-b:#222;--space-1:1px;--space-2:2px;--text-sm:1rem;--text-lg:2rem}',
+    });
+    const audit = analyze({ root: dir, slug: 'hr2', exclude: [], top: 10 });
+    expect(audit.model.axes.houseRuleCandidates.some((c) => c.rule === 'naming-prefix:global')).toBe(false);
+  });
+
+  it('enforces a promoted rule on re-run, raising a house-rule finding per off-vocabulary token', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--clr-a:#111;--clr-b:#222;--space-1:1px;--space-2:2px;--text-sm:1rem;--text-lg:2rem;--zzz-odd:5px;--qqq-x:9px}',
+    });
+    // Off by default: with no conventions, no house rule is enforced.
+    const bare = analyze({ root: dir, slug: 'hr3', exclude: [], top: 10 });
+    expect(bare.findings.some((f) => f.basis === 'house-rule')).toBe(false);
+    // Promote the candidate, persist it, re-run — now the rule bites.
+    const cand = bare.model.axes.houseRuleCandidates.find((c) => c.rule === 'naming-prefix:global');
+    const convPath = join(dir, 'conventions.json');
+    writeFileSync(convPath, JSON.stringify(promoteRule(null, cand, { date: '2026-07-10' })));
+    const enforced = analyze({ root: dir, slug: 'hr3b', exclude: [], top: 10, conventions: convPath });
+    const hr = enforced.findings.filter((f) => f.basis === 'house-rule');
+    expect(hr.map((f) => f.subject).sort()).toEqual([
+      'naming-prefix:global:--qqq-x',
+      'naming-prefix:global:--zzz-odd',
+    ]);
+    expect(hr.every((f) => f.type === 'house-rule' && f.confidence === 'high')).toBe(true);
+    expect(hr[0].fingerprint).toBe('house-rule:naming-prefix:global:--qqq-x');
+    expect(enforced.summary.houseRuleFindingCount).toBe(2);
+  });
+
+  it('lets a human accept one house-rule violation, suppressing just that instance', () => {
+    const dir = fixture({
+      'a.css':
+        ':root{--clr-a:#111;--clr-b:#222;--space-1:1px;--space-2:2px;--text-sm:1rem;--text-lg:2rem;--zzz-odd:5px;--qqq-x:9px}',
+    });
+    const bare = analyze({ root: dir, slug: 'hr4', exclude: [], top: 10 });
+    const cand = bare.model.axes.houseRuleCandidates.find((c) => c.rule === 'naming-prefix:global');
+    let conv = promoteRule(null, cand, { date: '2026-07-10' });
+    conv = recordDispositions(conv, [
+      { fingerprint: 'house-rule:naming-prefix:global:--zzz-odd', disposition: 'accept', note: 'legacy alias' },
+    ]);
+    const convPath = join(dir, 'conventions.json');
+    writeFileSync(convPath, JSON.stringify(conv));
+    const enforced = analyze({ root: dir, slug: 'hr4b', exclude: [], top: 10, conventions: convPath });
+    const accepted = enforced.findings.find((f) => f.fingerprint === 'house-rule:naming-prefix:global:--zzz-odd');
+    expect(accepted.suppressed).toBe(true);
+    const other = enforced.findings.find((f) => f.fingerprint === 'house-rule:naming-prefix:global:--qqq-x');
+    expect(other.suppressed).toBe(false);
+  });
+});
+
 describe('near-duplicate axis', () => {
   // Tokens whose VALUES are nearly (not exactly) the same — the juiciest
   // consolidation leads. Clustered per value type by proximity: colour distance,
@@ -549,6 +695,26 @@ describe('build_report schema contract', () => {
     expect(md).toMatch(/consolidat/i); // frames clusters as consolidation leads
     expect(md).toContain('--ink');
     expect(md).toContain('--charcoal');
+  });
+
+  it('renders promotable house rules, then the enforced house-rule findings once promoted (#25)', () => {
+    const dir = fixture({
+      'a.css': ':root{--clr-a:#111;--clr-b:#222;--space-1:1px;--space-2:2px;--text-sm:1rem;--text-lg:2rem;--zzz-odd:5px}',
+    });
+    // Not yet promoted: the report OFFERS the candidate, raises no house-rule finding.
+    const bare = analyze({ root: dir, slug: 'rep', exclude: [], top: 10 });
+    const md1 = renderReport(bare);
+    expect(md1).toMatch(/## Promotable house rules/);
+    expect(md1).toContain('naming-prefix:global');
+    expect(md1).toContain('--zzz-odd'); // the would-be violation is previewed
+    expect(md1).not.toMatch(/### house-rule \(/);
+    // Promote + re-run: the house-rule finding now renders in the findings list.
+    const cand = bare.model.axes.houseRuleCandidates.find((c) => c.rule === 'naming-prefix:global');
+    const convPath = join(dir, 'conventions.json');
+    writeFileSync(convPath, JSON.stringify(promoteRule(null, cand, { date: '2026-07-10' })));
+    const md2 = renderReport(analyze({ root: dir, slug: 'rep2', exclude: [], top: 10, conventions: convPath }));
+    expect(md2).toMatch(/### house-rule \(1\)/);
+    expect(md2).toContain('House rule `naming-prefix:global`');
   });
 
   it('renders the naming taxonomy section with per-tier grammar + consistency', () => {

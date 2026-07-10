@@ -1,6 +1,6 @@
 ---
 name: css-token-audit
-description: Reverse-engineers a project's CSS custom-property (design-token) architecture from a deterministic css-tree parse of the COMPILED CSS, and reports its shape and problems. Use when the user wants to audit CSS variables/tokens, see the shape of a token system, find dead or duplicate tokens, find near-duplicate tokens to consolidate, check naming consistency, check tier/layering leaks, check scope/cascade/theming, check token coverage / hardcoded literals / fallback usage, or check custom-property architecture. Axes so far: fan-in/fan-out + naming taxonomy + layering/tiers + scope & cascade + coverage/hardcode + fallback usage + near-duplicates; findings: dead, exact-duplicate, near-duplicate, naming outliers, tier leaks, cascade smells, hardcoded literals matching a token.
+description: Reverse-engineers a project's CSS custom-property (design-token) architecture from a deterministic css-tree parse of the COMPILED CSS, and reports its shape and problems. Use when the user wants to audit CSS variables/tokens, see the shape of a token system, find dead or duplicate tokens, find near-duplicate tokens to consolidate, check naming consistency, check tier/layering leaks, check scope/cascade/theming, check token coverage / hardcoded literals / fallback usage, promote a house rule and preview its violations, or check custom-property architecture. Axes so far: fan-in/fan-out + naming taxonomy + layering/tiers + scope & cascade + coverage/hardcode + fallback usage + near-duplicates + promotable house rules; findings: dead, exact-duplicate, near-duplicate, naming outliers, tier leaks, cascade smells, hardcoded literals matching a token, house-rule violations. Curate findings via a conventions file: accept / fix / promote.
 disable-model-invocation: true
 ---
 
@@ -20,7 +20,7 @@ parser is to not do that.
 it. `audit.json` is **never hand-edited** — re-run `analyze.mjs`. See
 [REFERENCE.md](REFERENCE.md) for the schema (the versioned contract).
 
-Seven axes so far: **fan-in/fan-out** (#18); **naming taxonomy** (#19, a grammar
+Eight axes so far: **fan-in/fan-out** (#18); **naming taxonomy** (#19, a grammar
 inferred *per tier* — global `:root` design tokens vs block-scoped locals);
 **layering/tiers** (#20, the primitive → semantic → component tier system
 reconstructed from the graph, and whether value flows one way or leaks);
@@ -30,19 +30,27 @@ component — where it gets overridden, and how theming is wired, all statically
 through a token vs a raw literal); **fallback usage** (#22, the catalogue of
 `var(--x, fallback)` patterns by kind); and **near-duplicates** (#23, clusters of
 tokens whose raw values are *nearly* the same — consolidation leads, by colour
-distance / numeric proximity). Findings: dead tokens, exact-duplicate
+distance / numeric proximity); and **promotable house rules** (#25, inferred norms
+the audit does *not* enforce by default — offered as candidates a human may
+`promote`, each carrying the exact violation set strict enforcement would raise).
+Findings: dead tokens, exact-duplicate
 definitions, near-duplicate token clusters, naming outliers (inconsistent
 abbreviations, off-grammar prefixes), tier leaks (up-tier, circular, or a skip
 against a semantic-routing norm), cascade smells (a shadowed unreachable
-definition, or a global strayed into a component against a theming norm), and
-hardcoded literals that match an existing token's value (a missed tokenization).
+definition, or a global strayed into a component against a theming norm),
+hardcoded literals that match an existing token's value (a missed tokenization),
+and **house-rule violations** (#25, a token breaking a rule a human `promote`d).
 
-Every finding runs through a **propose/dispose feedback loop** (#24): the audit
-*proposes*, a human *disposes* via a versioned, human-editable **conventions
-file** (the audit's 4th input). An `accept`ed finding is suppressed on that
-instance and stays quiet across re-runs; a `fix` leaves it flagged as a refactor
-lead. The audit compounds — confirmations persist. Later slices add `promote`
-(house-rule conventions with a violation preview).
+Every finding runs through a **propose/dispose feedback loop** (#24, #25): the
+audit *proposes*, a human *disposes* via a versioned, human-editable **conventions
+file** (the audit's 4th input), with three dispositions narrow → broad. An
+`accept`ed finding is suppressed on that instance and stays quiet across re-runs;
+a `fix` leaves it flagged as a refactor lead; a `promote` enshrines an inferred
+norm as a **house rule**, enforced on every re-run as `basis: house-rule`
+findings. Promotion is broad and dangerous — enforcing raises *new* violations
+elsewhere — so `curate` previews that blast radius and persists only on
+`--confirm`; house rules are off by default (opt-in). The audit compounds —
+confirmations and rules persist.
 
 ## Audit the COMPILED CSS, not the authored source
 
@@ -113,8 +121,11 @@ their behalf:
   the user confirms is intentional (a public-API token that looks dead, a
   deliberate near-duplicate).
 - **`fix`** — a real problem; leave it flagged as a refactor lead.
+- **`promote`** — enshrine an inferred norm as a **house rule** (broad,
+  cross-project). Use only with the user's explicit go: it's dangerous —
+  enforcing raises *new* violations elsewhere.
 
-Record dispositions into the versioned conventions file (the 4th input):
+Record accept/fix into the versioned conventions file (the 4th input):
 
 ```
 node scripts/conventions.mjs --conventions conventions.json --audit audit.json \
@@ -123,10 +134,27 @@ node scripts/conventions.mjs --conventions conventions.json --audit audit.json \
 ```
 
 Cite the **`fingerprint`** (`type:subject`, e.g. `dead-token:--clr-blue`) from
-`audit.json`, not the render-order `Fn` id. `curate` **merges** — it never
-clobbers prior decisions. Then re-run `draft`: accepted findings stay quiet, the
-rest re-surface. The conventions file is **human-editable**; `audit.json` and the
-report stay generated — never hand-edit them.
+`audit.json`, not the render-order `Fn` id.
+
+To **promote** a house rule, cite a **rule id** from `audit.json`'s
+`model.axes.houseRuleCandidates` (e.g. `naming-prefix:global`). Run **without**
+`--confirm` first to preview the new violations the rule would raise — walk that
+blast radius with the user — then re-run with `--confirm` to persist:
+
+```
+# preview only (writes nothing)
+node scripts/conventions.mjs --conventions conventions.json --audit audit.json \
+     --promote <ruleId>
+# persist once confirmed
+node scripts/conventions.mjs --conventions conventions.json --audit audit.json \
+     --promote <ruleId> --note "why it's the house style" --confirm --md conventions.md
+```
+
+`curate` **merges** — it never clobbers prior decisions or rules. Then re-run
+`draft`: accepted findings stay quiet, promoted rules are enforced as
+`house-rule` findings, the rest re-surface. The conventions file is
+**human-editable**; `audit.json` and the report stay generated — never hand-edit
+them.
 
 ## Reading the output
 
@@ -173,12 +201,17 @@ report stay generated — never hand-edit them.
 - **Accepted exceptions** — findings a human has `accept`ed in the conventions
   file are suppressed from the main list and gathered here, so the report stays a
   live to-do list. Edit the conventions file to re-open one.
+- **Promotable house rules** — inferred norms the audit does *not* enforce by
+  default, each with the violation count `promote` would raise (the blast
+  radius). A menu for the feedback loop, not a finding. Once promoted, its
+  violations appear in the findings list as **`house-rule`** (`basis: house-rule`)
+  and count separately in the overview.
 
 ## Bundled files
 
 - `scripts/analyze.mjs` — parser + graph + all axes + findings → `audit.json`; reads the conventions file.
 - `scripts/build_report.mjs` — renders `audit.json` → Markdown; refuses an incompatible schema major.
-- `scripts/conventions.mjs` — the propose/dispose feedback loop: read by `analyze`, and the `curate` CLI.
+- `scripts/conventions.mjs` — the propose/dispose feedback loop (accept / fix / promote): read by `analyze`, and the `curate` CLI.
 - `notes-template.md` — copied to `notes.md` by `init`.
 - `REFERENCE.md` — the `audit.json` schema, the conventions file, and the versioning contract.
 

@@ -1102,8 +1102,49 @@ function buildModel(defs, refs, decls = []) {
   const coverage = buildCoverageAxis(decls);
   const fallback = buildFallbackAxis(refs);
   const nearDuplicates = buildNearDuplicateAxis(defined);
+  const houseRuleCandidates = buildHouseRuleCandidates({ naming, defined });
 
-  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade, coverage, fallback, nearDuplicates, decls };
+  return { tokens, defined, undefinedRefs, dead, oneOff, loadBearing, naming, layering, scopeCascade, coverage, fallback, nearDuplicates, houseRuleCandidates, decls };
+}
+
+/**
+ * Promotable house rules (#25) — inferred norms the audit does NOT enforce by
+ * default, offered as candidates a human may `promote`. Promotion is broad and
+ * dangerous: enforcing a rule raises NEW violations the vanilla pass keeps quiet,
+ * so each candidate carries the exact violation set it WOULD raise — the curation
+ * preview. Off by default: a candidate enforces nothing until it is promoted into
+ * the conventions file. `allowed` is frozen into the rule at promote time.
+ */
+function buildHouseRuleCandidates(model) {
+  const candidates = [];
+  // naming-prefix:global — the global tier's recurring category prefixes as a
+  // CLOSED vocabulary. Vanilla naming-outlier only fires on a "clustered" tier
+  // and only for singleton prefixes; promoting enforces the vocabulary strictly,
+  // so any token off it is a violation regardless of that gate.
+  const g = model.naming.tiers.global;
+  const allowed = [...g.recurringPrefixes].sort();
+  if (allowed.length >= 3) {
+    const violations = model.defined
+      .filter((t) => t.tier === 'global' && !allowed.includes(t.segments[0]))
+      .map((t) => ({
+        name: t.name,
+        prefix: t.segments[0] ?? '(none)',
+        locations: t.definitions.map((d) => ({ selector: d.scope, atScope: d.atScope, file: d.file, line: d.line })),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (violations.length) {
+      candidates.push({
+        rule: 'naming-prefix:global',
+        kind: 'naming-prefix',
+        tier: 'global',
+        title: 'Global tokens use a recurring category prefix',
+        allowed,
+        violations,
+        violationCount: violations.length,
+      });
+    }
+  }
+  return candidates;
 }
 
 /** Serialize the token registry to plain JSON (facts embedded for later slices). */
@@ -1475,6 +1516,51 @@ function buildFindings(model) {
   return findings;
 }
 
+/**
+ * Enforce promoted house rules (#25) — off by default. For each rule in the
+ * conventions file, append a `basis: 'house-rule'` finding per violation in the
+ * current model, mirroring how buildFindings assembles the list: a continuing
+ * `Fn` id and a stable fingerprint. A no-op when there are no house rules, so a
+ * bare run (no conventions) never raises one — house rules are strictly opt-in.
+ */
+function applyHouseRules(findings, conventions, model) {
+  const houseRules = (conventions && conventions.houseRules) || {};
+  let n = findings.length;
+  const nextId = () => `F${++n}`;
+  for (const [rule, def] of Object.entries(houseRules)) {
+    if (def.kind === 'naming-prefix') {
+      const allowed = def.allowed || [];
+      const tier = def.tier || 'global';
+      const vocab = allowed.map((p) => `\`${p}-\``).join(', ');
+      const offenders = model.defined
+        .filter((t) => t.tier === tier && !allowed.includes(t.segments[0]))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      for (const t of offenders) {
+        findings.push({
+          id: nextId(),
+          type: 'house-rule',
+          subject: `${rule}:${t.name}`,
+          basis: 'house-rule',
+          confidence: 'high',
+          title: `House rule \`${rule}\`: \`${t.name}\` uses off-vocabulary prefix \`${t.segments[0]}-\``,
+          locations: t.definitions.map((d) => ({ selector: d.scope, atScope: d.atScope, file: d.file, line: d.line })),
+          evidence:
+            `The promoted house rule \`${rule}\` restricts ${tier} tokens to the vocabulary ${vocab}; ` +
+            `\`${t.name}\` uses \`${t.segments[0]}-\`, which is not in it.`,
+        });
+      }
+    }
+  }
+  // Stamp identity/disposition defaults on the freshly appended findings (the
+  // pre-existing ones were already stamped by buildFindings).
+  for (const f of findings) {
+    if (!f.fingerprint) f.fingerprint = `${f.type}:${f.subject}`;
+    if (f.disposition == null) f.disposition = 'open';
+    if (f.suppressed == null) f.suppressed = false;
+  }
+  return findings;
+}
+
 // ── Assemble audit.json ────────────────────────────────────────────────────
 function analyze({ root, slug, exclude, top, conventions }) {
   const absRoot = resolve(root);
@@ -1501,6 +1587,9 @@ function analyze({ root, slug, exclude, top, conventions }) {
   // The 4th input: the human-curated conventions file. Accepted findings are
   // marked suppressed here so re-running the audit keeps them quiet.
   const conv = loadConventions(conventions);
+  // Enforce promoted house rules (#25) BEFORE annotating, so an individual
+  // house-rule violation can itself be accepted via a disposition.
+  applyHouseRules(findings, conv, model);
   applyConventions(findings, conv);
   const active = findings.filter((f) => !f.suppressed);
   const doubling = detectDoubling(defs, model.defined.length);
@@ -1530,6 +1619,8 @@ function analyze({ root, slug, exclude, top, conventions }) {
       themingStyle: model.scopeCascade.theming.style,
       cascadeSmellCount: active.filter((f) => f.type === 'cascade-smell').length,
       nearDuplicateCount: model.nearDuplicates.clusterCount,
+      houseRuleFindingCount: active.filter((f) => f.type === 'house-rule').length,
+      promotableCount: model.houseRuleCandidates.length,
       hardcodeRatio: model.coverage.tokenizableDeclarations
         ? Number((model.coverage.hardcoded / model.coverage.tokenizableDeclarations).toFixed(2))
         : 0,
@@ -1557,6 +1648,7 @@ function analyze({ root, slug, exclude, top, conventions }) {
         coverage: model.coverage,
         fallback: model.fallback,
         nearDuplicates: model.nearDuplicates,
+        houseRuleCandidates: model.houseRuleCandidates,
       },
       tokens: serializeTokens(model.defined),
     },
