@@ -92,6 +92,15 @@ Current: **`1.0.0`**.
     }
   ],
 
+  // null, or a source+build tree-doubling warning (see "Tree doubling" below).
+  "doubling": {
+    "dirA":        "build",
+    "dirB":        "source",
+    "sharedTokens":31,       // tokens defined identically under both trees
+    "share":       0.53,     // sharedTokens / tokenCount
+    "compiledDir": "build"   // the tree that looks minified/compiled, or null
+  },
+
   "parseErrors": [ { "file": "x.css", "message": "Identifier is expected" } ]
 }
 ```
@@ -122,6 +131,20 @@ prints a loud warning.
 **compiled** CSS, the only place `var()` actually resolves (PRD §5.2). Authored
 preprocessor source is never a reliable graph. A run with `parseErrors > 0`
 should be treated as provisional.
+
+## Tree doubling (a second correctness caveat)
+
+Distinct from parse coverage. If `--root` spans **both** an authored tree and
+its compiled build, every token is parsed twice — counts inflate and dozens of
+phantom `exact-duplicate` findings fire (the same token in two copies, misread
+as redundancy). Unlike a parse error this can happen **silently** on all-valid
+plain CSS, so it gets its own detector and warning.
+
+`detectDoubling` flags it when the same token is defined with an **identical
+value** across two top-level dirs at scale (≥3 tokens **and** ≥25% of the set),
+and names the minified tree as the likely build. The skill does **not**
+auto-resolve it — the fix is the user's: re-run against one tree (the compiled
+one). `audit.doubling` is `null` when nothing systemic is found.
 
 ## Bundled files
 

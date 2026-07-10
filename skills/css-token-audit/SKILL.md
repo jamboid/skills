@@ -62,9 +62,14 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
    ```
    Useful flags: `--exclude <fragment>` (repeatable, skips path fragments),
    `--top <n>` (load-bearing list length, default 15).
-3. **Check parse coverage.** Read `meta.parseErrors` in `audit.json`. If it's
-   non-zero, you're likely parsing preprocessor source — tell the user, and
-   re-point at the compiled CSS before trusting the findings.
+3. **Check the two coverage guards** in `audit.json`:
+   - `meta.parseErrors > 0` → you're likely parsing preprocessor source. Re-point
+     at the compiled CSS before trusting the findings.
+   - `doubling` non-null → `--root` spanned both a source tree and its build
+     output; counts are doubled and the exact-duplicate findings are phantom.
+     Re-run against the one tree it names as compiled.
+   Either guard means the run is provisional — surface it to the user, don't
+   bury it.
 4. **Build the report:**
    ```
    node scripts/build_report.mjs audit.json --out <slug>-token-audit.md

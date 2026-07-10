@@ -102,6 +102,33 @@ describe('analyze', () => {
   });
 });
 
+describe('tree-doubling guard', () => {
+  it('flags source+build doubling and names the minified tree as compiled', () => {
+    // Same tokens, identical values, in two top-level trees — one minified
+    // (many defs on a single line, as a real compiled build looks).
+    const minified =
+      ':root{--a:#111;--b:#222;--c:#333;--d:#444;--e:#555;--f:#666} .x{color:var(--a)}';
+    const dir = fixture({
+      'src/tokens.css': ':root{\n--a:#111;\n--b:#222;\n--c:#333;\n--d:#444;\n--e:#555;\n--f:#666\n} .x{color:var(--a)}',
+      'dist/app.css': minified,
+    });
+    const audit = analyze({ root: dir, slug: 'dbl', exclude: [], top: 10 });
+    expect(audit.doubling).toBeTruthy();
+    expect([audit.doubling.dirA, audit.doubling.dirB].sort()).toEqual(['dist', 'src']);
+    expect(audit.doubling.sharedTokens).toBeGreaterThanOrEqual(3);
+    expect(audit.doubling.compiledDir).toBe('dist'); // the one-line file
+  });
+
+  it('does not flag a single clean tree', () => {
+    const dir = fixture({
+      'tokens.css': ':root{--a:#111;--b:#222}',
+      'ui.css': '.x{color:var(--a)} .y{background:var(--b)}',
+    });
+    const audit = analyze({ root: dir, slug: 'clean', exclude: [], top: 10 });
+    expect(audit.doubling).toBeNull();
+  });
+});
+
 describe('build_report schema contract', () => {
   it('renders the axis, findings and a parse-coverage warning when errors exist', () => {
     const dir = fixture({ 'a.css': ':root{--k:1;--d:2} .a{width:var(--k)}' });

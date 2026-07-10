@@ -87,6 +87,25 @@ export function renderReport(audit) {
     L.push('');
   }
 
+  // ── Tree-doubling caveat — distinct from the parse warning. Fires when the
+  //    same tokens are defined identically across two top-level trees, i.e. the
+  //    audit spanned a source tree AND its compiled build. Unlike the parse
+  //    warning this can trip silently on all-valid plain CSS, so it names the
+  //    specific problem and (when detectable) which tree is the build. ──
+  if (audit.doubling) {
+    const d = audit.doubling;
+    const which = d.compiledDir ? ` (\`${d.compiledDir}/\` looks like the compiled build)` : '';
+    L.push('> [!WARNING]');
+    L.push(
+      `> **Possible tree doubling.** ${d.sharedTokens} tokens ` +
+        `(${Math.round(d.share * 100)}% of the set) are defined identically in **both** ` +
+        `\`${d.dirA}/\` and \`${d.dirB}/\`${which} — you are probably auditing a source tree ` +
+        '**and** its compiled build together. That double-counts every token and inflates the ' +
+        'exact-duplicate findings below (they are this artifact, not real redundancy). ' +
+        'Re-run against **one** tree — the compiled one.');
+    L.push('');
+  }
+
   // ── Overview ──
   L.push('## Overview');
   L.push('');

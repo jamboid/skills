@@ -70,6 +70,80 @@ function norm(s) {
   return (s || '').replace(/\s+/g, ' ').trim();
 }
 
+/** First path segment of a relative file path (its top-level tree). */
+function topDir(file) {
+  const i = file.indexOf('/');
+  return i === -1 ? '.' : file.slice(0, i);
+}
+
+/**
+ * Detect source+build "tree doubling": the same project's CSS audited twice
+ * because `--root` spanned both an authored tree and its compiled output. The
+ * tell is the SAME token defined with an IDENTICAL value under two different
+ * top-level dirs, at scale. This is a distinct failure from a parse error — it
+ * can happen silently on all-valid plain CSS — so it earns its own warning.
+ * The skill does not auto-resolve it: the fix (pick one tree) is the user's.
+ */
+function detectDoubling(defs, definedCount) {
+  // Minified files (many custom-prop defs crammed onto one line) mark the tree
+  // that is almost certainly the compiled build.
+  const perFileLines = new Map();
+  for (const d of defs) {
+    if (!perFileLines.has(d.file)) perFileLines.set(d.file, new Map());
+    const m = perFileLines.get(d.file);
+    m.set(d.line, (m.get(d.line) || 0) + 1);
+  }
+  const minifiedDirs = new Set();
+  for (const [file, lines] of perFileLines) {
+    const maxOnLine = Math.max(...lines.values());
+    const total = [...lines.values()].reduce((a, b) => a + b, 0);
+    if (maxOnLine >= 5 || (total >= 10 && lines.size <= 2)) minifiedDirs.add(topDir(file));
+  }
+
+  // Count tokens defined with an identical value across each pair of top dirs.
+  const byName = new Map();
+  for (const d of defs) {
+    if (!byName.has(d.name)) byName.set(d.name, []);
+    byName.get(d.name).push(d);
+  }
+  const pairTokens = new Map(); // "dirA||dirB" -> Set<tokenName>
+  for (const [name, ds] of byName) {
+    const dirsByValue = new Map();
+    for (const d of ds) {
+      if (!dirsByValue.has(d.value)) dirsByValue.set(d.value, new Set());
+      dirsByValue.get(d.value).add(topDir(d.file));
+    }
+    for (const dirs of dirsByValue.values()) {
+      const arr = [...dirs].sort();
+      for (let i = 0; i < arr.length; i++)
+        for (let j = i + 1; j < arr.length; j++) {
+          const key = `${arr[i]}||${arr[j]}`;
+          if (!pairTokens.has(key)) pairTokens.set(key, new Set());
+          pairTokens.get(key).add(name);
+        }
+    }
+  }
+
+  let best = null;
+  for (const [key, names] of pairTokens) {
+    if (!best || names.size > best.count) best = { key, count: names.size };
+  }
+  if (!best) return null;
+  const share = definedCount ? best.count / definedCount : 0;
+  // Systemic, not incidental: ≥3 tokens AND ≥25% of the token set.
+  if (best.count < 3 || share < 0.25) return null;
+
+  const [dirA, dirB] = best.key.split('||');
+  const compiledDir = minifiedDirs.has(dirA) ? dirA : minifiedDirs.has(dirB) ? dirB : null;
+  return {
+    dirA,
+    dirB,
+    sharedTokens: best.count,
+    share: Number(share.toFixed(2)),
+    compiledDir, // which tree looks like the build, or null if neither is minified
+  };
+}
+
 // ── Fact extraction (the deterministic AST pass) ───────────────────────────
 /**
  * Parse one CSS file and push definitions + references into the accumulators.
@@ -274,6 +348,7 @@ function analyze({ root, slug, exclude, top }) {
 
   const model = buildModel(defs, refs);
   const findings = buildFindings(model);
+  const doubling = detectDoubling(defs, model.defined.length);
 
   const audit = {
     schemaVersion: SCHEMA_VERSION,
@@ -310,6 +385,7 @@ function analyze({ root, slug, exclude, top }) {
       tokens: serializeTokens(model.defined),
     },
     findings,
+    doubling, // null, or a source+build tree-doubling warning (see build_report)
     parseErrors,
   };
 
@@ -331,6 +407,7 @@ function main() {
     `css-token-audit: ${audit.meta.cssFiles} files, ${s.tokenCount} tokens, ` +
       `${s.deadCount} dead, ${s.oneOffCount} one-off, ${s.findingCount} findings` +
       (audit.meta.parseErrors ? `, ${audit.meta.parseErrors} parse errors` : '') +
+      (audit.doubling ? `, ⚠ tree doubling (${audit.doubling.dirA}/ + ${audit.doubling.dirB}/)` : '') +
       ` → ${outPath}`
   );
 }
