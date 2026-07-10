@@ -36,7 +36,13 @@ abbreviations, off-grammar prefixes), tier leaks (up-tier, circular, or a skip
 against a semantic-routing norm), cascade smells (a shadowed unreachable
 definition, or a global strayed into a component against a theming norm), and
 hardcoded literals that match an existing token's value (a missed tokenization).
-Later slices add the dispose/feedback loop.
+
+Every finding runs through a **propose/dispose feedback loop** (#24): the audit
+*proposes*, a human *disposes* via a versioned, human-editable **conventions
+file** (the audit's 4th input). An `accept`ed finding is suppressed on that
+instance and stays quiet across re-runs; a `fix` leaves it flagged as a refactor
+lead. The audit compounds — confirmations persist. Later slices add `promote`
+(house-rule conventions with a violation preview).
 
 ## Audit the COMPILED CSS, not the authored source
 
@@ -72,10 +78,13 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
    ask the user rather than guessing — the wrong tree produces false findings.
 2. **Analyse** — run the bundled parser:
    ```
-   node scripts/analyze.mjs --root <css-tree> --slug <slug> --out audit.json
+   node scripts/analyze.mjs --root <css-tree> --slug <slug> --out audit.json \
+        --conventions conventions.json
    ```
    Useful flags: `--exclude <fragment>` (repeatable, skips path fragments),
-   `--top <n>` (load-bearing list length, default 15).
+   `--top <n>` (load-bearing list length, default 15). `--conventions` reads the
+   feedback-loop file (the 4th input) if it exists — accepted findings stay
+   suppressed. Harmless on the first run when the file doesn't exist yet.
 3. **Check the two coverage guards** in `audit.json`:
    - `meta.parseErrors > 0` → you're likely parsing preprocessor source. Re-point
      at the compiled CSS before trusting the findings.
@@ -93,6 +102,31 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
    caveat. This is the **validation gate** — confirm with the user that the
    reconstructed architecture is one they recognise as true before anything
    downstream is built on it.
+
+## `/css-token-audit curate`
+
+The propose/dispose feedback loop. After a `draft`, walk the findings **with the
+user** and record a disposition for each one they weigh in on — never triage on
+their behalf:
+
+- **`accept`** — a local exception; suppress *this instance*. Use for a finding
+  the user confirms is intentional (a public-API token that looks dead, a
+  deliberate near-duplicate).
+- **`fix`** — a real problem; leave it flagged as a refactor lead.
+
+Record dispositions into the versioned conventions file (the 4th input):
+
+```
+node scripts/conventions.mjs --conventions conventions.json --audit audit.json \
+     --accept <fingerprint> --note "why it's intentional" \
+     --fix <fingerprint> --md conventions.md
+```
+
+Cite the **`fingerprint`** (`type:subject`, e.g. `dead-token:--clr-blue`) from
+`audit.json`, not the render-order `Fn` id. `curate` **merges** — it never
+clobbers prior decisions. Then re-run `draft`: accepted findings stay quiet, the
+rest re-surface. The conventions file is **human-editable**; `audit.json` and the
+report stay generated — never hand-edit them.
 
 ## Reading the output
 
@@ -136,13 +170,17 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
   size-unit length) so coincidental `1fr`/`100%`/keyword matches don't fire. Each
   cluster surfaces as a **`near-duplicate`** finding (`universal`), its confidence
   tracking closeness.
+- **Accepted exceptions** — findings a human has `accept`ed in the conventions
+  file are suppressed from the main list and gathered here, so the report stays a
+  live to-do list. Edit the conventions file to re-open one.
 
 ## Bundled files
 
-- `scripts/analyze.mjs` — parser + graph + fan-in/fan-out + findings → `audit.json`.
+- `scripts/analyze.mjs` — parser + graph + all axes + findings → `audit.json`; reads the conventions file.
 - `scripts/build_report.mjs` — renders `audit.json` → Markdown; refuses an incompatible schema major.
+- `scripts/conventions.mjs` — the propose/dispose feedback loop: read by `analyze`, and the `curate` CLI.
 - `notes-template.md` — copied to `notes.md` by `init`.
-- `REFERENCE.md` — the `audit.json` schema and versioning contract.
+- `REFERENCE.md` — the `audit.json` schema, the conventions file, and the versioning contract.
 
 ## Requirements
 

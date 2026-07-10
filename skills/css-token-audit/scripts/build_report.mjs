@@ -327,6 +327,8 @@ export function renderReport(audit) {
   if (summary.nearDuplicateCount != null)
     L.push(`- **Near-duplicate clusters** (consolidation leads): ${summary.nearDuplicateCount}`);
   L.push(`- **Findings:** ${summary.findingCount}`);
+  if (summary.suppressedCount)
+    L.push(`- **Accepted exceptions** (suppressed via conventions): ${summary.suppressedCount}`);
   L.push('');
 
   // ── Axis: fan-in / fan-out ──
@@ -398,9 +400,13 @@ export function renderReport(audit) {
   if (model.axes.naming) renderNaming(L, model.axes.naming);
 
   // ── Findings ──
+  // Suppressed (accepted) findings are curated exceptions — kept out of the main
+  // listing and shown separately below, so the report stays a live to-do list.
+  const activeFindings = audit.findings.filter((f) => !f.suppressed);
+  const suppressedFindings = audit.findings.filter((f) => f.suppressed);
   L.push('## Findings');
   L.push('');
-  if (!audit.findings.length) {
+  if (!activeFindings.length) {
     L.push('_No findings._');
     L.push('');
   } else {
@@ -410,7 +416,7 @@ export function renderReport(audit) {
     );
     L.push('');
     const byType = new Map();
-    for (const f of audit.findings) {
+    for (const f of activeFindings) {
       if (!byType.has(f.type)) byType.set(f.type, []);
       byType.get(f.type).push(f);
     }
@@ -425,6 +431,23 @@ export function renderReport(audit) {
       }
       L.push('');
     }
+  }
+
+  // ── Accepted exceptions (curated via the conventions file) ──
+  if (suppressedFindings.length) {
+    L.push('## Accepted exceptions');
+    L.push('');
+    L.push(
+      'Findings a human has **accepted** in the conventions file (`accept` disposition) — ' +
+        'suppressed on this instance and kept quiet across runs. Listed here for transparency; ' +
+        'edit the conventions file to re-open one.'
+    );
+    L.push('');
+    for (const f of suppressedFindings) {
+      L.push(`- \`${f.fingerprint}\` — ${f.title}`);
+      if (f.note) L.push(`  - note: ${f.note}`);
+    }
+    L.push('');
   }
 
   // ── Appendix ──

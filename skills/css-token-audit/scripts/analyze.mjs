@@ -23,12 +23,13 @@
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, basename } from 'node:path';
 import * as csstree from 'css-tree';
+import { loadConventions, applyConventions } from './conventions.mjs';
 
 export const SCHEMA_VERSION = '1.0.0';
 
 // ── CLI ──────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const args = { root: null, slug: null, out: null, exclude: [], top: 15 };
+  const args = { root: null, slug: null, out: null, exclude: [], top: 15, conventions: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--root') args.root = argv[++i];
@@ -36,6 +37,7 @@ function parseArgs(argv) {
     else if (a === '--out') args.out = argv[++i];
     else if (a === '--exclude') args.exclude.push(argv[++i]);
     else if (a === '--top') args.top = Number(argv[++i]);
+    else if (a === '--conventions') args.conventions = argv[++i];
     else if (!args.root) args.root = a;
   }
   return args;
@@ -1137,6 +1139,7 @@ function buildFindings(model) {
     findings.push({
       id: nextId(),
       type: 'dead-token',
+      subject: name,
       basis: 'universal',
       confidence: 'medium',
       title: `Dead token \`${name}\` — defined but never referenced`,
@@ -1166,6 +1169,7 @@ function buildFindings(model) {
       findings.push({
         id: nextId(),
         type: 'exact-duplicate',
+        subject: `${t.name}@${group[0].atScope || ''}|${group[0].scope}`,
         basis: 'universal',
         confidence: 'high',
         title: `Exact-duplicate definition of \`${t.name}\` in one scope`,
@@ -1209,6 +1213,7 @@ function buildFindings(model) {
     findings.push({
       id: nextId(),
       type: 'literal-hardcode',
+      subject: key,
       basis: 'universal',
       confidence: 'medium',
       title: `Hardcoded \`${sites[0].value}\` matches existing token${tokenNames.length > 1 ? 's' : ''} ${tokens}`,
@@ -1239,6 +1244,7 @@ function buildFindings(model) {
     findings.push({
       id: nextId(),
       type: 'near-duplicate',
+      subject: cluster.tokens.map((t) => t.name).sort().join(','),
       basis: 'universal',
       confidence,
       title: `Near-duplicate ${cluster.valueType} tokens: ${names}`,
@@ -1276,6 +1282,7 @@ function buildFindings(model) {
       findings.push({
         id: nextId(),
         type: 'cascade-smell',
+        subject: `shadowed:${t.name}@${winner.atScope || ''}|${winner.scope}`,
         basis: 'universal',
         confidence: 'high',
         title: `Shadowed definition of \`${t.name}\` — an earlier value can never win`,
@@ -1314,6 +1321,7 @@ function buildFindings(model) {
       findings.push({
         id: nextId(),
         type: 'cascade-smell',
+        subject: `stray:${site.name}@${compDefs.map((o) => o.selector).sort().join('&')}`,
         basis: 'convention',
         confidence: 'low',
         title: `Stray override: global \`${site.name}\` redefined inside ${selectors}`,
@@ -1356,6 +1364,7 @@ function buildFindings(model) {
       findings.push({
         id: nextId(),
         type: 'naming-inconsistency',
+        subject: `${tierName}:${c.concept}`,
         basis: 'convention',
         confidence: 'high',
         title: `Concept "${c.concept}" is spelled ${c.forms.length} ways in the ${tierName} tier`,
@@ -1381,6 +1390,7 @@ function buildFindings(model) {
     findings.push({
       id: nextId(),
       type: 'tier-leak',
+      subject: `backward:${e.from}->${e.to}`,
       basis: 'convention',
       confidence: 'medium',
       title: `Tier leak: \`${e.from}\` (${layerOf(e.from)}) reads \`${e.to}\` (${layerOf(e.to)})`,
@@ -1403,6 +1413,7 @@ function buildFindings(model) {
       findings.push({
         id: nextId(),
         type: 'tier-leak',
+        subject: `skip:${e.from}->${e.to}`,
         basis: 'convention',
         confidence: 'low',
         title: `Tier skip: \`${e.from}\` (${layerOf(e.from)}) reaches \`${e.to}\` (${layerOf(e.to)}) directly`,
@@ -1419,6 +1430,7 @@ function buildFindings(model) {
     findings.push({
       id: nextId(),
       type: 'tier-leak',
+      subject: `circular:${[...cycle].sort().join('~')}`,
       basis: 'universal',
       confidence: 'high',
       title: `Circular \`var()\` chain: ${cycle.map((n) => `\`${n}\``).join(' ↔ ')}`,
@@ -1440,6 +1452,7 @@ function buildFindings(model) {
       findings.push({
         id: nextId(),
         type: 'naming-outlier',
+        subject: t.name,
         basis: 'convention',
         confidence: 'low',
         title: `Off-grammar prefix \`${t.segments[0]}-\` on \`${t.name}\` (global tier)`,
@@ -1449,11 +1462,21 @@ function buildFindings(model) {
     }
   }
 
+  // Stamp each finding with its stable fingerprint (`type:subject`, independent
+  // of the render-order `Fn` id) and its default disposition. The conventions
+  // file (#24) keys dispositions on the fingerprint; `applyConventions` later
+  // flips `disposition`/`suppressed` for any that a human has curated.
+  for (const f of findings) {
+    f.fingerprint = `${f.type}:${f.subject}`;
+    f.disposition = 'open';
+    f.suppressed = false;
+  }
+
   return findings;
 }
 
 // ── Assemble audit.json ────────────────────────────────────────────────────
-function analyze({ root, slug, exclude, top }) {
+function analyze({ root, slug, exclude, top, conventions }) {
   const absRoot = resolve(root);
   const files = findCssFiles(absRoot, exclude);
   const defs = [];
@@ -1475,6 +1498,11 @@ function analyze({ root, slug, exclude, top }) {
 
   const model = buildModel(defs, refs, decls);
   const findings = buildFindings(model);
+  // The 4th input: the human-curated conventions file. Accepted findings are
+  // marked suppressed here so re-running the audit keeps them quiet.
+  const conv = loadConventions(conventions);
+  applyConventions(findings, conv);
+  const active = findings.filter((f) => !f.suppressed);
   const doubling = detectDoubling(defs, model.defined.length);
 
   const audit = {
@@ -1497,15 +1525,16 @@ function analyze({ root, slug, exclude, top }) {
       undefinedRefCount: model.undefinedRefs.length,
       tierCount: model.layering.tierCount,
       flowDirection: model.layering.flow.direction,
-      tierLeakCount: findings.filter((f) => f.type === 'tier-leak').length,
+      tierLeakCount: active.filter((f) => f.type === 'tier-leak').length,
       overrideCount: model.scopeCascade.overrides.tokenCount,
       themingStyle: model.scopeCascade.theming.style,
-      cascadeSmellCount: findings.filter((f) => f.type === 'cascade-smell').length,
+      cascadeSmellCount: active.filter((f) => f.type === 'cascade-smell').length,
       nearDuplicateCount: model.nearDuplicates.clusterCount,
       hardcodeRatio: model.coverage.tokenizableDeclarations
         ? Number((model.coverage.hardcoded / model.coverage.tokenizableDeclarations).toFixed(2))
         : 0,
-      findingCount: findings.length,
+      findingCount: active.length, // surfaced findings (suppressed excluded)
+      suppressedCount: findings.length - active.length, // accepted exceptions
     },
     model: {
       axes: {
