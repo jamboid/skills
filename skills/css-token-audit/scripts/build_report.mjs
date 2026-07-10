@@ -232,6 +232,30 @@ function renderFallback(L, fallback) {
   L.push('');
 }
 
+/** Render the near-duplicate axis: clusters of tokens whose raw values are
+ *  nearly identical — the juiciest consolidation leads. */
+function renderNearDuplicates(L, nd) {
+  L.push('## Near-duplicates');
+  L.push('');
+  L.push(
+    'Tokens whose raw values are *nearly* (not exactly) the same, clustered per value type — ' +
+      'colour distance, numeric proximity, or a fuzzy match. Each cluster is a consolidation ' +
+      'lead: collapsing the near-duplicates to one token removes a distinction the design ' +
+      'system probably doesn\'t intend.'
+  );
+  L.push('');
+  if (!nd.clusters.length) {
+    L.push('_No near-duplicate clusters._');
+    L.push('');
+    return;
+  }
+  for (const c of nd.clusters) {
+    const closeness = c.closeness === 0 ? 'identical' : `closeness ${c.closeness}`;
+    L.push(`- **${c.valueType}** (${closeness}): ${c.tokens.map((t) => `${code(t.name)} (${t.value})`).join(', ')}`);
+  }
+  L.push('');
+}
+
 export function renderReport(audit) {
   assertSchema(audit);
   const { meta, summary, model } = audit;
@@ -300,6 +324,8 @@ export function renderReport(audit) {
       `- **Coverage** (tokenizable declarations via a token): ` +
         `${Math.round((1 - summary.hardcodeRatio) * 100)}% (${model.axes.coverage.hardcoded} hardcoded literal(s))`
     );
+  if (summary.nearDuplicateCount != null)
+    L.push(`- **Near-duplicate clusters** (consolidation leads): ${summary.nearDuplicateCount}`);
   L.push(`- **Findings:** ${summary.findingCount}`);
   L.push('');
 
@@ -364,6 +390,9 @@ export function renderReport(audit) {
 
   // ── Fallback usage ──
   if (model.axes.fallback) renderFallback(L, model.axes.fallback);
+
+  // ── Near-duplicates ──
+  if (model.axes.nearDuplicates) renderNearDuplicates(L, model.axes.nearDuplicates);
 
   // ── Naming taxonomy ──
   if (model.axes.naming) renderNaming(L, model.axes.naming);

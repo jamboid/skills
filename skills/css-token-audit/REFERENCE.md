@@ -51,6 +51,7 @@ Current: **`1.0.0`**.
     "themingStyle":      "mixed", // color-scheme | data-attr | responsive | motion | mixed | none
     "cascadeSmellCount": 0,    // cascade-smell findings
     "hardcodeRatio":     0.41,  // share of tokenizable declarations that are raw literals (#22)
+    "nearDuplicateCount":2,     // near-duplicate token clusters (#23)
     "findingCount":      11
   },
 
@@ -187,6 +188,30 @@ Current: **`1.0.0`**.
           { "name": "--section-bg", "fallback": "transparent", "kind": "literal",
             "scope": ".b_section", "file": "…", "line": 1 }
         ]
+      },
+
+      // AXIS 7 (slice #23): near-duplicates. Clusters of DEFINED tokens whose raw
+      // values are *nearly* (not exactly) the same — the juiciest consolidation
+      // leads. Built on the value-distance substrate: colour distance in RGBA,
+      // numeric relative proximity for lengths, fuzzy fallback otherwise. Each
+      // token contributes ONE representative value (its root base, else first
+      // def); aliases (a value that is a var()) are skipped. Clustering is gated
+      // to DISTINCTIVE values (a colour, or a non-zero size-unit length) so the
+      // output stays high-signal — coincidental `1fr`/`100%`/keyword matches are
+      // dropped. `closeness` = worst pairwise distance ÷ type threshold (0 =
+      // identical, → 1 at the edge); it drives the finding's confidence.
+      "nearDuplicates": {
+        "clusterCount": 2,
+        "clusters": [
+          { "valueType": "color",           // color | length
+            "closeness":  0.61,             // 0 identical → 1 at threshold
+            "tokens": [
+              { "name": "--clr-ice",   "value": "#f4f4f4",
+                "selector": ":root", "atScope": null, "file": "…", "line": 1 },
+              { "name": "--clr-water", "value": "#eef0f5",
+                "selector": ":root", "atScope": null, "file": "…", "line": 1 }
+            ] }
+        ]
       }
     },
 
@@ -226,7 +251,7 @@ Current: **`1.0.0`**.
   "findings": [
     {
       "id":         "F1",              // stable Fn id, render order
-      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode
+      "type":       "dead-token",      // dead-token | exact-duplicate | naming-* | tier-leak | cascade-smell | literal-hardcode | near-duplicate
       "basis":      "universal",       // universal | convention | house-rule
       "confidence": "medium",          // high | medium | low
       "title":      "Dead token `--clr-blue` — defined but never referenced",
@@ -264,6 +289,7 @@ Current: **`1.0.0`**.
 | `cascade-smell` (shadowed) | universal | `high` | The same token defined ≥2× under the **identical** (selector, at-rule) scope with **differing values** — source order alone decides, so the earlier definition can never win (dead code). Provable from the AST. Complement of `exact-duplicate` (identical value); a **different** scope is a legitimate override, not this. |
 | `cascade-smell` (stray override) | convention | `low` | A **global/root** token redefined **inside a component** — a local meaning that fights the global cascade. **Only** flagged where theming is the codebase's own override norm (globals otherwise re-scoped only via theme variants); cites the share. Silent where local/component overriding is the house style (wattage). Low confidence: a local override may be deliberate. |
 | `literal-hardcode` | universal | `medium` | A hardcoded literal whose **normalized value** equals an existing token's value — a missed tokenization. Matching keys off the normalized value (`#f00` matches a token holding `#ffffff`) and is restricted to distinctive types (colour, non-zero length); a bare `0`/`1`/keyword is too generic. Cites the matched token(s). Medium: the literal may be a coincidence. |
+| `near-duplicate` | universal | `high`\|`medium`\|`low` | A cluster of tokens whose raw values are **nearly** (not exactly) the same — a consolidation lead. Per-value-type proximity: colour distance in RGBA, numeric relative proximity for lengths. Restricted to distinctive values (a colour, or a non-zero size-unit length) so coincidental `1fr`/`100%`/keyword matches don't fire. Confidence tracks **closeness** — an identical/near-exact cluster is high, one approaching the type threshold is low (the further apart, the likelier the difference is intentional). |
 
 `convention`-basis findings **cite the norm** they're measured against, per the PRD.
 
