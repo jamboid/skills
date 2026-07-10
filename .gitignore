@@ -2,3 +2,4 @@
 .nova/
 
 node_modules/
+tmp/
