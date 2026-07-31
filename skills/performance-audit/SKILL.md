@@ -26,8 +26,15 @@ Two commands: `init` scaffolds, `draft` analyses and builds.
 
 ## `/performance-audit init [client-slug]`
 
-1. Target directory: `~/Github/audits/YYYY-MM-DD-[client-slug]/` (today's date, ISO).
-2. Create `~/Github/audits/` if missing, then the dated subdirectory.
+1. Target directory: **`<project-root>/docs/performance-audits/YYYY-MM-DD-[client-slug]/`**
+   (today's date, ISO). The audit lives in a repo — the audited project's own, or
+   a scratch repo kept for the purpose. `docs/` is the usual home, so use an
+   existing `docs/` if there is one; if the project clearly keeps documentation
+   elsewhere, use that instead.
+2. Create the `docs/performance-audits/` parent if missing, then the dated
+   subdirectory. **Dated, unlike the css-token audits**: each run is a snapshot of
+   one moment's Lighthouse/WebPageTest data, and comparing runs over time is the
+   point — so runs sit side by side rather than overwriting each other.
 3. Copy `notes-template.md` → `notes.md` and `analysis-template.md` → `analysis.md`
    into the new directory. Replace `[Client/Site Name]` and `[YYYY-MM-DD]` placeholders.
 4. Tell the user the absolute path, and that they should:
@@ -114,7 +121,7 @@ The glossary definitions and metric thresholds live canonically in
 
 | Setting     | Default                                                                      |
 |-------------|------------------------------------------------------------------------------|
-| audits root | `~/Github/audits/`                                                           |
+| audits root | `<project-root>/docs/performance-audits/` (a dated subdirectory per run)      |
 | audience    | internal Strategy Director / Account Director, occasional client passthrough |
 | length      | short report — concise bullets in body, narrative only in conclusions        |
 | scope       | site audit, speed/performance-focused (covers arch / perf / UX; a11y is out of scope — use the dedicated accessibility-audit skill) |
