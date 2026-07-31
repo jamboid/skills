@@ -20,8 +20,11 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-
-export const CONVENTIONS_VERSION = '1.0.0';
+// The conventions-file version lives in the shared schema contract (slice #34),
+// bundled verbatim in this skill. Imported for local use and re-exported so
+// existing importers keep their seam.
+import { CONVENTIONS_VERSION } from './schema.mjs';
+export { CONVENTIONS_VERSION };
 
 const VALID = new Set(['accept', 'fix']);
 

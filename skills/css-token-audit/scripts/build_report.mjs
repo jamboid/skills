@@ -15,7 +15,11 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
-export const SUPPORTED_MAJOR = 1;
+// The version guard lives in the shared schema contract (slice #34), bundled
+// verbatim in this skill. Imported for local use here, and re-exported so
+// existing importers keep their seam.
+import { SUPPORTED_MAJOR, assertSchema } from './schema.mjs';
+export { SUPPORTED_MAJOR, assertSchema };
 
 const BASIS_NOTE = {
   universal: 'defensible anywhere',
@@ -31,21 +35,6 @@ function parseArgs(argv) {
     else if (!args.input) args.input = a;
   }
   return args;
-}
-
-/** Refuse an audit whose schema major version we can't render. */
-export function assertSchema(audit) {
-  const v = audit && audit.schemaVersion;
-  if (!v || typeof v !== 'string') {
-    throw new Error('audit.json is missing a mandatory `schemaVersion`.');
-  }
-  const major = Number(v.split('.')[0]);
-  if (!Number.isInteger(major) || major !== SUPPORTED_MAJOR) {
-    throw new Error(
-      `Unsupported schemaVersion ${v}: this builder handles major ${SUPPORTED_MAJOR}.x only. ` +
-        'Re-run analyze.mjs with a matching version of the skill.'
-    );
-  }
 }
 
 const code = (s) => '`' + s + '`';
@@ -280,7 +269,7 @@ function renderHouseRuleCandidates(L, candidates) {
 }
 
 export function renderReport(audit) {
-  assertSchema(audit);
+  assertSchema(audit, 'audit.json');
   const { meta, summary, model } = audit;
   const axis = model.axes.fanInOut;
   const L = [];
