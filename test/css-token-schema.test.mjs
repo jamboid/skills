@@ -88,6 +88,19 @@ describe('target-architecture document shape', () => {
     expect(doc.meta.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it('a fresh target carries every section spine, so an empty target is still well-shaped', () => {
+    const doc = newTargetDoc();
+    expect(doc.decisions).toEqual([]);
+    expect(doc.constraints).toEqual([]);
+    expect(doc.summary).toEqual({
+      decisionCount: 0,
+      constraintCount: 0,
+      changeCount: 0,
+      keepCount: 0,
+      staleCount: 0,
+    });
+  });
+
   it('a fresh target passes the shared version guard', () => {
     expect(() => assertSchema(newTargetDoc(), 'target.json')).not.toThrow();
   });

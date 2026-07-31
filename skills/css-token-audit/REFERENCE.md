@@ -27,13 +27,14 @@ stay byte-identical, so editing one means re-syncing the rest.
 
 Policy + rationale: **`docs/adr/0001-css-tokens-schema-versioning.md`**.
 
-Current: `SCHEMA_VERSION` **`1.0.0`** · `CONVENTIONS_VERSION` **`1.0.0`**.
+Current: `SCHEMA_VERSION` **`1.1.0`** · `CONVENTIONS_VERSION` **`1.0.0`**.
+(`1.1.0` — additive, #35: the target grew `constraints` + `summary`.)
 
 ## `audit.json` schema (v1)
 
 ```jsonc
 {
-  "schemaVersion": "1.0.0",         // mandatory; incompatible majors are refused
+  "schemaVersion": "1.1.0",         // mandatory; incompatible majors are refused
 
   "meta": {
     "project":     "jbdn-build",     // display name
@@ -339,13 +340,14 @@ Current: `SCHEMA_VERSION` **`1.0.0`** · `CONVENTIONS_VERSION` **`1.0.0`**.
 `css-token-architect` reads `audit.json` + the conventions file and emits a
 `target.json` — the **formalized target architecture**, in the same schema family
 as `audit.json` (one `SCHEMA_VERSION`, the same version guard). Like `audit.json`
-it is **generated, never hand-edited**. The **envelope** is born here (slice #34,
-`newTargetDoc` in `schema.mjs`); the formalization passes (#35–#41) fill
-`decisions` and add sibling sections (consolidation, naming, tiers, tokenization).
+it is **generated, never hand-edited**. The **envelope** is born in slice #34
+(`newTargetDoc` in `schema.mjs`) and filled from #35 on; later passes add sibling
+sections (consolidation, naming, tiers, tokenization). Full shape:
+`skills/css-token-architect/REFERENCE.md`.
 
 ```jsonc
 {
-  "schemaVersion": "1.0.0",              // same family + guard as audit.json
+  "schemaVersion": "1.1.0",              // same family + guard as audit.json
   "kind":          "target-architecture", // discriminates a target from an audit doc
 
   "meta": {
@@ -356,10 +358,17 @@ it is **generated, never hand-edited**. The **envelope** is born here (slice #34
     "generatedBy": "css-token-architect"
   },
 
-  // The confirmed dispositions carried forward as structured target decisions
-  // (first slice, #35). Later slices extend the target with consolidation /
-  // naming / tier / tokenization sections keyed off the audit model.
-  "decisions": []
+  "summary": { "decisionCount": 2, "constraintCount": 1,
+               "changeCount": 1, "keepCount": 1, "staleCount": 0 },
+
+  // Confirmed dispositions carried forward as structured decisions (#35), each
+  // joined to the finding it settles: `fix` → intent `change`, `accept` → intent
+  // `keep`. A disposition the current audit no longer raises is carried with
+  // `stale: true`, never silently dropped.
+  "decisions": [],
+
+  // Promoted house rules as standing rules the whole target must satisfy (#35).
+  "constraints": []
 }
 ```
 
