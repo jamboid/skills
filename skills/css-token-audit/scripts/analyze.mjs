@@ -24,8 +24,11 @@ import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, basename } from 'node:path';
 import * as csstree from 'css-tree';
 import { loadConventions, applyConventions } from './conventions.mjs';
-
-export const SCHEMA_VERSION = '1.0.0';
+// The schema version lives in the shared contract (slice #34), bundled verbatim
+// in this skill. Imported for local use (stamped onto audit.json) and re-exported
+// so existing importers keep their seam.
+import { SCHEMA_VERSION } from './schema.mjs';
+export { SCHEMA_VERSION };
 
 // ── CLI ──────────────────────────────────────────────────────────────────
 function parseArgs(argv) {

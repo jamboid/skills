@@ -10,13 +10,24 @@ built up-front as a standalone artifact.
 
 ## Versioning (the contract)
 
-`audit.json` carries a **mandatory** top-level `schemaVersion` (semver string).
-`build_report.mjs` refuses any audit whose **major** version it doesn't support
-(`SUPPORTED_MAJOR`), rather than silently mis-rendering. Additive, backward-
-compatible changes bump minor/patch; a breaking change bumps major and requires
-both scripts to move together.
+The versions and the version guard live in **`scripts/schema.mjs`** — the single
+source of truth (slice #34), bundled **verbatim** into each skill of the arc
+(`css-token-audit`, `css-token-architect`, …) because the standalone-install
+model has no shared dir above a skill. A repo drift-guard test asserts the copies
+stay byte-identical, so editing one means re-syncing the rest.
 
-Current: **`1.0.0`**.
+- `audit.json` and `target.json` are **one schema family** under one
+  `SCHEMA_VERSION`. Every structured document carries a **mandatory** top-level
+  `schemaVersion` (semver string).
+- `assertSchema(doc, label)` refuses any document whose **major** a build doesn't
+  support (`SUPPORTED_MAJOR`), rather than silently mis-reading it. Additive,
+  backward-compatible fields bump minor/patch and are tolerated across a major; a
+  breaking change bumps major and ships with a migration note.
+- The human-editable conventions file versions separately (`CONVENTIONS_VERSION`).
+
+Policy + rationale: **`docs/adr/0001-css-tokens-schema-versioning.md`**.
+
+Current: `SCHEMA_VERSION` **`1.0.0`** · `CONVENTIONS_VERSION` **`1.0.0`**.
 
 ## `audit.json` schema (v1)
 
@@ -323,6 +334,35 @@ Current: **`1.0.0`**.
 `convention`-basis findings **cite the norm** they're measured against, per the PRD.
 `house-rule`-basis findings are raised by a norm the human **opted into** via `promote`.
 
+## `target.json` schema (the architect's output)
+
+`css-token-architect` reads `audit.json` + the conventions file and emits a
+`target.json` — the **formalized target architecture**, in the same schema family
+as `audit.json` (one `SCHEMA_VERSION`, the same version guard). Like `audit.json`
+it is **generated, never hand-edited**. The **envelope** is born here (slice #34,
+`newTargetDoc` in `schema.mjs`); the formalization passes (#35–#41) fill
+`decisions` and add sibling sections (consolidation, naming, tiers, tokenization).
+
+```jsonc
+{
+  "schemaVersion": "1.0.0",              // same family + guard as audit.json
+  "kind":          "target-architecture", // discriminates a target from an audit doc
+
+  "meta": {
+    "project":     "jbdn",
+    "slug":        "jbdn",               // output filename stem
+    "root":        "/abs/path/audited",  // the CSS tree the source audit parsed
+    "date":        "2026-07-11",         // ISO generation date
+    "generatedBy": "css-token-architect"
+  },
+
+  // The confirmed dispositions carried forward as structured target decisions
+  // (first slice, #35). Later slices extend the target with consolidation /
+  // naming / tier / tokenization sections keyed off the audit model.
+  "decisions": []
+}
+```
+
 ## Conventions file (the propose/dispose feedback loop, #24 · #25)
 
 The audit *proposes* findings; a human *disposes* of each one. Dispositions
@@ -426,6 +466,7 @@ one). `audit.doubling` is `null` when nothing systemic is found.
 
 ## Bundled files
 
+- `scripts/schema.mjs` — the shared, versioned contract (slice #34): `SCHEMA_VERSION` / `CONVENTIONS_VERSION` / `SUPPORTED_MAJOR`, the `assertSchema` version guard, and `newTargetDoc` (the `target.json` envelope). Bundled **verbatim** into every skill of the arc; a repo drift-guard test keeps the copies identical.
 - `scripts/analyze.mjs` — parser + graph + all axes + findings → `audit.json`; reads the conventions file (`--conventions`) as the 4th input.
 - `scripts/build_report.mjs` — renders `audit.json` → Markdown (refuses incompatible major).
 - `scripts/conventions.mjs` — the propose/dispose feedback loop: `loadConventions` / `applyConventions` (read by analyze) + the `curate` CLI (`recordDispositions` for accept/fix, `promoteRule` / `previewHouseRule` for promote, `renderConventions`).
