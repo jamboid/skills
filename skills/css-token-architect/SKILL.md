@@ -49,11 +49,15 @@ Two, both produced by `css-token-audit`:
 
 ## `/css-token-architect init [slug]`
 
-1. Target directory: the existing audit directory — `~/GitHub/audits/YYYY-MM-DD-[slug]-tokens/`.
-   The architect works **alongside** its audit, not in a new folder.
-2. Copy `notes-template.md` → `target-notes.md`, replacing placeholders.
-3. Tell the user the absolute path, and that `audit.json` + `conventions.json`
-   must both exist there before `draft`.
+1. Target directory: the existing audit directory — **`<project-root>/docs/css-tokens/`**
+   (or wherever that project keeps its audit). The architect works **alongside**
+   its audit, in the same folder, never in a new one: it reads that audit's
+   `audit.json` and `conventions.json`, so splitting them apart just loses them.
+2. If no such directory exists, the audit hasn't been run — say so and point at
+   `/css-token-audit init` rather than scaffolding an empty target.
+3. Copy `notes-template.md` → `target-notes.md`, replacing placeholders.
+4. Tell the user the path, and that `audit.json` + `conventions.json` must both
+   exist there before `draft`.
 
 ## `/css-token-architect draft`
 
