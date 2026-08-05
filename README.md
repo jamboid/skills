@@ -20,7 +20,13 @@ These skills help you write consistent, well-structured frontend code.
 
 ## Documentation
 
-These skills turn notes, docs, and findings into styled HTML artifacts.
+These skills write documentation, and turn notes, docs, and findings into styled HTML artifacts.
+
+- **draft-document** — Write a project doc or handover: derive its shape from a corpus of existing docs you point it at, get the outline approved, then draft it in a house style stripped of LLM tells.
+
+  ```
+  npx skills@latest add jamboid/skills/skills/draft-document
+  ```
 
 - **build-html-artifact** — Turn any documentation or captured knowledge into a self-contained, styled HTML artifact (single page or multi-page set) using a shared warm-stone design system. Guide-driven: copy a scaffold, fill the body from a component catalog.
 
