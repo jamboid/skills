@@ -85,7 +85,7 @@ Search the draft for the tell vocabulary:
 grep -inE 'delve|leverag|seamless|robust|holistic|elevat|unlock|harness|foster|realm|landscape|tapestry|testament|underscore|showcase|boast|myriad|plethora|game.?chang|cutting.?edge|best.in.class|streamlin|empower|crucial|pivotal|worth noting|at its core|in essence|serves as|plays a .{0,12}role|deep dive|in conclusion|in summary|not just|not only|a number of|various|comprehensive|key takeaway' <file>
 ```
 
-Fix every hit, then reread the whole draft once against the rules `grep` cannot see: aphorisms, verb-nouns, shredded sentences, bold lead-ins, heading-continuations, hard-wrapped paragraphs, audience asides, fragment lead-ins, dropped verbs, rhythm, wind-up, empty headings, bullet padding, and the anchoring rule. The reread also catches the words too ordinary to search for — `ensure`, `several`, `overall`, `vital` — which the style retires but which read fine often enough to be worth judging in place.
+Fix every hit, then reread the whole draft once against the rules `grep` cannot see: aphorisms, denial triads, verb-nouns, shredded sentences, bold lead-ins, heading-continuations, hard-wrapped paragraphs, audience asides, fragment lead-ins, dropped verbs, rhythm, wind-up, empty headings, bullet padding, and the anchoring rule. The reread also catches the words too ordinary to search for — `ensure`, `several`, `overall`, `vital` — which the style retires but which read fine often enough to be worth judging in place.
 
 Done when the search comes back clean and every rule in `STYLE.md` has been applied. Report what the pass changed.
 
