@@ -1,16 +1,14 @@
----
-name: draft-document
-description: Derives a document's shape from a corpus of existing docs you point it at, proposes an outline for approval, then drafts it in a house style stripped of LLM tells. For project docs, handovers, onboarding notes.
-disable-model-invocation: true
----
+# Parked: draft a document from a corpus
 
-# draft-document
+Parked 6 August 2026, never merged to `main`. This was the other half of the `draft-document` skill: derive a document's shape from a corpus of docs the user names, get an outline approved, then draft it. The language half of that skill became [`write-plainly`](../../skills/write-plainly/SKILL.md); this half went untested and was dropped rather than shipped.
 
-Writes a document — handover, project overview, onboarding note, decision record — by deriving its shape from a **corpus** the user names, then drafting to the house style in [`STYLE.md`](STYLE.md).
+Kept here in case it is worth rebuilding. Anything rebuilt from it should call `write-plainly` for the language pass rather than carry its own copy of the style.
 
-Two things carry the quality: the **corpus profile** (shape borrowed from documents that already work) and the **tells pass** (the style, enforced over the finished draft).
+## Why it was parked
 
-## Workflow
+The corpus-profile step was never run against a real corpus, so nothing here is known to work. The two halves also had different reach — the style applies to any prose, while this applies only when you already hold a set of documents whose shape is worth borrowing.
+
+## The workflow, as it stood
 
 ### 1. Take the brief
 
@@ -20,8 +18,6 @@ Get four things before reading anything:
 - **The reader** — successor, client, contractor, future self. Handovers are written for someone with no context and no access to you.
 - **The corpus** — paths to the docs whose shape to borrow. If none are named, ask for them. Never guess a folder.
 - **The destination** — output path. Default: alongside the corpus.
-
-Ask for whichever is missing, then continue.
 
 ### 2. Build the corpus profile
 
@@ -71,24 +67,15 @@ The outline is the deliverable of this step. Amend and re-present until the user
 
 ### 6. Draft
 
-Read [`STYLE.md`](STYLE.md) and write the approved outline out in full, to the destination path.
+Write the approved outline out in full, to the destination path, in the `write-plainly` style.
 
 The reader named in step 1 is the only person the document speaks to. Observations about how that reader will take it go to the user in chat, never into the file.
 
-Write gaps as themselves — `Unknown: staging DB credentials; ask Priya` — never as confident filler.
+## Handover-specific rules
 
-### 7. Run the tells pass
+These lived in the style file and only apply to handovers, so they belong with this workflow rather than with a general writing style:
 
-Search the draft for the tell vocabulary:
-
-```
-grep -inE 'delve|leverag|seamless|robust|holistic|elevat|unlock|harness|foster|realm|landscape|tapestry|testament|underscore|showcase|boast|myriad|plethora|game.?chang|cutting.?edge|best.in.class|streamlin|empower|crucial|pivotal|worth noting|at its core|in essence|serves as|plays a .{0,12}role|deep dive|in conclusion|in summary|not just|not only|a number of|various|comprehensive|key takeaway' <file>
-```
-
-Fix every hit, then reread the whole draft once against the rules `grep` cannot see: aphorisms, denial triads, verb-nouns, shredded sentences, bold lead-ins, heading-continuations, hard-wrapped paragraphs, audience asides, fragment lead-ins, dropped verbs, rhythm, wind-up, empty headings, bullet padding, and the anchoring rule. The reread also catches the words too ordinary to search for — `ensure`, `several`, `overall`, `vital` — which the style retires but which read fine often enough to be worth judging in place.
-
-Done when the search comes back clean and every rule in `STYLE.md` has been applied. Report what the pass changed.
-
-## Extending the style
-
-When the user names a new tell, add it to `STYLE.md` in the same form as the rules already there — the positive target first, the tell it replaces second — and extend the `grep` pattern above if the tell is a word rather than a habit.
+- **Date it and sign it.** Who wrote it, when, and what the state was as of that date.
+- **Every in-flight thread gets its next action.** "PR #212 open, awaiting review from Sam" beats "work is ongoing on the checkout refactor".
+- **Name a person for every dependency** — vendor, account, approval. Where nobody owns it, write that: `No owner. Renewal 3 Feb.`
+- **Write the failure modes.** What has broken before, what it looked like, what fixed it.
