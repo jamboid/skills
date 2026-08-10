@@ -74,10 +74,24 @@ almost certainly parsing preprocessor source. Re-point at the compiled CSS.
 
 ## `/css-token-audit init [slug]`
 
-1. Target directory: `~/GitHub/audits/YYYY-MM-DD-[slug]-tokens/` (today's date, ISO).
-2. Create it, copy `notes-template.md` → `notes.md`, replacing placeholders.
-3. Tell the user the absolute path and that they should identify the **compiled**
-   CSS tree, then run `/css-token-audit draft` pointing at it.
+The audit lives **in the project it audits** — it's a document about that
+codebase, and its conventions file is a long-lived input the project should carry
+in version control.
+
+1. Target directory: **`<project-root>/docs/css-tokens/`**. Find the project root
+   (the repo root of the CSS being audited); `docs/` is the usual home, so use an
+   existing `docs/` if there is one, create it if not. If the project clearly
+   keeps documentation somewhere else, use that instead of forcing `docs/`.
+2. **Not dated.** The directory is stable across re-runs: the conventions file
+   compounds, and a re-run months later must land on the *same* `conventions.json`
+   rather than starting a fresh dated folder with no accumulated decisions.
+3. Create it, copy `notes-template.md` → `notes.md`, replacing placeholders.
+4. Tell the user the path and that they should identify the **compiled** CSS
+   tree, then run `/css-token-audit draft` pointing at it.
+
+Everything lands in that one directory: `audit.json`, the report,
+`conventions.json` / `conventions.md`, and `notes.md`. Commit them — the
+conventions file especially, since it's what makes the audit compound.
 
 ## `/css-token-audit draft`
 

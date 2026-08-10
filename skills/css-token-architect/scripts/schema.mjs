@@ -25,8 +25,11 @@
 
 // ── Versions (the single home for every contract version in the arc) ──────────
 
-/** Structured-model schema — governs both `audit.json` and `target.json`. */
-export const SCHEMA_VERSION = '1.0.0';
+/** Structured-model schema — governs both `audit.json` and `target.json`.
+ *  1.1.0 — additive (slice #35): the target grows `constraints` + `summary`
+ *  alongside `decisions`. Minor bump per the ADR: an older reader ignores the
+ *  new sections, a newer reader tolerates their absence. */
+export const SCHEMA_VERSION = '1.1.0';
 
 /** Human-editable conventions file — versions on its own cadence. */
 export const CONVENTIONS_VERSION = '1.0.0';
@@ -70,9 +73,11 @@ export function assertSchema(doc, label = 'document') {
 
 /**
  * A fresh `target.json` envelope — the shape `css-token-architect` emits, in the
- * same schema family as `audit.json`. This slice (#34) defines only the versioned
- * envelope + `decisions` spine; later slices (#35–#41) fill it with consolidation,
- * naming, tier, and tokenization decisions. See REFERENCE.md for the full shape.
+ * same schema family as `audit.json`. Every section spine is present so an empty
+ * target is still a well-shaped document: `decisions` (per-finding, from the
+ * human's dispositions), `constraints` (standing rules, from promoted house
+ * rules, #35), and the `summary` counts. Later slices (#36–#41) add the
+ * consolidation, naming, tier, and tokenization sections. Full shape: REFERENCE.md.
  */
 export function newTargetDoc({ project, slug, root, date } = {}) {
   return {
@@ -86,7 +91,10 @@ export function newTargetDoc({ project, slug, root, date } = {}) {
       generatedBy: 'css-token-architect',
     },
     // Confirmed dispositions carried forward as structured target decisions
-    // (populated by slice #35); the formalization passes extend this.
+    // (#35); the formalization passes extend this.
     decisions: [],
+    // Promoted house rules as standing rules the whole target must satisfy (#35).
+    constraints: [],
+    summary: { decisionCount: 0, constraintCount: 0, changeCount: 0, keepCount: 0, staleCount: 0 },
   };
 }
