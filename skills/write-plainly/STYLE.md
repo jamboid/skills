@@ -46,4 +46,4 @@ Each rule is a target first, then the tell it retires.
 
 ## Vocabulary to retire
 
-delve, leverage, seamless, robust, holistic, elevate, unlock, harness, foster, realm, landscape, tapestry, testament, underscore, showcase, lever, boast, myriad, plethora, streamline, empower, navigate (as metaphor), embark, journey, ecosystem (unless literal), at its core, in essence, serves as, plays a key role, deep dive, game-changer, cutting-edge, best-in-class, it's worth noting, needless to say.
+delve, leverage, seamless, robust, holistic, elevate, unlock, harness, foster, realm, landscape, tapestry, testament, underscore, showcase, lever, boast, myriad, plethora, streamline, empower, navigate (as metaphor), embark, journey, ecosystem (unless literal), at its core, in essence, serves as, plays a key role, deep dive, game-changer, cutting-edge, best-in-class, it's worth noting, needless to say, load-bearing, one that bites.
