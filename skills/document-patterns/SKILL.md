@@ -36,6 +36,16 @@ One file per pattern: `docs/patterns/kebab-case-pattern-name.md`
 
 This structure is authoritative. Apply it to every new doc regardless of how existing docs in the folder are formatted.
 
+If HTML is in scope (step 7), write the frontmatter at the same time — `category`,
+`tags`, `icon`, `lede`, `chips`. These drive the index card's accent colour and the
+page hero, and a doc without them renders as an uncategorised card. Adding them later
+means recovering them from build output.
+
+**Advantages, Disadvantages and Key files must be bullet lists** (`- ` items). The
+renderer builds the pros/cons cards and the file cards from list items only, so
+paragraph-style points render as empty boxes. The build warns when it finds a section
+with prose but no bullets — don't ignore it.
+
 **Fixed five-section structure — always in this order:**
 1. **Problem statement** — what goes wrong without this pattern; no code in this section
 2. **Implementation in this codebase** — real code examples from actual files; if the pattern belongs to a specific layer (API, I/O, state management), name that layer and explain why the pattern lives there
@@ -66,6 +76,15 @@ The script owns everything mechanical — token CSS, copy/tab/scroll-spy JS, the
 TOC, syntax highlighting, and all component markup — so pages stay consistent.
 You only author the substance: section breakdown, lede, counter-examples, which
 directives to use, and any bespoke `<svg>` (via `:::diagram` / `:::raw`).
+
+**Regenerating over existing HTML destroys anything the markdown doesn't carry.**
+Pages built by an earlier version of this skill — or hand-authored — may hold hero
+ledes and chips, index-card categories, icons and tags, wrong/right comparisons and
+callouts that were never written into the `.md`. A rebuild silently drops all of it,
+and the loss is invisible in the markdown diff. Before running the script over an
+existing `HTML/` folder, read one or two pages and check for anything not present in
+the markdown; port it into frontmatter and `:::` directives first, then rebuild. Do
+this even when the task is only "update the docs and rebuild".
 
 ## Defaults
 

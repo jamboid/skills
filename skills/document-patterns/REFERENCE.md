@@ -65,8 +65,11 @@ tables, `---` rule, and inline `` `code` ``, `**bold**`, `*italic*`, `[text](url
 - **`## Advantages` immediately followed by `## Disadvantages`** (also accepts
   Pros/Cons) merge into one **Trade-offs** pros/cons card grid, with a single
   TOC entry. Write each as a normal bullet list; a `**bold lead.**` at the start
-  of an item is preserved.
-- **`## Key files`** — its bullet list renders as file cards. Each item should be
+  of an item is preserved. Points written as bare paragraphs are **not** picked
+  up — the card renders empty and the build prints a warning naming the file and
+  section.
+- **`## Key files`** — its bullet list renders as file cards (same bullets-only
+  rule and warning as above). Each item should be
   `` `path/to/file.ext` — description ``; the icon label comes from the
   extension (`js`, `ts`, `vue`, `json`, `css`).
 
