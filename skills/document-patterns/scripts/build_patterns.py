@@ -424,6 +424,17 @@ def render_blocks(lines):
 
 # ── sections ────────────────────────────────────────────────────────────────────
 
+# sections that render from bullet lists report here when they find none, so a
+# doc written in paragraph style fails loudly instead of emitting an empty card
+WARNINGS = []
+
+
+def warn_empty(section, lines):
+    """Record a section that has prose but yielded no list items."""
+    if any(ln.strip() for ln in lines):
+        WARNINGS.append(section)
+
+
 ADV = {"advantages", "pros", "benefits"}
 DIS = {"disadvantages", "cons", "drawbacks", "trade-offs", "tradeoffs"}
 
@@ -456,7 +467,10 @@ def split_sections(body):
 
 def render_key_files(lines):
     cards = []
-    for it in list_items(lines):
+    items = list_items(lines)
+    if not items:
+        warn_empty("Key files", lines)
+    for it in items:
         m = re.match(r"^`([^`]+)`\s*(?:[—-]\s*)?(.*)$", it)
         if m:
             path, desc = m.group(1), m.group(2)
@@ -477,7 +491,10 @@ def render_key_files(lines):
 
 def render_tradeoffs(adv_lines, dis_lines):
     def card(kind, title, sign, lines):
-        lis = "".join("<li>" + inline(it) + "</li>" for it in list_items(lines))
+        items = list_items(lines)
+        if not items:
+            warn_empty(title, lines)
+        lis = "".join("<li>" + inline(it) + "</li>" for it in items)
         return ('<div class="pc-card %s">\n<h3><span class="badge-icon">%s</span> %s</h3>\n'
                 '<ul>%s</ul>\n</div>' % (kind, sign, title, lis))
     return ('<div class="pc-grid">\n'
@@ -690,7 +707,12 @@ def main():
     for md in sorted(src.glob("*.md")):
         if md.name.lower() == "readme.md":
             continue
+        del WARNINGS[:]
         slug, page_html, meta, title = build_page(md, page_tpl, args.project)
+        for section in WARNINGS:
+            sys.stderr.write(
+                "warning: %s — '%s' has content but no bullet list, so it renders "
+                "empty. Write each point as a '- ' item.\n" % (md.name, section))
         (out_dir / (slug + ".html")).write_text(page_html, encoding="utf-8")
         metas[md.name] = (meta, title)
         built.append(slug + ".html")
