@@ -62,9 +62,9 @@ Ask which brand the document belongs to, or take it from the context. Then chang
 --c-accent:           #3341c2;   /* ← the client's colour */
 ```
 
-Everything tinted follows it: links, the section rules, the eyebrow, step
+Everything tinted follows it: links, the heading chips, the eyebrow, step
 numerals, the note callout, the active nav item. Don't touch `--c-accent-ink`,
-`--c-accent-soft` or `--c-accent-line` — they're derived with `color-mix()`.
+`--c-accent-soft` or `--c-accent-pale` — they're derived with `color-mix()`.
 
 The colour must clear **4.5:1 against `--c-bg` (`#fafaf9`)**. Most brand colours
 do; a bright or pastel one won't, and the fix is to darken it for this use rather
