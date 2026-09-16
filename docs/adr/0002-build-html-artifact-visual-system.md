@@ -44,10 +44,12 @@ patterns.**
   `.wide`/`.bleed` helper is provided, deliberately, so the pressure lands on the
   scaffold instead of on each page.
 - **Colour gets a job.** The accent numbers each step and tints the eyebrow; the
-  status tokens become the visible tint on callout variants. Sections are
-  separated by a full-width 3px pale-blue rule above each `h2`
-  (`--c-accent-line`) — a short accent bar above the heading was tried first and
-  read as too styled, and a grey hairline carried too little weight.
+  status tokens become the visible tint on callout variants. Sections are marked
+  by a pale chip hanging in the margin beside each `h2` (`--c-accent-pale`), not
+  by a rule. Three rule treatments were tried and rejected — a short accent bar
+  above the heading (too styled), a grey hairline (too weak), a full-width 3px
+  pale-blue rule (a horizontal line at every section is too insistent when it
+  repeats a dozen times).
 - **Six patterns:** `.masthead`, `.callout`, `.keyfact`, `.deflist`, `.steps`,
   and styled `figure`/`figcaption`. This is a deliberate, bounded reversal of
   "not a component library" — bounded because the test of a seventh pattern is

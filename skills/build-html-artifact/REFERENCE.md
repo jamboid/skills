@@ -31,7 +31,7 @@ these:
 | `--c-text` / `--c-text-muted` / `--c-text-faint` | body / secondary / faint text |
 | `--c-border` / `--c-border-strong` | hairlines / hover + structural lines |
 | `--c-accent` | **the one brand knob** — links, eyebrow, bands, active nav |
-| `--c-accent-ink` / `--c-accent-soft` / `--c-accent-line` | derived from it: text on a tint / tinted fill / section rule |
+| `--c-accent-ink` / `--c-accent-soft` / `--c-accent-pale` | derived from it: text on a tint / tinted fill / the heading chip |
 | `--c-good` / `--c-warn` / `--c-bad` (+ `-soft`) | callout variants, status accents |
 | `--c-code-bg` / `--c-code-text` / `--c-code-border` | dark code blocks (always dark) |
 | `--c-sidebar-*` | sidebar surfaces and active state |
@@ -53,7 +53,7 @@ derived from it with `color-mix()` and must never be set by hand:
 --c-accent:      #3341c2;                                         /* set this */
 --c-accent-ink:  color-mix(in srgb, var(--c-accent) 85%, black);
 --c-accent-soft: color-mix(in srgb, var(--c-accent) 12%, var(--c-bg));
---c-accent-line: color-mix(in srgb, var(--c-accent) 25%, var(--c-bg));
+--c-accent-pale: color-mix(in srgb, var(--c-accent) 25%, var(--c-bg));
 ```
 
 Text on a tinted fill uses `--c-accent-ink`, not `--c-accent` — the raw accent
@@ -105,10 +105,11 @@ needed:
 always), `table`/`th`/`td` (bordered, stone header), and
 `figure`/`figcaption`.
 
-`h2` is preceded by a full-width 3px rule in pale blue (`--c-accent-line`) that
-separates one section from the next. The first `h2` on a page drops it, since the
-masthead already closes with a rule. Every heading level uses
-`text-wrap: balance`.
+Each `h2` carries a small `--c-accent-pale` chip hanging in the left margin,
+level with the heading — the section marker, with no horizontal rule anywhere.
+It needs margin to hang in, so below 880px (1060px on the side-nav scaffold,
+where the sidebar takes the space) it becomes a block above the heading instead.
+Every heading level uses `text-wrap: balance`.
 
 This is the point of the system: throw plain HTML (or rendered markdown) at it
 and it looks consistent across docs, notes, prototypes, and transcripts.

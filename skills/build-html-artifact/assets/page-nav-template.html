@@ -32,7 +32,7 @@
   /* Derived — don't set these by hand. */
   --c-accent-ink:       color-mix(in srgb, var(--c-accent) 85%, black);      /* text on a tint */
   --c-accent-soft:      color-mix(in srgb, var(--c-accent) 12%, var(--c-bg)); /* tinted fill */
-  --c-accent-line:      color-mix(in srgb, var(--c-accent) 25%, var(--c-bg)); /* section rule */
+  --c-accent-pale:      color-mix(in srgb, var(--c-accent) 25%, var(--c-bg)); /* pale mark */
 
   /* Status */
   --c-good:             #13732f;   --c-good-soft: #d8f3e1;
@@ -82,14 +82,25 @@ h1, h2, h3, h4 {
 }
 h1 { font-size: clamp(30px, 4.5vw, 44px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; margin-bottom: 16px; }
 h2 {
+  position: relative;
   font-size: 26px; font-weight: 700; letter-spacing: -0.015em;
   margin: 56px 0 16px;
-  padding-top: 30px;
-  border-top: 3px solid var(--c-accent-line);
   scroll-margin-top: 24px;
 }
-/* The masthead already closes with a rule — don't stack a second one on it. */
-h2:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+/* A chip hanging in the margin, level with the heading — it marks the section
+   without putting a horizontal line across the page. */
+h2::before {
+  content: "";
+  position: absolute;
+  left: -40px; top: 6px;
+  width: 20px; height: 20px;
+  border-radius: var(--radius);
+  background: var(--c-accent-pale);
+}
+/* Once the column has no margin to hang in, the chip sits above the heading. */
+@media (max-width: 880px) {
+  h2::before { position: static; display: block; margin-bottom: 12px; }
+}
 h3 { font-size: 19px; font-weight: 700; letter-spacing: -0.005em; margin: 32px 0 8px; }
 h4 {
   font-family: var(--font-mono);
@@ -436,6 +447,11 @@ body { display: flex; min-height: 100vh; }
   .content { margin-left: 0; }
   .mob-toggle { display: flex; }
   .content-inner { padding: 64px 20px 72px; }
+}
+/* The sidebar takes 268px off the left, so the chip runs out of room earlier
+   here than the shared 880px breakpoint allows for. */
+@media (max-width: 1060px) {
+  h2::before { position: static; display: block; margin-bottom: 12px; }
 }
 @media (max-width: 600px) { .content-inner { padding: 64px 18px 64px; } }
 @media print {

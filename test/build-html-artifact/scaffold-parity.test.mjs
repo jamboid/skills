@@ -67,7 +67,7 @@ describe('token discipline', () => {
     // the brand colour silently leaves the old one behind in the tints.
     for (const [name, path] of Object.entries(ALL)) {
       const src = read(path);
-      for (const token of ['--c-accent-ink', '--c-accent-soft', '--c-accent-line']) {
+      for (const token of ['--c-accent-ink', '--c-accent-soft', '--c-accent-pale']) {
         const decl = src.match(new RegExp(`${token}\\s*:([^;]+);`));
         expect(decl, `${name} does not define ${token}`).not.toBeNull();
         expect(decl[1], `${name} hardcodes ${token} instead of deriving it`).toMatch(
