@@ -22,6 +22,12 @@ These skills help you write consistent, well-structured frontend code.
 
 These skills write documentation, and turn notes, docs, and findings into styled HTML artifacts.
 
+- **outline** — Get organised before drafting. Interviews you for the reader, the outcome and the one-sentence point, harvests your points in your own words, and builds a tested outline file you draft from. It does not write the draft.
+
+  ```
+  npx skills@latest add jamboid/skills/skills/outline
+  ```
+
 - **write-plainly** — Put prose into a house style: every claim anchored to a file, a date, a person or a number, and the phrasings that mark text as machine-written replaced. Drafts new text to the style, or edits existing text into it.
 
   ```
